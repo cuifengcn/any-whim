@@ -30,6 +30,7 @@ bn = get_rdkn((shapeh,shapew))
 h,w,c = img.shape
 
 @logs
+@jit
 def conv(h,w,c,kn):
     th,tw,tc = kn.shape
     assert c == tc, 'must'
