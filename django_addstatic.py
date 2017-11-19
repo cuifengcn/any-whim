@@ -11,7 +11,7 @@ def gethtmldirs():
 def addstatic(htmlname):
     with open(htmlname) as f:
         s = f.read()
-        s = re.sub(r'((src|href)=)("[^"]+?\.(css|js|png|jpg)")','\g<1> "{% static \g<3> %}"',s)
+        s = re.sub(r'((src|href)=)("[^"]+?\.(css|js|png|jpg|gif)")','\g<1> "{% static \g<3> %}"',s)
         with open('new/'+htmlname,'w') as t:
             t.write(s)
 
