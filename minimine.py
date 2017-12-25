@@ -1,24 +1,8 @@
 import random
 import numpy as np
 
-iy,ix = 2,2 # click point
 h,w = 16,16
 minenum = 60
-
-def mine_init(h,w,minenum,iy,ix):
-    v = np.random.sample((h*w,))
-    v[np.argsort(v)[:minenum]] = -1
-    v[v!=-1] = 0
-    v = v.reshape((h,w)).astype(np.int32)
-    zero = zip(*np.where(v==0))
-    mine = zip(*np.where(v!=0))
-    if (iy,ix) in mine: # first click must no mine
-        mine.remove((iy,ix))
-        mine.append(random.choice(zero))
-    for y,x in zero:
-        mx = v[np.maximum(y-1,0):y+2,np.maximum(x-1,0):x+2]
-        v[y,x] = len(mx[mx==-1])
-    return v
 
 def get_9(y,x):
     return np.maximum(y-1,0),y+2,np.maximum(x-1,0),x+2
@@ -38,16 +22,51 @@ def mine_zero(y,x,mask,mine,indx):
         ly,ry,lx,rx = get_9(y,x)
         mask[ly:ry,lx:rx] = mine[ly:ry,lx:rx]
 
-def mine_some(y,x,mask,mine,indx):
+def mine_other(y,x,mask,mine):
     mask[y,x] = mine[y,x]
-    
+
+def mine_init(h,w,minenum,iy,ix):
+    v = np.random.sample((h*w,))
+    v[np.argsort(v)[:minenum]] = -1
+    v[v!=-1] = 0
+    v = v.reshape((h,w)).astype(np.int32)
+    zero,mine = zip(*np.where(v==0)),zip(*np.where(v!=0))
+    if (iy,ix) in mine: # first click must no mine
+        mine.remove((iy,ix))
+        mine.append(random.choice(zero))
+    for y,x in zero:
+        mx = v[np.maximum(y-1,0):y+2,np.maximum(x-1,0):x+2]
+        v[y,x] = len(mx[mx==-1])
+    mask = np.ones((h,w),dtype=np.int32) * -1
+    indx = np.concatenate(map(lambda i:i[...,None], np.mgrid[:h,:w]),axis=-1)
+    if v[iy,ix]==0: mine_zero(iy,ix,mask,v,indx)
+    if v[iy,ix]!=0: mine_other(iy,ix,mask,v)
+    return mask,indx,v
+
+import os
 mask = np.ones((h,w),dtype=np.int32) * -1
-indx = np.concatenate(map(lambda i:i[...,None], np.mgrid[:h,:w]),axis=-1)
-mine = mine_init(h,w,minenum,iy,ix)
+os.system('cls')
+print mask
 
+# first click point
+iy,ix = map(int,raw_input('pls input first "x y":').split(' '))
+mask,indx,mine = mine_init(h,w,minenum,iy,ix)
+os.system('cls')
+print mask
+
+while True:
+    x,y = map(int,raw_input('pls input "x y":').split(' '))
+    os.system('cls')
+    if mine[y,x]==-1:
+        print mask
+        break
+    elif mine[y,x]==0:
+        mine_zero(y,x,mask,mine,indx)
+    else:
+        mine_other(y,x,mask,mine)
+    print mask
+print 'you fail. --- mine:'
 print mine
-
-
 
 
 
