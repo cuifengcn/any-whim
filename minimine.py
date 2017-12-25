@@ -1,15 +1,11 @@
 import random
 import numpy as np
 
-h,w = 16,16
-minenum = 60
-
 def get_9(y,x):
     return np.maximum(y-1,0),y+2,np.maximum(x-1,0),x+2
 
 def mine_zero(y,x,mask,mine,indx):
-    sets = set()
-    lists = [(y,x)]
+    sets,lists = set(),[(y,x)]
     while lists:
         y,x = lists.pop()
         if (y,x) not in sets:
@@ -43,31 +39,46 @@ def mine_init(h,w,minenum,iy,ix):
     if v[iy,ix]!=0: mine_other(iy,ix,mask,v)
     return mask,indx,v
 
-import os
+h,w = 16,16
+minenum = 60
+
+##import os
 mask = np.ones((h,w),dtype=np.int32) * -1
-os.system('cls')
-print mask
+##os.system('cls')
+##print mask
+##
+### first click point
+##iy,ix = map(int,raw_input('pls input first "x y":').split(' '))
+##mask,indx,mine = mine_init(h,w,minenum,iy,ix)
+##os.system('cls')
+##print mask
+##
+##while True:
+##    x,y = map(int,raw_input('pls input "x y":').split(' '))
+##    os.system('cls')
+##    if mine[y,x]==-1:
+##        print mask
+##        break
+##    elif mine[y,x]==0:
+##        mine_zero(y,x,mask,mine,indx)
+##    else:
+##        mine_other(y,x,mask,mine)
+##    print mask
+##print 'you fail. --- mine:'
+##print mine
+##
 
-# first click point
-iy,ix = map(int,raw_input('pls input first "x y":').split(' '))
-mask,indx,mine = mine_init(h,w,minenum,iy,ix)
-os.system('cls')
-print mask
+def foo(i,j):
+    print i,j
 
-while True:
-    x,y = map(int,raw_input('pls input "x y":').split(' '))
-    os.system('cls')
-    if mine[y,x]==-1:
-        print mask
-        break
-    elif mine[y,x]==0:
-        mine_zero(y,x,mask,mine,indx)
-    else:
-        mine_other(y,x,mask,mine)
-    print mask
-print 'you fail. --- mine:'
-print mine
-
-
+from tkinter import *
+master = Tk()
+for i in range(h):
+    for j in range(w):
+        if mask[i,j]==-1:tx = ''
+        else:tx = str(mask[i,j])
+        e = Button(master,text=tx,height=1,width=2,fg='red',command=lambda:foo(i,j))
+        e.grid(row=i,column=j,sticky=W+E+N+S)
+mainloop()
 
 
