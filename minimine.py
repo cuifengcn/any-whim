@@ -68,7 +68,7 @@ def foo(i,j):
 
 from Tkinter import *
 master = Tk()
-h,w,minenum,outcome = 16,16,20,0
+h,w,minenum,outcome = 16,16,25,0
 for i in range(h):
     for j in range(w):
         exec('def func%d_%d():foo(%d,%d)'%(i,j,i,j))
