@@ -17,7 +17,7 @@ def mine_zero(y,x,mask,mine,indx):
     for y,x in sets:
         ly,ry,lx,rx = get_9(y,x)
         mask[ly:ry,lx:rx] = mine[ly:ry,lx:rx]
-def mine_other(y,x,mask,mine):
+def mine_1to8(y,x,mask,mine):
     mask[y,x] = mine[y,x]
     
 def mine_init(h,w,minenum,iy,ix):
@@ -36,19 +36,17 @@ def mine_init(h,w,minenum,iy,ix):
     indx = np.concatenate(tuple(map(lambda i:i[...,None], np.mgrid[:h,:w])),axis=-1)
     # python3 function map return a 'map' object, so it need tuple
     if v[iy,ix]==0: mine_zero(iy,ix,mask,v,indx)
-    if v[iy,ix]!=0: mine_other(iy,ix,mask,v)
+    if v[iy,ix]!=0: mine_1to8(iy,ix,mask,v)
     return mask,indx,v
 
 def flash(mask,k=True):
     global minenum,outcome
-    for i in range(h):
-        for j in range(w):
-            if mask[i,j] != -1:
-                if mask[i,j] != 0:
-                    exec("e%d_%d['text']=mask[%d,%d]"%(i,j,i,j))
-                if k:exec("e%d_%d['relief']='groove'"%(i,j))
-            elif not k:
-                exec("e%d_%d['text']='*'"%(i,j))
+    for i,j in indx.reshape((-1,2)):
+        if mask[i,j] != -1:
+            if mask[i,j] != 0:
+                exec("e%d_%d['text']=mask[%d,%d]"%(i,j,i,j))
+            if k:exec("e%d_%d['relief']='groove'"%(i,j))
+        elif not k:exec("e%d_%d['text']='*'"%(i,j))
     if len(mask[mask==-1])==minenum and outcome ==0:
         outcome = 1
         master.title('you win.')
@@ -61,7 +59,7 @@ def foo(i,j):
     elif outcome==0:
         if mine[i,j] != -1:
             if mine[i,j]==0:mine_zero(i,j,mask,mine,indx)
-            if mine[i,j]!=0:mine_other(i,j,mask,mine)
+            if mine[i,j]!=0:mine_1to8(i,j,mask,mine)
             flash(mask)
         else:
             flash(mine,False)
@@ -70,10 +68,11 @@ def foo(i,j):
 if sys.version[0] == '2':from Tkinter import *
 if sys.version[0] == '3':from tkinter import *
 master = Tk()
+master.title()
 h,w,minenum,outcome = 16,16,25,0
 for i in range(h):
     for j in range(w):
         exec('def func%d_%d():foo(%d,%d)'%(i,j,i,j))
-        exec("e%d_%d = Button(master,text='',width=2,fg='red',relief='flat',command=func%d_%d)"%(i,j,i,j))
+        exec("e%d_%d = Button(master,text='',width=2,relief='flat',command=func%d_%d)"%(i,j,i,j))
         exec("e%d_%d.grid(row=i,column=j,sticky=W+E+N+S)"%(i,j))
 mainloop()
