@@ -56,14 +56,12 @@ def foo(i,j):
         mask,indx,mine = mine_init(h,w,minenum,i,j)
         flash(mask)
     else:
-        if mine[i,j]== 0:
-            mine_zero(i,j,mask,mine,indx)
+        if mine[i,j] != -1:
+            if mine[i,j]==0:mine_zero(i,j,mask,mine,indx)
+            if mine[i,j]!=0:mine_other(i,j,mask,mine)
             flash(mask)
-        elif mine[i,j]==-1:
-            flash(mine)
         else:
-            mine_other(i,j,mask,mine)
-            flash(mask)
+            flash(mine)
 
 from Tkinter import *
 master = Tk()
@@ -72,7 +70,6 @@ for i in range(h):
         exec('def func%d_%d():foo(%d,%d)'%(i,j,i,j))
         exec("e%d_%d = Button(master,text='',width=2,fg='red',command=func%d_%d)"%(i,j,i,j))
         exec("e%d_%d.grid(row=i,column=j,sticky=W+E+N+S)"%(i,j))
-
 mainloop()
 
 
