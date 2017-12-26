@@ -1,4 +1,4 @@
-import random
+import random, sys
 import numpy as np
 
 def get_9(y,x):
@@ -33,7 +33,8 @@ def mine_init(h,w,minenum,iy,ix):
         mx = v[np.maximum(y-1,0):y+2,np.maximum(x-1,0):x+2]
         v[y,x] = len(mx[mx==-1])
     mask = np.ones((h,w),dtype=np.int32) * -1
-    indx = np.concatenate(map(lambda i:i[...,None], np.mgrid[:h,:w]),axis=-1)
+    indx = np.concatenate(tuple(map(lambda i:i[...,None], np.mgrid[:h,:w])),axis=-1)
+    # python3 function map return a 'map' object, so it need tuple
     if v[iy,ix]==0: mine_zero(iy,ix,mask,v,indx)
     if v[iy,ix]!=0: mine_other(iy,ix,mask,v)
     return mask,indx,v
@@ -53,7 +54,7 @@ def flash(mask,k=True):
         master.title('you win.')
 
 def foo(i,j):
-    if not globals().has_key('mask'):
+    if 'mask' not in globals():
         global mask,indx,mine
         mask,indx,mine = mine_init(h,w,minenum,i,j)
         flash(mask)
@@ -66,7 +67,8 @@ def foo(i,j):
             flash(mine,False)
             master.title('you fail.')
 
-from Tkinter import *
+if sys.version[0] == '2':from Tkinter import *
+if sys.version[0] == '3':from tkinter import *
 master = Tk()
 h,w,minenum,outcome = 16,16,25,0
 for i in range(h):
