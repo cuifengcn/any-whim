@@ -17,10 +17,9 @@ def mine_zero(y,x,mask,mine,indx):
     for y,x in sets:
         ly,ry,lx,rx = get_9(y,x)
         mask[ly:ry,lx:rx] = mine[ly:ry,lx:rx]
-
 def mine_other(y,x,mask,mine):
     mask[y,x] = mine[y,x]
-
+    
 def mine_init(h,w,minenum,iy,ix):
     v = np.random.sample((h*w,))
     v[np.argsort(v)[:minenum]] = -1
@@ -39,37 +38,40 @@ def mine_init(h,w,minenum,iy,ix):
     if v[iy,ix]!=0: mine_other(iy,ix,mask,v)
     return mask,indx,v
 
-h,w = 16,16
-minenum = 30
-
-def flash(mask):
+def flash(mask,k=True):
+    global minenum,outcome
     for i in range(h):
         for j in range(w):
             if mask[i,j] != -1:
                 if mask[i,j] != 0:
                     exec("e%d_%d['text']=mask[%d,%d]"%(i,j,i,j))
-                exec("e%d_%d['relief']=RIDGE"%(i,j))
+                if k:exec("e%d_%d['relief']='groove'"%(i,j))
+            elif not k:
+                exec("e%d_%d['text']='*'"%(i,j))
+    if len(mask[mask==-1])==minenum and outcome ==0:
+        outcome = 1
+        master.title('you win.')
 
 def foo(i,j):
     if not globals().has_key('mask'):
         global mask,indx,mine
         mask,indx,mine = mine_init(h,w,minenum,i,j)
         flash(mask)
-    else:
+    elif outcome==0:
         if mine[i,j] != -1:
             if mine[i,j]==0:mine_zero(i,j,mask,mine,indx)
             if mine[i,j]!=0:mine_other(i,j,mask,mine)
             flash(mask)
         else:
-            flash(mine)
+            flash(mine,False)
+            master.title('you fail.')
 
 from Tkinter import *
 master = Tk()
+h,w,minenum,outcome = 16,16,20,0
 for i in range(h):
     for j in range(w):
         exec('def func%d_%d():foo(%d,%d)'%(i,j,i,j))
-        exec("e%d_%d = Button(master,text='',width=2,fg='red',command=func%d_%d)"%(i,j,i,j))
+        exec("e%d_%d = Button(master,text='',width=2,fg='red',relief='flat',command=func%d_%d)"%(i,j,i,j))
         exec("e%d_%d.grid(row=i,column=j,sticky=W+E+N+S)"%(i,j))
 mainloop()
-
-
