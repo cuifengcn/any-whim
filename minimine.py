@@ -68,7 +68,6 @@ def foo(i,j):
 if sys.version[0] == '2':from Tkinter import *
 if sys.version[0] == '3':from tkinter import *
 master = Tk()
-master.title()
 h,w,minenum,outcome = 16,16,25,0
 for i in range(h):
     for j in range(w):
