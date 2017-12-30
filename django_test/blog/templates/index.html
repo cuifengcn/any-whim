@@ -1,0 +1,65 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="description" content="">
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Free Documentation HTML Template</title>
+<link rel="alternate" type="application/rss+xml" title="" href="feed/index.html">
+<link rel="stylesheet" href= "{% static "css/style.css" %}">
+<link rel="stylesheet" href= "{% static "css/prettify.css" %}">
+</head>
+<body>
+<div class="wrapper">
+<nav>
+ 
+    <div class="pull-right">
+    	<a class="btn btn-download">脱力感，似乎是饿了。</a>
+    </div>
+
+
+</nav>
+<header>
+  <div class="container">
+    <h2 class="lone-header">博客</h2>
+  </div>
+</header>
+<section>
+  <div class="container">
+    <ul class="docs-nav">
+      <li><strong>文</strong></li>
+      {% for post in blog_list %}
+      	<li><a href="#{{ post.title }}" class="cc-active">{{ post.title }}</a></li>
+      {% endfor %}
+    </ul>
+    <div class="docs-content">
+      {% for post in blog_list %}
+      	<h2 id="{{ post.title }}"> {{ post.title }}</h2>
+      	<h3>{{ post.timestamp }}</h3>
+      	{% for body in post.body %}
+      	  <p>{{ body }}</p>
+      	{% endfor %}
+      	<hr>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+<section class="vibrant centered">
+  <div class="">
+    <h4>胃涨，胃痛，胃溃疡，不消化，很有可能是你饿了，赶紧吃一顿吧。你太穷了。</h4>
+  </div>
+</section>
+<footer>
+  <div class="">
+    <p> &copy; Copyright kkk</p>
+  </div>
+</footer>
+</div>
+<script src= "{% static "js/jquery.min.js" %}"></script> 
+<script type="text/javascript" src= "{% static "js/prettify/prettify.js" %}"></script> 
+<script src= "{% static "js/layout.js" %}"></script>
+</body>
+</html>
