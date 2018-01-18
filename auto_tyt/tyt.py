@@ -49,7 +49,7 @@ def get_top_point(s,my_point):
     if my_point[0]<o_w/2:
         s = v[:,center_w:v.shape[1]]
         s = np.argmax(s,axis=0)
-        k = np.argmin(s)
+        k = np.argmin(s[12:])
         k = s[k]
         temp = np.where(s==k)[0]
         k = (temp.max()+temp.min())/2
@@ -59,7 +59,7 @@ def get_top_point(s,my_point):
     else:
         s = v[:,0:center_w]
         s = np.argmax(s,axis=0)
-        k = np.argmin(s)
+        k = np.argmin(s[:-12])
         k = s[k]
         temp = np.where(s==k)[0]
         k = (temp.max()+temp.min())/2
@@ -102,7 +102,7 @@ def get_right_dst(s,my_point,top_point):
 # 开始
 def run():
     while 1:
-        time.sleep(3)
+        time.sleep(2.5)
         o = get_window_abs_by_name('BlueStacks App Player')
         s = o.copy()
         t = cv2.imread('templ.bmp')
@@ -112,6 +112,7 @@ def run():
         dst = get_right_dst(s,my_point,top_point)
         pushtime(dst/key)
 
+time.sleep(3)
 run()
 
 ##o = get_window_abs_by_name('BlueStacks App Player')
