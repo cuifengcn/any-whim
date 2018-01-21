@@ -1,3 +1,4 @@
+import random
 import numpy as np
 
 # 根据输入的方向返回该方向上的同链为零的端点坐标
@@ -38,16 +39,28 @@ def get_cross(s_map,point,target):
         ret.append(k)
     return ret,packer
 
-# 鱼骨抽关键点的这种算法，目前这里只考虑鱼脊梁为横向的情况
-def get_fish(s_map,point):
+# 鱼骨抽关键点的这种算法，不指定 target 就默认是随机左右 or 上下方向
+def get_fish(s_map,point,target='rd'):
     pack = []
-    (l,r),packer = get_cross(s_map,point,('l','r'))
-    pack += packer
-    for i in range(l,r+1):
-        pt = (point[0],i)
-        _,packer = get_cross(s_map,pt,('u','d'))
+    assert target in ['rd','lr','ud'] # random, left-right, up-down
+    if target=='rd':
+        target = np.random.choice(('lr','ud'))
+    if target=='lr':
+        (l,r),packer = get_cross(s_map,point,('l','r'))
         pack += packer
-    return pack
+        for i in range(l,r+1):
+            pt = (point[0],i)
+            _,packer = get_cross(s_map,pt,('u','d'))
+            pack += packer
+        return pack
+    if target=='ud':
+        (u,d),packer = get_cross(s_map,point,('u','d'))
+        pack += packer
+        for i in range(u,d+1):
+            pt = (i,point[1])
+            _,packer = get_cross(s_map,pt,('l','r'))
+            pack += packer
+        return pack
 
 # 根据坐标点获取其坐标的类别以字典形式返回
 def get_class_point(s_map,fishpoint):
@@ -76,8 +89,46 @@ def get_1point_results(s_map,point):
     pts  = pick_dc_all(dc)
     return pts
 
-##if __name__ == '__main__':
-##    #for test
-##    s_map = np.random.randint(0,9,(5,5))
-##    s_map[1:4,1:4]=0
-##    point = (2,2)
+# 两点框的遍历，解决相邻问题
+def get_close(s_map):
+    chain = []
+    h,w = s_map.shape
+    for i in range(h):
+        for j in range(w-1):
+            a,b = s_map[(i,j)],s_map[(i,j+1)]
+            if a!=0 and b!=0 and a==b:
+                s_map[(i,j)],s_map[(i,j+1)] = 0,0
+                chain.append(((i,j),(i,j+1)))
+    for i in range(w):
+        for j in range(h-1):
+            a,b = s_map[(j,i)],s_map[(j+1,i)]
+            if a!=0 and b!=0 and a==b:
+                s_map[(j,i)],s_map[(j+1,i)] = 0,0
+                chain.append(((j,i),(j+1,i)))
+    return chain
+
+# 直接获取该 s_map 的全解链。
+def get_chain(s_map):
+    s_map = s_map.copy()
+    chain = get_close(s_map)
+    cur_flash = (s_map.ravel()!=0).tolist().count(True)
+    over_break = 0
+    while np.any(s_map!=0):
+        zpoints = list(zip(*map(lambda i:i.tolist(),np.where(s_map==0))))
+        point = random.choice(zpoints)
+        result = get_1point_results(s_map,point)
+        for idx1,idx2 in result:
+            chain.append((idx1,idx2))
+            s_map[idx1],s_map[idx2] = 0,0
+        next_flash = (s_map.ravel()!=0).tolist().count(True)
+        # 连连看存在无解情况，所以以下就是返回在 s_map 完全无解之前
+        # 算法能找到的所有有解链 chain
+        if cur_flash != next_flash:
+            cur_flash = next_flash
+            over_break = 0
+            continue
+        else:
+            if over_break > 100:
+                break
+            over_break += 1
+    return chain

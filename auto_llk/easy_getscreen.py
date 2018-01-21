@@ -29,5 +29,15 @@ def get_window_abs_by_name(name, show = False):
         cv2.destroyAllWindows()
     return img
 
+def get_window_top_left(name, show = False):
+    screen = get_screen()
+    rect = RECT()
+    mhd = ctypes.windll.User32.FindWindowW(None,name)
+    ctypes.windll.user32.GetWindowRect(mhd, ctypes.byref(rect))
+    if rect.top == rect.bottom == rect.left == rect.right == 0:
+        raise 'cant get windows'
+    return rect.top, rect.left
+
+
 if __name__ == "__main__":
     get_window_abs_by_name('BlueStacks App Player', show=True)# win7 扫雷名
