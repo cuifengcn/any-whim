@@ -12,10 +12,10 @@ from keras.models import Sequential
 def mkmodel(shape,classnum):
     model = Sequential()
     model.add(Conv2D(9,(3,3), padding="same", activation='relu', input_shape=shape))
-    model.add(Conv2D(9,(3,3), padding="same", activation='relu', input_shape=shape))
+    model.add(Conv2D(9,(3,3), padding="same", activation='relu'))
     model.add(MaxPooling2D(2,2,padding="same"))
-    model.add(Conv2D(9,(3,3), padding="same", activation='relu', input_shape=shape))
-    model.add(Conv2D(9,(3,3), padding="same", activation='relu', input_shape=shape))
+    model.add(Conv2D(9,(3,3), padding="same", activation='relu'))
+    model.add(Conv2D(9,(3,3), padding="same", activation='relu'))
     model.add(MaxPooling2D(2,2,padding="same"))
 
     model.add(Flatten())
