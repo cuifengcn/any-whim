@@ -61,7 +61,7 @@ class GUI_WZQ:
 
 
 if __name__ == "__main__":
-    v= GUI_WZQ(19,19)
+    v = GUI_WZQ(19,19)
 
 
         
