@@ -13,7 +13,12 @@ class GUI_WZQ:
         self.h = h
         self.w = w
 
-        self.player = 1
+        self.v = IntVar(value=1)
+        if self.v.get():
+            self.player = 2
+        else:
+            self.player = 1
+        self.enemy = 3 - self.player
         self.player_text = {1:'●',2:'〇'}
         self.player_head = {1:'黑',2:'白'}
 
@@ -21,10 +26,27 @@ class GUI_WZQ:
         self.gamearea = self.create_gamearea(h,w)
         self.headarea.pack()
         self.gamearea.pack()
+        self.init()
         self.master.mainloop()
 
+        self._n_point = 0
+
+    def init(self):
+        if self.v.get():
+            self.player = 2
+        else:
+            self.player = 1
+        self.enemy = 3 - self.player
+        if self.player == 2:
+            self.wzq.play_1_round((int(self.h/2),int(self.w/2)),self.enemy)
+            exec("self.e%d_%d['text']='●'"%(int(self.h/2),int(self.w/2)))
+
     def reset(self):
-        pass
+        self.wzq = WZQ(self.h,self.w)
+        for i in range(self.h):
+            for j in range(self.w):
+                exec("self.e%d_%d['text']='  '"%(i,j))
+        self.init()
 
     def flash(self,i,j):
         if self.wzq.win:
@@ -39,15 +61,18 @@ class GUI_WZQ:
                 self.headlabel['text'] = 'win:'+self.player_head[self.wzq.win]
             else:
                 self.headlabel['text'] = 'next:'+self.player_head[self.player]
-                if self.player==2:
-                    point = self.wzq.robot_1(self.player).tolist()
+                if self.player == self.enemy:
+                    #这里的 robot_1 便是 robot 使用的算法
+                    point = self.wzq.robot_level1(self.player).tolist()
                     self.flash(*point)
 
     def create_headarea(self):
         head = Frame(self.master)
         self.headlabel = headarea = Label(head,text='next:'+self.player_head[self.player])
         resetbot = Button(head,text='reset',font=('黑体',9),relief='groove',command=self.reset)
+        robot = Checkbutton(head,text = 'robot first?',variable = self.v)
         headarea.pack(side=LEFT)
+        robot.pack(side=RIGHT)
         resetbot.pack(side=RIGHT)
         return head
 

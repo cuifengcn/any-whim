@@ -1,9 +1,12 @@
 import numpy as np
+from collections import OrderedDict
 from itertools import groupby
 
-#五子棋类
-#包装了下棋函数，判断是否胜利函数以及估值函数
-#下棋函数如果返回值不为 False 则返回胜者（player in [1,2]）
+# 五子棋类
+# 包装了下棋函数，判断是否胜利函数以及估值函数
+# 下棋函数如果返回值为真则在该点下棋，否则下棋失败（被其他棋子占用）
+# 每下一步棋就会更新 self.win 。如果该值不为 False 则为胜利者
+# player in[1, 2]
 class WZQ:
     def __init__(self, h, w):
         self.s_map = np.zeros((h,w)).astype(np.int32)
@@ -13,40 +16,44 @@ class WZQ:
         self._scal_eval = self._create_scal(5)
         self._scal_ecal_large = self._create_scal(9)
         self.win = False
-        self._values = {
-            (1,0,1,1,1,0,1):400,#活四
-            (0,1,1,1,1,0):400,#活四
-            (1,1,1,1,1):1000,#活五
-            (1,1,1,1,0):80,#冲四
-            (1,1,1,0,1):80,#冲四
-            (1,1,0,1,1):80,#冲四
-            (1,0,1,1,1):80,#冲四
-            (0,1,1,1,1):80,#冲四
-            (0,1,1,1,0):80,#活三
-            (0,1,1,0,1):60,#眠三
-            (1,0,1,0,1):60,#眠三
-            (1,0,1,1,0):60,#眠三
-            (1,1,1,0,0):20,#冲三
-            (0,0,1,1,1):20,#冲三
-            (1,1,0,1,0):20,#冲三
-            (0,1,0,1,1):20,#冲三
-            (0,1,1,0,0):6,#活二
-            (0,0,1,1,0):6,#活二
-            (0,1,0,1,0):6,#活二
-            (1,0,1,0,0):6,#眠二
-            (0,0,1,0,1):6,#眠二
-            (1,0,1,0,0):2,#冲二
-            (0,0,1,0,1):2,#冲二
-            (1,1,0,0,0):2,#冲二
-            (0,0,0,1,1):2,#冲二
-            (0,0,0,0,1):1,#一
-            (0,0,0,1,0):1,#一
-            (0,0,1,0,0):1,#一
-            (0,1,0,0,0):1,#一
-            (1,0,0,0,0):1,#一
-            }
+        self._values = OrderedDict([
+            [(1,1,1,1,1),1000],#活五
+            [(1,0,1,1,1,0,1),400],#活四
+            [(0,1,1,1,1,0),400],#活四
+            [(1,1,1,1,0),80],#冲四
+            [(1,1,1,0,1),80],#冲四
+            [(1,1,0,1,1),80],#冲四
+            [(1,0,1,1,1),80],#冲四
+            [(0,1,1,1,1),80],#冲四
+            [(0,1,1,1,0),80],#活三
+            [(0,1,1,0,1),60],#眠三
+            [(1,0,1,0,1),60],#眠三
+            [(1,0,1,1,0),60],#眠三
+            [(1,1,1,0,0),20],#冲三
+            [(0,0,1,1,1),20],#冲三
+            [(1,1,0,1,0),20],#冲三
+            [(0,1,0,1,1),20],#冲三
+            [(0,1,1,0,0),6],#活二
+            [(0,0,1,1,0),6],#活二
+            [(0,1,0,1,0),6],#活二
+            [(1,0,1,0,0),6],#眠二
+            [(0,0,1,0,1),6],#眠二
+            [(1,0,1,0,0),2],#冲二
+            [(0,0,1,0,1),2],#冲二
+            [(1,1,0,0,0),2],#冲二
+            [(0,0,0,1,1),2],#冲二
+            [(0,0,0,0,1),1],#一
+            [(0,0,0,1,0),1],#一
+            [(0,0,1,0,0),1],#一
+            [(0,1,0,0,0),1],#一
+            [(1,0,0,0,0),1],#一
+            ])
 
-    #米字形的矩阵生成，用于优化结构
+
+        self._temp1_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
+        self._temp2_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
+
+    #米字形的矩阵生成，用于优化计算范围
     def _create_scal(self, n):
         c = int(n/2)
         v = np.zeros((n,n),dtype=np.int32)
@@ -74,8 +81,8 @@ class WZQ:
                     return i
         return False
     
-    #确保游戏没有结束
     #确保当前point没有其他落子
+    #确保没下一步都会更新 self.win 。
     def play_1_round(self, point, player):
         assert player in [1,2]
         if self.s_map[point] != 0:
@@ -111,6 +118,8 @@ class WZQ:
                     _arr = arr[i:i+len(_val)]
                     if len(_arr) == len(_val) and np.any(_arr^_val)==False:
                         _core_list.append(self._values[val])
+                if len(_core_list)!= 0:
+                    break
             core += max(_core_list) if len(_core_list) else 0
         #估值结束再把 s_map 原本样子还回去
         self.s_map[point] = 0
@@ -124,23 +133,34 @@ class WZQ:
         gu,gl,gd,gr = 2-(ph-u), 2-(pw-l), 2+(d-ph), 2+(r-pw)
         self._area_eval[u:d,l:r] |= self._scal_eval[gu:gd,gl:gr]
 
-    #test 一层的逻辑
-    def robot_1(self, player):
-        self._temp1_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
-        self._temp2_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
+
+    #将估值函数包装一下，使得使用起来会更加方便
+    def _calc_eval_map(self, player):
+        self._temp1_eval_map[self._temp1_eval_map!=0] = 0
+        self._temp2_eval_map[self._temp2_eval_map!=0] = 0
         for i,j in np.vstack(np.where(self._area_eval==1)).transpose():
             if self.s_map[i,j] == 0:
                 self._temp1_eval_map[i,j] = self.evaluate((i,j),player)
         for i,j in np.vstack(np.where(self._area_eval==1)).transpose():
             if self.s_map[i,j] == 0:
                 self._temp2_eval_map[i,j] = self.evaluate((i,j),3-player)
-        v = (self._temp1_eval_map+self._temp2_eval_map)
+        v = (self._temp1_eval_map+self._temp2_eval_map*.8)
+        return v
+
+    #test 一层的逻辑
+    #经过测试，该简单算法不能应对较为复杂的多层考虑
+    def robot_level1(self, player):
+        v = self._calc_eval_map(player)
         v = np.vstack(np.where(v==v.max())).transpose()
         v = v[np.random.choice(range(len(v)))]
         return v
+
+    def robot_level2(self, player):
+        pass
+    
         
 
-#test
+#以下只用于简单语法错误的检查测试test
 if __name__== '__main__':
     wzq = WZQ(15,15)
     player = 2
@@ -157,6 +177,7 @@ if __name__== '__main__':
     print(wzq.play_1_round((4,4),player))
     print(wzq.play_1_round((3,4),player))
     print(wzq.play_1_round((12,12),player))
+    print(wzq.play_1_round((14,14),player))
     print(wzq.s_map)
     import time
     _t = time.time()
