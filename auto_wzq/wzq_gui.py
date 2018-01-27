@@ -30,8 +30,6 @@ class GUI_WZQ:
         self.init()
         self.master.mainloop()
 
-        
-
     def init(self):
         if self.v.get():
             self.player = 2
@@ -41,13 +39,15 @@ class GUI_WZQ:
         if self.player == 2:
             self.wzq.play_1_round((int(self.h/2),int(self.w/2)),self.enemy)
             exec("self.e%d_%d['text']='●'"%(int(self.h/2),int(self.w/2)))
+            exec("self.e%d_%d['relief']='%s'"%(int(self.h/2),int(self.w/2),'raised'))
+            self._cur_point = (int(self.h/2),int(self.w/2))
 
     def reset(self):
         self.wzq = WZQ(self.h,self.w)
         for i in range(self.h):
             for j in range(self.w):
                 exec("self.e%d_%d['text']='  '"%(i,j))
-                exec("self.e%d_%d['relief']='%s'"%(i,j,'raised'))
+                exec("self.e%d_%d['relief']='%s'"%(i,j,'groove'))
         self.init()
 
     def flash(self,i,j):
@@ -56,6 +56,8 @@ class GUI_WZQ:
         if self.wzq.play_1_round((i,j),self.player):
             if self._cur_point:
                 exec("self.e%d_%d['relief']='%s'"%(self._cur_point+('groove',)))
+            exec("self.e%d_%d['relief']='%s'"%(i,j,'raised'))
+            self._cur_point = (i,j)
             exec("self.e%d_%d['text']='%s'"%(i,j,self.player_text[self.player]))
             if self.player==1:
                 self.player = 2
@@ -69,8 +71,7 @@ class GUI_WZQ:
                     #这里的 robot_level1 是 robot 使用的简单难度算法
                     point = self.wzq.robot_level1(self.player).tolist()
                     self.flash(*point)
-            exec("self.e%d_%d['relief']='%s'"%(i,j,'raised'))
-            self._cur_point = (i,j)
+            
 
     def create_headarea(self):
         head = Frame(self.master)
