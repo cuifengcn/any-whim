@@ -50,8 +50,46 @@ class WZQ:
             ])
 
 
-        self._temp1_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
-        self._temp2_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
+
+
+
+
+
+
+
+    #这里中间的函数主要是处理对计算范围的优化，并进行对其进行多层估值前的前置处理
+    #为了类空间的优化，这里暂时就让之后的计算都共用三个变量函数内建变量：
+    #self._temp_area_eval, self._temp_s_map, self._temp_win
+    def _temp_area_eval_add(self, point):
+        self._temp_area_eval = self._area_eval.copy()
+        ph,pw = point
+        (u,l) = np.maximum(np.array(point)-2, 0)
+        (d,r) = np.minimum(np.array(point)+3, self.s_map.shape)
+        gu,gl,gd,gr = 2-(ph-u), 2-(pw-l), 2+(d-ph), 2+(r-pw)
+        self._temp_area_eval[u:d,l:r] |= self._scal_eval[gu:gd,gl:gr]
+        return self._temp_area_eval
+
+    def _temp_area_eval_adds(self, points):
+        for point in points:
+            self._temp_area_eval_add(point)
+
+    def _get_points_from_temp(self):
+        return np.vstack(np.where((self._temp_area_eval==1)&(self._temp_s_map==0))).transpose()
+
+    def _temp_play_1_round(self, point):
+        self._temp_s_map = self.s_map.copy()
+        
+        self._temp_area_eval_add(self._area_eval, point)
+        self._temp_win = self._jug_win(point)
+        if not self._temp_win:
+            print(_get_points_from_temp(self))
+    #以上函数暂时没有建好，因未调用，对程序无影响。
+
+
+
+
+
+
 
     #米字形的矩阵生成，用于优化计算范围
     def _create_scal(self, n):
@@ -134,23 +172,19 @@ class WZQ:
         gu,gl,gd,gr = 2-(ph-u), 2-(pw-l), 2+(d-ph), 2+(r-pw)
         self._area_eval[u:d,l:r] |= self._scal_eval[gu:gd,gl:gr]
 
-
     #将估值函数包装一下，使得使用起来会更加方便
     def _calc_eval_map(self, player):
-        self._temp1_eval_map[self._temp1_eval_map!=0] = 0
-        self._temp2_eval_map[self._temp2_eval_map!=0] = 0
-        for i,j in np.vstack(np.where(self._area_eval==1)).transpose():
-            if self.s_map[i,j] == 0:
-                self._temp1_eval_map[i,j] = self.evaluate((i,j),player)
-        for i,j in np.vstack(np.where(self._area_eval==1)).transpose():
-            if self.s_map[i,j] == 0:
-                self._temp2_eval_map[i,j] = self.evaluate((i,j),3-player)
+        self._temp1_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
+        self._temp2_eval_map = np.zeros(self.s_map.shape).astype(np.int32)
+        for i,j in np.vstack(np.where((self._area_eval==1)&(self.s_map==0))).transpose():
+            self._temp1_eval_map[i,j] = self.evaluate((i,j),player)
+        for i,j in np.vstack(np.where((self._area_eval==1)&(self.s_map==0))).transpose():
+            self._temp2_eval_map[i,j] = self.evaluate((i,j),3-player)
         #这里的0.8是为了防止在预测中对手权重过高过度防御导致连自己的连五都被无视
-        v = (self._temp1_eval_map+self._temp2_eval_map*.8)
-        return v
+        return (self._temp1_eval_map+self._temp2_eval_map*.8)
 
     #test 一层的逻辑
-    #经过测试，该简单算法不能应对较为复杂的多层考虑
+    #经过测试，该简单算法不能应对较为复杂的多层考虑，仅仅应用于简单难度
     def robot_level1(self, player):
         v = self._calc_eval_map(player)
         v = np.vstack(np.where(v==v.max())).transpose()

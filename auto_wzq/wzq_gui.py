@@ -36,6 +36,7 @@ class GUI_WZQ:
         else:
             self.player = 1
         self.enemy = 3 - self.player
+        self.headlabel['text'] = 'next:'+self.player_head[self.player]
         if self.player == 2:
             self.wzq.play_1_round((int(self.h/2),int(self.w/2)),self.enemy)
             exec("self.e%d_%d['text']='●'"%(int(self.h/2),int(self.w/2)))
@@ -68,7 +69,7 @@ class GUI_WZQ:
             else:
                 self.headlabel['text'] = 'next:'+self.player_head[self.player]
                 if self.player == self.enemy:
-                    #这里的 robot_level1 是 robot 使用的简单难度算法
+                    #这里的 robot_level1 是 robot 使用的简单难度算法只考虑一层
                     point = self.wzq.robot_level1(self.player).tolist()
                     self.flash(*point)
             
