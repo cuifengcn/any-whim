@@ -60,6 +60,10 @@ class WZQ:
     #这里中间的函数主要是处理对计算范围的优化，并进行对其进行多层估值前的前置处理
     #为了类空间的优化，这里暂时就让之后的计算都共用三个变量函数内建变量：
     #self._temp_area_eval, self._temp_s_map, self._temp_win
+
+    #另外的想法，是不是需要用一种递归的方式进行这样的处理
+    #如果是递归的话，那么需要怎么存放数据，还有主要是怎么将计算范围表传递出去。
+    #有点困难的就是这些。
     def _temp_area_eval_add(self, point):
         self._temp_area_eval = self._area_eval.copy()
         ph,pw = point
@@ -84,6 +88,9 @@ class WZQ:
         if not self._temp_win:
             print(_get_points_from_temp(self))
     #以上函数暂时没有建好，因未调用，对程序无影响。
+
+
+
 
 
 
