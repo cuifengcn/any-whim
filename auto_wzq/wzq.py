@@ -88,8 +88,29 @@ class WZQ:
         if not self._temp_win:
             print(_get_points_from_temp(self))
     #以上函数暂时没有建好，因未调用，对程序无影响。
-
-
+    ##def some(深度, 范围图, 落子图, 权重图, point):
+    ##    if point:
+    ##        范围图 = 新的范围图 = 添范围函数(范围图, point)
+    ##        新的落子图 = 添落子函数(落子图, point)
+    ##        新的权重图 = 添权重函数(权重图, point)
+    ##        if 深度>目标深度:
+    ##            对外部数组进行更新
+    ##            return
+    ##        
+    ##        #对函数节点进行优化, 如果对方都要活五了还往着其他部分去想不是有病吗？
+    ##        if 新的权重图.max() > 1000:
+    ##            对外部数组进行更新
+    ##            return
+    ##
+    ##    for point in 范围图.所有点:
+    ##        some(深度, 范围图, 落子图, point)
+    ####################
+    ##ls = [] 
+    ##def some(deep, area_eval, s_map, eval_map, point):
+    ##    if point:
+    ##        eval_area = eval_area_add(eval_area, point)
+    ##        eval_map  = eval_map_add(eval_map, point)
+    ##        s_map     = s_map_add(s_map, point)
 
 
 
