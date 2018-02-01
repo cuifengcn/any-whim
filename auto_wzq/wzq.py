@@ -3,16 +3,20 @@ from collections import OrderedDict
 from itertools import groupby
 
 # 五子棋类
-# 包装了下棋函数，判断是否胜利函数以及估值函数
+# 包装了下棋函数，判断是否胜利函数以及估值函数，深度搜索估值函数。
 # 下棋函数如果返回值为真则在该点下棋，否则下棋失败（被其他棋子占用）
 # 每下一步棋就会更新 self.win 。如果该值不为 False 则为胜利者
 # player in[1, 2]
 class WZQ:
     def __init__(self, h, w):
         self.s_map = np.zeros((h,w)).astype(np.int32)
+
+
+        self.h = h
+        self.w = w
         self._lu = np.zeros((h,w)).astype(np.bool8)
         self._ru = np.zeros((h,w)).astype(np.bool8)
-        self._area_eval = np.zeros((h,w)).astype(np.int32)
+        self._area_eval = np.zeros((h,w),dtype=np.int32)
         self._scal_eval = self._create_scal(5)
         self._scal_ecal_large = self._create_scal(9)
         self.win = False
@@ -55,62 +59,91 @@ class WZQ:
 
 
 
+    ##def some(深度, 范围图, 权重图, chain):
+    ##    ls = []
+    ##    新的范围图 = 添范围函数(范围图, chain)
+    ##    新的权重图 = 添权重函数(权重图, chain)
+    ##    if 新的权重图.max() > 400 or 深度>目标深度:
+    ##        对 ls 添加 chain 的信息
+    ##        return
+    ##    for point in 新的范围图.所有点:
+    ##        some(深度, 范围图, 权重图, chain+[point])
 
 
-    #这里中间的函数主要是处理对计算范围的优化，并进行对其进行多层估值前的前置处理
-    #为了类空间的优化，这里暂时就让之后的计算都共用三个变量函数内建变量：
-    #self._temp_area_eval, self._temp_s_map, self._temp_win
+    #临时范围图
+    def eval_area_add(self, eval_area, chain):
+        eval_area = eval_area.copy()
+        if chain:
+            ph,pw = point = chain[-1]
+            (u,l) = np.maximum(np.array(point)-2, 0)
+            (d,r) = np.minimum(np.array(point)+3, self.s_map.shape)
+            gu,gl,gd,gr = 2-(ph-u), 2-(pw-l), 2+(d-ph), 2+(r-pw)
+            eval_area[u:d,l:r] |= self._scal_eval[gu:gd,gl:gr]
+        return eval_area
 
-    #另外的想法，是不是需要用一种递归的方式进行这样的处理
-    #如果是递归的话，那么需要怎么存放数据，还有主要是怎么将计算范围表传递出去。
-    #有点困难的就是这些。
-    def _temp_area_eval_add(self, point):
-        self._temp_area_eval = self._area_eval.copy()
-        ph,pw = point
-        (u,l) = np.maximum(np.array(point)-2, 0)
-        (d,r) = np.minimum(np.array(point)+3, self.s_map.shape)
-        gu,gl,gd,gr = 2-(ph-u), 2-(pw-l), 2+(d-ph), 2+(r-pw)
-        self._temp_area_eval[u:d,l:r] |= self._scal_eval[gu:gd,gl:gr]
-        return self._temp_area_eval
+    #临时权重图
+    def eval_map_add(self, eval_map, player_chain, chain):
+        eval_map = eval_map.copy()
+        player = player_chain[len(chain)]
+        if chain:
+            ph,pw = point = chain[-1]
+            (u,l) = np.maximum(np.array(point)-4, 0)
+            (d,r) = np.minimum(np.array(point)+5, self.s_map.shape)
+            gu,gl,gd,gr = 4-(ph-u), 4-(pw-l), 4+(d-ph), 4+(r-pw)
+            z = np.zeros((self.h,self.w),dtype=np.int32)
+            z[u:d,l:r] |= self._scal_ecal_large[gu:gd,gl:gr]
+            for point in  np.vstack(np.where((z==1)&(self.s_map==0))).transpose():
+                eval_map[tuple(point)] = self.evaluate(tuple(point), player)
+        return eval_map
 
-    def _temp_area_eval_adds(self, points):
-        for point in points:
-            self._temp_area_eval_add(point)
+    #棋谱的栈形式的调用push pop, 仅仅使用原有落子图，对计算空间的优化
+    def s_map_push(self, player_chain, chain):
+        if chain:
+            player = player_chain[len(chain)]
+            self.s_map[tuple(chain[-1])] = player
 
-    def _get_points_from_temp(self):
-        return np.vstack(np.where((self._temp_area_eval==1)&(self._temp_s_map==0))).transpose()
+    def s_map_pop(self, player_chain, chain):
+        if chain:
+            player = player_chain[len(chain)]
+            self.s_map[tuple(chain[-1])] = 0
 
-    def _temp_play_1_round(self, point):
-        self._temp_s_map = self.s_map.copy()
+    def pred(self, target_deep, player):
+        ls = []
+        # 考虑到可能会有三手交换之类的规则 player_chain 以下述方式存放，方便扩展
+        if player==1:
+            player_chain = [-1]+[1,2]*10
+        if player==2:
+            player_chain = [-1]+[2,1]*10
+
+        def funcition(deep, eval_area, eval_map, ls, chain=[], value_chain=[]):
+            self.s_map_push(player_chain, chain)
+            eval_area = self.eval_area_add(eval_area, chain)#范围图
+            eval_map  = self.eval_map_add(eval_map, player_chain, chain)#权重图
+            
+            if np.any(eval_map>350) or deep == target_deep:
+                
+                v = np.vstack(np.where(eval_map==eval_map.max())).transpose()
+                v = v[np.random.choice(range(len(v)))]
+                z = [eval_map[v[0],v[1]]]
+                ls+=[(chain+[v],value_chain+z)]
+
+                self.s_map_pop(player_chain, chain)
+                return 
+            self.s_map_pop(player_chain, chain)
+
+            print(len(np.where(eval_area==1)[0]))
+            for point in np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose():
+                funcition(deep+1, eval_area, eval_map, ls, chain+[(point)], value_chain+[eval_map[tuple(point)]])
+
         
-        self._temp_area_eval_add(self._area_eval, point)
-        self._temp_win = self._jug_win(point)
-        if not self._temp_win:
-            print(_get_points_from_temp(self))
-    #以上函数暂时没有建好，因未调用，对程序无影响。
-    ##def some(深度, 范围图, 落子图, 权重图, point):
-    ##    if point:
-    ##        范围图 = 新的范围图 = 添范围函数(范围图, point)
-    ##        新的落子图 = 添落子函数(落子图, point)
-    ##        新的权重图 = 添权重函数(权重图, point)
-    ##        if 深度>目标深度:
-    ##            对外部数组进行更新
-    ##            return
-    ##        
-    ##        #对函数节点进行优化, 如果对方都要活五了还往着其他部分去想不是有病吗？
-    ##        if 新的权重图.max() > 1000:
-    ##            对外部数组进行更新
-    ##            return
-    ##
-    ##    for point in 范围图.所有点:
-    ##        some(深度, 范围图, 落子图, point)
-    ####################
-    ##ls = [] 
-    ##def some(deep, area_eval, s_map, eval_map, point):
-    ##    if point:
-    ##        eval_area = eval_area_add(eval_area, point)
-    ##        eval_map  = eval_map_add(eval_map, point)
-    ##        s_map     = s_map_add(s_map, point)
+        funcition(1, self._area_eval, self._calc_eval_map(1), ls)
+        return ls
+    #以上深度搜索的大体框架已经完成，目前就是考虑如何将剪枝方式放入以处理速度过慢的情况
+    #目前来说，考虑三层就已经需要大约五分钟的时间。
+    #返回值ls是以 一个list包含包含了各种目标深度下各种落子可能
+    #【【chain1，value_chain1】，【chain2，value_chain2】，……】
+    #目前先处理剪枝的问题
+        
 
 
 
@@ -244,12 +277,22 @@ if __name__== '__main__':
     print(wzq.play_1_round((14,14),player))
     print(wzq.s_map)
     import time
+
     _t = time.time()
     print(wzq.evaluate((2,2),2))
     h,w = wzq.s_map.shape
     v = np.zeros(wzq.s_map.shape).astype(np.int32)
     for i,j in np.vstack(np.where(wzq._area_eval==1)).transpose():
         if wzq.s_map[i,j] == 0:
-            v[i,j] = wzq.evaluate((i,j),2)
+            v[i,j] = wzq.evaluate((i,j),1)
     print(v)
+    print(time.time()-_t)
+
+    
+    _t = time.time()
+    print(wzq._calc_eval_map(2).astype(np.int32))
+    print(time.time()-_t)
+    _t = time.time()
+    v = wzq.pred(2, 1)
+    print(len(v))
     print(time.time()-_t)
