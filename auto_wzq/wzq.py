@@ -62,9 +62,8 @@ class WZQ:
 
 
 
-
-    ##def some(深度, 范围图, 权重图, chain=[], ls=[]):
-    ##    ls = []
+    ##ls = []
+    ##def some(深度, 范围图, 权重图, ls, chain=[]):
     ##    新的范围图 = 添范围函数(范围图, chain)
     ##    新的权重图 = 添权重函数(权重图, chain)
     ##    ## 这里的400主要是因为这是最接近活五的分值
@@ -72,7 +71,7 @@ class WZQ:
     ##        对 ls 添加 chain 的信息
     ##        return
     ##    for point in 新的范围图.所有点:
-    ##        some(深度, 范围图, 权重图, chain+[point], ls)
+    ##        some(深度, 范围图, 权重图, ls, chain+[point])
 
 
     #临时范围图
@@ -137,7 +136,13 @@ class WZQ:
             print(*chain,*value_chain,alpha,'next lv node num:',len(np.where(eval_area==1)[0]))
             # 最终的算法瓶颈就在 np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose() 这一句上面
             # 考虑一下，如果将每次下棋时候考虑的点缩小到仅仅只有前一次下棋点的八方向长度为二的点效果会不会更好一些呢？
-            for point in np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose():
+            # 不过这样的话就会被单方面约束在下棋点周围摇摆，失去另一种策略上的自由
+            # 即在对方最高分也很少时候，自己距离最新落子点较为偏僻地方开始反扑的机会
+            # 或者就直接选择当前 eval_map 下数值最高的十个的位置，这样就不用考虑太多问题，也能很大程度上约束数量
+            
+            x = (eval_map!=0)&(self.s_map==0)
+            sort_idx = np.argsort(eval_map[x])
+            for point in np.vstack(np.where(x)).transpose()[sort_idx][::-1][:10]:
                 v = funcition(deep+1, eval_area, eval_map, ls, alpha, beta, chain+[(point)], value_chain+[eval_map[tuple(point)]])
                 if v > (alpha if len(chain)%2 else beta):
                     if len(chain)%2:
@@ -157,14 +162,14 @@ class WZQ:
     #返回值ls是以 一个list包含了各种目标深度下各种落子可能
     #【【chain1，value_chain1】，【chain2，value_chain2】，……】
     #加入剪枝处理之后效率提高很多，已经能在 test 的三层中只要13秒的时间。
-        
+    #四层以及之后的数量还是非常夸张。
+    #最后还是加入了 eval_map 的动态规划处理，对下一步的约束使得考虑的步数大大减少。
+    #加入动态规划之后，在test下几乎可以遍历到所有的树梢节点，并且只需要不到五秒。
+    #在目前情况下已经很不错了，但是在4层时候还是稍微有点问题，调整完毕会进行总结性的处理。
 
 
 
-
-
-
-
+    
 
     #米字形的矩阵生成，用于优化计算范围
     def _create_scal(self, n):
