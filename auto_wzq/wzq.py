@@ -98,11 +98,7 @@ class WZQ:
             z = np.zeros((self.h,self.w),dtype=np.int32)
             z[u:d,l:r] |= self._scal_ecal_large[gu:gd,gl:gr]
             for point in  np.vstack(np.where((z==1)&(self.s_map==0))).transpose():
-                # 下面的‘#’后的注释内容是在 self.robot_level1 中
-                # 仅仅只考虑一层便能有简单难度的关键，是添加了对手的权重考虑
-                # 不过在这里却成为了效率瓶颈，于是剪去
-                eval_map[tuple(point)] = self.evaluate(tuple(point), player)
-                                       #+self.evaluate(tuple(point), 3-player)*.8
+                eval_map[tuple(point)] = self.evaluate(tuple(point), player)+self.evaluate(tuple(point), 3-player)*.8
         return eval_map
 
     #棋谱的栈形式的调用push pop, 仅仅使用原有落子图，对计算空间的优化
@@ -139,6 +135,8 @@ class WZQ:
                 return eval_map.max()
             
             print(*chain,*value_chain,alpha,'next lv node num:',len(np.where(eval_area==1)[0]))
+            # 最终的算法瓶颈就在 np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose() 这一句上面
+            # 考虑一下，如果将每次下棋时候考虑的点缩小到仅仅只有前一次下棋点的八方向长度为二的点效果会不会更好一些呢？
             for point in np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose():
                 v = funcition(deep+1, eval_area, eval_map, ls, alpha, beta, chain+[(point)], value_chain+[eval_map[tuple(point)]])
                 if v > (alpha if len(chain)%2 else beta):
@@ -309,6 +307,6 @@ if __name__== '__main__':
     print(wzq._calc_eval_map(2).astype(np.int32))
     print(time.time()-_t)
     _t = time.time()
-    v = wzq.pred(3, 1)
+    v = wzq.pred(4, 1)
     print(len(v))
     print(time.time()-_t)
