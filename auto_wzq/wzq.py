@@ -20,8 +20,10 @@ class WZQ:
         self._scal_eval = self._create_scal(5)
         self._scal_ecal_large = self._create_scal(9)
         self.win = False
+
+        #分值列表，如果有新加入的估值，按照分值顺序插入即可。
         self._values = OrderedDict([
-            [(1,1,1,1,1),1000],#活五
+            [(1,1,1,1,1),1000],#活五1000分
             [(1,0,1,1,1,0,1),400],#活四
             [(0,1,1,1,1,0),400],#活四
             [(1,1,1,1,0),100],#冲四
@@ -29,11 +31,13 @@ class WZQ:
             [(1,1,0,1,1),100],#冲四
             [(1,0,1,1,1),100],#冲四
             [(0,1,1,1,1),100],#冲四
-            [(0,1,1,1,0),100],#活三
+            [(0,1,1,1,0,0),100],#活三
+            [(0,0,1,1,1,0),100],#活三
             #优冲三：因为这里如果被对手中间截断也能很快再生成冲三，所以分值较高
-            [(0,1,1,0,1),60],#优冲三
-            [(1,0,1,0,1),60],#优冲三
-            [(1,0,1,1,0),60],#优冲三
+            [(0,0,0,1,1,0,1),50],#优冲三
+            [(1,0,1,1,0,0,0),50],#优冲三
+            [(0,0,1,0,1,0,1),30],#优眠三
+            [(1,0,1,0,1,0,0),30],#优眠三
             #劣冲三：因为这里如果被对手截断那么在这一维就直接失去价值所以分值低
             [(1,1,1,0,0),20],#劣冲三
             [(0,0,1,1,1),20],#劣冲三
@@ -59,15 +63,16 @@ class WZQ:
 
 
 
-    ##def some(深度, 范围图, 权重图, chain):
+    ##def some(深度, 范围图, 权重图, chain=[], ls=[]):
     ##    ls = []
     ##    新的范围图 = 添范围函数(范围图, chain)
     ##    新的权重图 = 添权重函数(权重图, chain)
-    ##    if 新的权重图.max() > 400 or 深度>目标深度:
+    ##    ## 这里的400主要是因为这是最接近活五的分值
+    ##    if 新的权重图.max() >= 400 or 深度>目标深度:
     ##        对 ls 添加 chain 的信息
     ##        return
     ##    for point in 新的范围图.所有点:
-    ##        some(深度, 范围图, 权重图, chain+[point])
+    ##        some(深度, 范围图, 权重图, chain+[point], ls)
 
 
     #临时范围图
@@ -93,7 +98,11 @@ class WZQ:
             z = np.zeros((self.h,self.w),dtype=np.int32)
             z[u:d,l:r] |= self._scal_ecal_large[gu:gd,gl:gr]
             for point in  np.vstack(np.where((z==1)&(self.s_map==0))).transpose():
+                # 下面的‘#’后的注释内容是在 self.robot_level1 中
+                # 仅仅只考虑一层便能有简单难度的关键，是添加了对手的权重考虑
+                # 不过在这里却成为了效率瓶颈，于是剪去
                 eval_map[tuple(point)] = self.evaluate(tuple(point), player)
+                                       #+self.evaluate(tuple(point), 3-player)*.8
         return eval_map
 
     #棋谱的栈形式的调用push pop, 仅仅使用原有落子图，对计算空间的优化
@@ -109,40 +118,47 @@ class WZQ:
 
     def pred(self, target_deep, player):
         ls = []
-        # 考虑到可能会有三手交换之类的规则 player_chain 以下述方式存放，方便扩展
-        if player==1:
-            player_chain = [-1]+[1,2]*10
-        if player==2:
-            player_chain = [-1]+[2,1]*10
+        # 考虑到可能会有三手交换之类的规则，下棋顺序 player_chain 以下述方式存放，index==0位不用管
+        if player==1: player_chain = [-1]+[1,2]*10
+        if player==2: player_chain = [-1]+[2,1]*10
 
-        def funcition(deep, eval_area, eval_map, ls, chain=[], value_chain=[]):
+        alpha=float('-inf')
+        beta =float('-inf')
+
+        def funcition(deep, eval_area, eval_map, ls, alpha, beta, chain=[], value_chain=[]):
             self.s_map_push(player_chain, chain)
             eval_area = self.eval_area_add(eval_area, chain)#范围图
             eval_map  = self.eval_map_add(eval_map, player_chain, chain)#权重图
             
-            if np.any(eval_map>350) or deep == target_deep:
-                
+            if np.any(eval_map >= 400) or deep == target_deep:
                 v = np.vstack(np.where(eval_map==eval_map.max())).transpose()
                 v = v[np.random.choice(range(len(v)))]
                 z = [eval_map[v[0],v[1]]]
-                ls+=[(chain+[v],value_chain+z)]
-
+                ls+=[(chain+[v],sum(value_chain+z))]
                 self.s_map_pop(player_chain, chain)
-                return 
-            self.s_map_pop(player_chain, chain)
-
-            print(len(np.where(eval_area==1)[0]))
+                return eval_map.max()
+            
+            print(*chain,*value_chain,alpha,'next lv node num:',len(np.where(eval_area==1)[0]))
             for point in np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose():
-                funcition(deep+1, eval_area, eval_map, ls, chain+[(point)], value_chain+[eval_map[tuple(point)]])
+                v = funcition(deep+1, eval_area, eval_map, ls, alpha, beta, chain+[(point)], value_chain+[eval_map[tuple(point)]])
+                if v > (alpha if len(chain)%2 else beta):
+                    if len(chain)%2:
+                        alpha = v
+                    else:
+                        beta = v
+                elif v < (beta if len(chain)%2 else alpha):
+                    break
 
+            self.s_map_pop(player_chain, chain)
+            return eval_map.max()
         
-        funcition(1, self._area_eval, self._calc_eval_map(1), ls)
+        funcition(1, self._area_eval, self._calc_eval_map(1), ls, alpha, beta)
         return ls
     #以上深度搜索的大体框架已经完成，目前就是考虑如何将剪枝方式放入以处理速度过慢的情况
     #目前来说，考虑三层就已经需要大约五分钟的时间。
-    #返回值ls是以 一个list包含包含了各种目标深度下各种落子可能
+    #返回值ls是以 一个list包含了各种目标深度下各种落子可能
     #【【chain1，value_chain1】，【chain2，value_chain2】，……】
-    #目前先处理剪枝的问题
+    #加入剪枝处理之后效率提高很多，已经能在 test 的三层中只要13秒的时间。
         
 
 
@@ -270,7 +286,7 @@ if __name__== '__main__':
     print(wzq.play_1_round((2,4),player))
     print(wzq.play_1_round((3,3),player))
     print(wzq.play_1_round((3,5),player))
-    print(wzq.play_1_round((4,2),player))
+##    print(wzq.play_1_round((4,2),player))
     print(wzq.play_1_round((4,4),player))
     print(wzq.play_1_round((3,4),player))
     print(wzq.play_1_round((12,12),player))
@@ -293,6 +309,6 @@ if __name__== '__main__':
     print(wzq._calc_eval_map(2).astype(np.int32))
     print(time.time()-_t)
     _t = time.time()
-    v = wzq.pred(2, 1)
+    v = wzq.pred(3, 1)
     print(len(v))
     print(time.time()-_t)
