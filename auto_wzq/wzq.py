@@ -63,32 +63,19 @@ class WZQ:
 
 
     ##ls = []
-    ##def some(深度, 范围图, 权重图, ls, chain=[]):
-    ##    新的范围图 = 添范围函数(范围图, chain)
+    ##def some(深度, 权重图, ls, chain=[]):
     ##    新的权重图 = 添权重函数(权重图, chain)
     ##    ## 这里的400主要是因为这是最接近活五的分值
-    ##    if 新的权重图.max() >= 400 or 深度>目标深度:
+    ##    if 新的权重图.max() >= 400 or 深度==目标深度:
     ##        对 ls 添加 chain 的信息
     ##        return
     ##    for point in 新的范围图.所有点:
-    ##        some(深度, 范围图, 权重图, ls, chain+[point])
+    ##        some(深度, 权重图, ls, chain+[point])
 
-
-    #临时范围图
-    def eval_area_add(self, eval_area, chain):
-        eval_area = eval_area.copy()
-        if chain:
-            ph,pw = point = chain[-1]
-            (u,l) = np.maximum(np.array(point)-2, 0)
-            (d,r) = np.minimum(np.array(point)+3, self.s_map.shape)
-            gu,gl,gd,gr = 2-(ph-u), 2-(pw-l), 2+(d-ph), 2+(r-pw)
-            eval_area[u:d,l:r] |= self._scal_eval[gu:gd,gl:gr]
-        return eval_area
 
     #临时权重图
-    def eval_map_add(self, eval_map, player_chain, chain):
+    def eval_map_add(self, eval_map, player, chain):
         eval_map = eval_map.copy()
-        player = player_chain[len(chain)]
         if chain:
             ph,pw = point = chain[-1]
             (u,l) = np.maximum(np.array(point)-4, 0)
@@ -97,7 +84,7 @@ class WZQ:
             z = np.zeros((self.h,self.w),dtype=np.int32)
             z[u:d,l:r] |= self._scal_ecal_large[gu:gd,gl:gr]
             for point in  np.vstack(np.where((z==1)&(self.s_map==0))).transpose():
-                eval_map[tuple(point)] = self.evaluate(tuple(point), player)+self.evaluate(tuple(point), 3-player)*.8
+                eval_map[tuple(point)] = self.evaluate(tuple(point), player)# + self.evaluate(tuple(point), 3-player)*.5
         return eval_map
 
     #棋谱的栈形式的调用push pop, 仅仅使用原有落子图，对计算空间的优化
@@ -113,37 +100,46 @@ class WZQ:
 
     def pred(self, target_deep, player):
         ls = []
-        # 考虑到可能会有三手交换之类的规则，下棋顺序 player_chain 以下述方式存放，index==0位不用管
+        # 下棋顺序 player_chain 暂以下述方式存放，index==0位不用管
         if player==1: player_chain = [-1]+[1,2]*10
         if player==2: player_chain = [-1]+[2,1]*10
 
         alpha=float('-inf')
         beta =float('-inf')
 
-        def funcition(deep, eval_area, eval_map, ls, alpha, beta, chain=[], value_chain=[]):
+        eval_map1 = self._calc_eval_map(player)
+        eval_map2 = self._calc_eval_map(3-player)
+
+        def funcition(deep, eval_map1, eval_map2, ls, alpha, beta, chain=[], value_chain=[]):
             self.s_map_push(player_chain, chain)
-            eval_area = self.eval_area_add(eval_area, chain)#范围图
-            eval_map  = self.eval_map_add(eval_map, player_chain, chain)#权重图
-            
+            eval_map1  = self.eval_map_add(eval_map1, player, chain)#权重图1
+            eval_map2  = self.eval_map_add(eval_map2, 3-player, chain)#权重图2
+            eval_map = eval_map1 if not len(chain)%2 else eval_map2
             if np.any(eval_map >= 400) or deep == target_deep:
-                v = np.vstack(np.where(eval_map==eval_map.max())).transpose()
+                _max = eval_map[self.s_map==0].max()
+                v = np.vstack(np.where(eval_map==_max)).transpose()
                 v = v[np.random.choice(range(len(v)))]
                 z = [eval_map[v[0],v[1]]]
-                ls+=[(chain+[v],sum(value_chain+z))]
+                ls+=[(chain+[v],(value_chain+z))]
                 self.s_map_pop(player_chain, chain)
                 return eval_map.max()
-            
-            print(*chain,*value_chain,alpha,'next lv node num:',len(np.where(eval_area==1)[0]))
-            # 最终的算法瓶颈就在 np.vstack(np.where((eval_area==1)&(self.s_map==0))).transpose() 这一句上面
-            # 考虑一下，如果将每次下棋时候考虑的点缩小到仅仅只有前一次下棋点的八方向长度为二的点效果会不会更好一些呢？
-            # 不过这样的话就会被单方面约束在下棋点周围摇摆，失去另一种策略上的自由
-            # 即在对方最高分也很少时候，自己距离最新落子点较为偏僻地方开始反扑的机会
-            # 或者就直接选择当前 eval_map 下数值最高的十个的位置，这样就不用考虑太多问题，也能很大程度上约束数量
-            
-            x = (eval_map!=0)&(self.s_map==0)
+
+            # 战略性调整尝试
+            # 就是在深度越深时，进行条件的约束使得不会发散太多
+            # np.maximum(7-len(chain),0) 语句中的7 就限制了最多可以有七层，虽然该值本意不是如此
+            num_limits = np.maximum(7-len(chain),0)
+            evl_limits = np.maximum(len(chain)*10,0)
+
+            x = (eval_map>evl_limits) & (self.s_map==0)
             sort_idx = np.argsort(eval_map[x])
-            for point in np.vstack(np.where(x)).transpose()[sort_idx][::-1][:10]:
-                v = funcition(deep+1, eval_area, eval_map, ls, alpha, beta, chain+[(point)], value_chain+[eval_map[tuple(point)]])
+
+            # 特殊处理第一步
+            if len(eval_map[x]) and eval_map[x].max()==eval_map[x].min():
+                sort_idx = sort_idx[np.random.permutation(len(sort_idx))]
+
+            print(*chain,'next lv node num:',len(sort_idx))
+            for point in np.vstack(np.where(x)).transpose()[sort_idx][::-1][:num_limits]:
+                v = funcition(deep+1, eval_map1, eval_map2, ls, alpha, beta, chain+[(point)], value_chain+[eval_map[tuple(point)]])
                 if v > (alpha if len(chain)%2 else beta):
                     if len(chain)%2:
                         alpha = v
@@ -151,23 +147,25 @@ class WZQ:
                         beta = v
                 elif v < (beta if len(chain)%2 else alpha):
                     break
-
+                
             self.s_map_pop(player_chain, chain)
             return eval_map.max()
-        
-        funcition(1, self._area_eval, self._calc_eval_map(1), ls, alpha, beta)
+
+        # 函数里面删除了 self._area_eval 考虑到动态规划，只考虑权值图
+        # 考虑到估值函数的相异性和对称性，玩家电脑的权值图应该更加分离
+        funcition(1, eval_map1, eval_map2, ls, alpha, beta)
         return ls
-    #以上深度搜索的大体框架已经完成，目前就是考虑如何将剪枝方式放入以处理速度过慢的情况
-    #目前来说，考虑三层就已经需要大约五分钟的时间。
-    #返回值ls是以 一个list包含了各种目标深度下各种落子可能
-    #【【chain1，value_chain1】，【chain2，value_chain2】，……】
-    #加入剪枝处理之后效率提高很多，已经能在 test 的三层中只要13秒的时间。
-    #四层以及之后的数量还是非常夸张。
-    #最后还是加入了 eval_map 的动态规划处理，对下一步的约束使得考虑的步数大大减少。
-    #加入动态规划之后，在test下几乎可以遍历到所有的树梢节点，并且只需要不到五秒。
-    #在目前情况下已经很不错了，但是在4层时候还是稍微有点问题，调整完毕会进行总结性的处理。
+        # 最终返回的是[[chain1,value_chain1], [chain1,value_chain1], ...]
+        # chain 是落子点。 value_chain 是每个落子点在该落子点的估值
+        # 这是基于我个人考虑，因为我觉得落子次序上还要更加细心一些，应该根据落子次序更加细化的加权
+        # 到时候在封装后的 robot 函数里面会更加轻便的体现出来。
 
 
+        ######################################################
+        # 测试效很差，甚至不如 robot_level1
+        ######################################################
+        # 有必要仔仔细细重新打磨一遍了，写得太乱了
+        ######################################################
 
     
 
@@ -264,17 +262,51 @@ class WZQ:
         return (self._temp1_eval_map+self._temp2_eval_map*.8)
 
     #test 一层的逻辑
-    #经过测试，该简单算法不能应对较为复杂的多层考虑，仅仅应用于简单难度
+    #经过测试，该简单算法不能应对较为复杂的多层考虑，仅仅应用于简单难度，对新手来说该算法胜率还不错
     def robot_level1(self, player):
         v = self._calc_eval_map(player)
         v = np.vstack(np.where(v==v.max())).transpose()
         v = v[np.random.choice(range(len(v)))]
         return v
 
-    def robot_level2(self, player):
-        pass
+
+    #尝试用高斯函数的缓斜坡坡对 value_chain 进行加权平均
+    def _calc_value_by_gaussian(self,preds,xita):
+        goss = lambda x,xita:1/((2*np.pi*xita)**.5)*np.exp(-(x-0)**2/(2*xita**2))
+        f_chain,f_ls,f_value = None,None,0
+        for chain,ls in preds:
+            ls_value = sum([goss(idx,xita)*i for idx,i in enumerate(ls)])/len(ls)
+            print(chain,ls,ls_value)
+            if ls_value > f_value:
+                f_chain,f_ls,f_value = chain,ls,ls_value
+        return f_chain,f_ls,f_value
+
+    #直接用平均值来处理
+    def _calc_value_by_mean(self,preds,xita):
+        f_chain,f_ls,f_value = None,None,0
+        for chain,ls in preds:
+            ls_value = np.mean(ls)
+            print(chain,ls,ls_value)
+            if ls_value > f_value:
+                f_chain,f_ls,f_value = chain,ls,ls_value
+        return f_chain,f_ls,f_value
+
+    #因考虑落子次序可能对下棋会有一定影响    
+    def robot_level3(self, player):
+        target_deep = 3
+        preds = self.pred(target_deep, player)
+        f_chain,f_ls,f_value = self._calc_value_by_gaussian(preds,7)
+        print(*f_chain,end=' ')
+        print(np.around(f_ls),f_value)
+        return f_chain[0]
     
-        
+
+
+
+
+
+
+
 
 #以下只用于简单语法错误的检查测试test
 if __name__== '__main__':
@@ -294,6 +326,7 @@ if __name__== '__main__':
     print(wzq.play_1_round((3,4),player))
     print(wzq.play_1_round((12,12),player))
     print(wzq.play_1_round((14,14),player))
+    print(wzq.play_1_round((9,9),player))
     print(wzq.s_map)
     import time
 
@@ -309,9 +342,14 @@ if __name__== '__main__':
 
     
     _t = time.time()
-    print(wzq._calc_eval_map(2).astype(np.int32))
+    print(wzq._calc_eval_map(2).astype(np.int32))   
     print(time.time()-_t)
     _t = time.time()
-    v = wzq.pred(4, 1)
-    print(len(v))
+##    v = wzq.pred(3, 1)
+    v = wzq.robot_level1(1)
+    print('fin1:',v)
+    v = wzq.robot_level3(1)
+    print('fin2:',v)
     print(time.time()-_t)
+
+    print(wzq.s_map)
