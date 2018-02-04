@@ -70,7 +70,7 @@ class GUI_WZQ:
                 self.headlabel['text'] = 'next:'+self.player_head[self.player]
                 if self.player == self.enemy:
                     #这里的 robot_level1 是 robot 使用的简单难度算法只考虑一层
-                    point = self.wzq.robot_level1(self.player).tolist()
+                    point = self.wzq.robot_level3(3-self.player).tolist()
                     self.flash(*point)
             
 

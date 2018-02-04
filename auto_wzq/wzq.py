@@ -2,6 +2,14 @@ import numpy as np
 from collections import OrderedDict
 from itertools import groupby
 
+
+
+# 之所以要添加wzq2这个文件是因为这边的估值函数有所改变
+# 因为估值函数几乎是这个文件本身的根基，所以，为了慎重考虑就这样了
+# 另外一个重要的改变就是深度树的搜索会仅仅只考虑杀棋链来进行
+# 可能是因为之前的估值函数一下子就做到了简单难度偏上这样的程度于是就似乎有点失去方向的感觉
+
+
 # 五子棋类
 # 包装了下棋函数，判断是否胜利函数以及估值函数，深度搜索估值函数。
 # 下棋函数如果返回值为真则在该点下棋，否则下棋失败（被其他棋子占用）
@@ -88,21 +96,61 @@ class WZQ:
         return eval_map
 
     #棋谱的栈形式的调用push pop, 仅仅使用原有落子图，对计算空间的优化
-    def s_map_push(self, player_chain, chain):
+    def _s_map_push(self, player_chain, chain):
         if chain:
             player = player_chain[len(chain)]
             self.s_map[tuple(chain[-1])] = player
 
-    def s_map_pop(self, player_chain, chain):
+    def _s_map_pop(self, player_chain, chain):
         if chain:
             player = player_chain[len(chain)]
             self.s_map[tuple(chain[-1])] = 0
 
+
+
+    def _get_evaluation_points(self, eval_map1, eval_map2, limit):
+        v = np.stack((eval_map1, eval_map2),-1)
+        _max_value = np.max(v,-1)
+        _max_index = np.argmax(v,-1)
+        _points_map = (np.max(v,-1)>=100) & (self.s_map==0) # 每次只考虑双方大于活三的所有点, 如果没有则链断
+        if not np.any(_points_map):
+            return []
+        _eval = _max_value[_points_map][np.argsort(_max_value[_points_map])][::-1]# 这个就是该点下双方中最大的估值
+        _indx = np.stack(np.where(_points_map),-1)[np.argsort(_max_value[_points_map])][::-1]# 这个就是该点下双方中最大的估值坐标
+
+        # 只取我方胜点
+        toggle = True
+        x = []
+        for key_value in sorted(set(_eval))[::-1]:
+            p = []
+            if toggle:
+                for point,value in zip(_indx,_eval):
+                     if value == key_value and value >= limit:
+                        print(_max_index[tuple(point)])
+                        if _max_index[tuple(point)] == 0:
+                            p += [point]
+                        else:
+                            toggle = False
+            x += p
+            print(x)
+            print(_eval)
+            print(_indx)
+            raise
+            
+        return x
+
+        
+    # 这里主要是修改成只考虑杀棋链, 在这样的考虑下, 估值函数就只考虑自己权值就好了.
+    # 因为估值当前的估值函数只会和下一层的对方估值函数进行比对, 这样就能更加精确的控制调整范围.
+    # 一般的杀棋链都比较少, 因此, 这样的深度搜索也能直接不考虑其他直接深度搜到自己胜利为止.
+    # 策略修改后, 奇数层只考虑自己, 偶数层只考虑对面
+    # 如果在奇数层的某一点的下一层有比该点分值高的点, 那么奇数层的该点就不用考虑了.
+    # 如果在偶数层的某一点的下一层有比该点分值高的点, 那么下一层就只考虑这些分值高的点.
     def pred(self, target_deep, player):
         ls = []
         # 下棋顺序 player_chain 暂以下述方式存放，index==0位不用管
-        if player==1: player_chain = [-1]+[1,2]*10
-        if player==2: player_chain = [-1]+[2,1]*10
+        if player==1: player_chain = [-1]+[1,2]*20
+        if player==2: player_chain = [-1]+[2,1]*20
 
         alpha=float('-inf')
         beta =float('-inf')
@@ -111,61 +159,52 @@ class WZQ:
         eval_map2 = self._calc_eval_map(3-player)
 
         def funcition(deep, eval_map1, eval_map2, ls, alpha, beta, chain=[], value_chain=[]):
-            self.s_map_push(player_chain, chain)
+            self._s_map_push(player_chain, chain)
             eval_map1  = self.eval_map_add(eval_map1, player, chain)#权重图1
             eval_map2  = self.eval_map_add(eval_map2, 3-player, chain)#权重图2
-            eval_map = eval_map1 if not len(chain)%2 else eval_map2
-            if np.any(eval_map >= 400) or deep == target_deep:
-                _max = eval_map[self.s_map==0].max()
-                v = np.vstack(np.where(eval_map==_max)).transpose()
-                v = v[np.random.choice(range(len(v)))]
-                z = [eval_map[v[0],v[1]]]
-                ls+=[(chain+[v],(value_chain+z))]
-                self.s_map_pop(player_chain, chain)
-                return eval_map.max()
+            
+            pred_player = player if not len(chain)%2 else 3-player
+            if pred_player == player  : eval_map = eval_map1
+            if pred_player == 3-player: eval_map = eval_map2
+            
+            if chain and (self._jug_win(chain[-1]) or deep == target_deep):
+                ls+=[(chain,(value_chain))]
+                self._s_map_pop(player_chain, chain)
+                if self._jug_win(chain[-1]):
+                    return 1000
+                else:
+                    return 999
 
-            # 战略性调整尝试
-            # 就是在深度越深时，进行条件的约束使得不会发散太多
-            # np.maximum(7-len(chain),0) 语句中的7 就限制了最多可以有七层，虽然该值本意不是如此
-            num_limits = np.maximum(7-len(chain),0)
-            evl_limits = np.maximum(len(chain)*10,0)
+            if pred_player == player  : x = self._get_evaluation_points(eval_map1, eval_map2, 100)
+            if pred_player == 3-player: x = self._get_evaluation_points(eval_map2, eval_map1, 400)
 
-            x = (eval_map>evl_limits) & (self.s_map==0)
-            sort_idx = np.argsort(eval_map[x])
-
-            # 特殊处理第一步
-            if len(eval_map[x]) and eval_map[x].max()==eval_map[x].min():
-                sort_idx = sort_idx[np.random.permutation(len(sort_idx))]
-
-            print(*chain,'next lv node num:',len(sort_idx))
-            for point in np.vstack(np.where(x)).transpose()[sort_idx][::-1][:num_limits]:
-                v = funcition(deep+1, eval_map1, eval_map2, ls, alpha, beta, chain+[(point)], value_chain+[eval_map[tuple(point)]])
-                if v > (alpha if len(chain)%2 else beta):
-                    if len(chain)%2:
-                        alpha = v
-                    else:
-                        beta = v
-                elif v < (beta if len(chain)%2 else alpha):
+            print(*chain,'next lv node num:',len(x))
+            for point in x:
+                v = funcition(deep+1, eval_map1, eval_map2, ls, alpha, beta, chain+[(point)], value_chain+[np.maximum(eval_map1, eval_map2)[tuple(point)]])
+                if v == 1000:
                     break
-                
-            self.s_map_pop(player_chain, chain)
+
+            self._s_map_pop(player_chain, chain)
             return eval_map.max()
 
-        # 函数里面删除了 self._area_eval 考虑到动态规划，只考虑权值图
-        # 考虑到估值函数的相异性和对称性，玩家电脑的权值图应该更加分离
         funcition(1, eval_map1, eval_map2, ls, alpha, beta)
         return ls
-        # 最终返回的是[[chain1,value_chain1], [chain1,value_chain1], ...]
-        # chain 是落子点。 value_chain 是每个落子点在该落子点的估值
-        # 这是基于我个人考虑，因为我觉得落子次序上还要更加细心一些，应该根据落子次序更加细化的加权
-        # 到时候在封装后的 robot 函数里面会更加轻便的体现出来。
+    # 转念一想, 这样的策略会比之前的考虑要通用很多
+    # 明天再继续 debug
 
 
-        ######################################################
-        # 测试效很差，甚至不如 robot_level1
-        ######################################################
-        # 有必要仔仔细细重新打磨一遍了，写得太乱了
-        ######################################################
+
+
+
+
+
+
+
+
+
+
+
+
 
     
 
@@ -237,7 +276,7 @@ class WZQ:
                         break
                 if len(_core_list)!= 0:
                     break
-            core += max(_core_list) if len(_core_list) else 0
+            core = max(core, max(_core_list) if len(_core_list) else 0)
         #估值结束再把 s_map 原本样子还回去
         self.s_map[point] = 0
         return core
@@ -291,11 +330,21 @@ class WZQ:
                 f_chain,f_ls,f_value = chain,ls,ls_value
         return f_chain,f_ls,f_value
 
+    # 直接用最后值大小来处理
+    def _calc_value_by_lastone(self,preds,xita):
+        f_chain,f_ls,f_value = None,None,0
+        for chain,ls in preds:
+            ls_value = ls[-1]
+            print(chain,ls,ls_value)
+            if ls_value > f_value:
+                f_chain,f_ls,f_value = chain,ls,ls_value
+        return f_chain,f_ls,f_value
+
     #因考虑落子次序可能对下棋会有一定影响    
     def robot_level3(self, player):
-        target_deep = 3
+        target_deep = 6
         preds = self.pred(target_deep, player)
-        f_chain,f_ls,f_value = self._calc_value_by_gaussian(preds,7)
+        f_chain,f_ls,f_value = self._calc_value_by_lastone(preds,7)
         print(*f_chain,end=' ')
         print(np.around(f_ls),f_value)
         return f_chain[0]
@@ -312,21 +361,36 @@ class WZQ:
 if __name__== '__main__':
     wzq = WZQ(15,15)
     player = 2
-    print(wzq.play_1_round((0,6),1))
-    print(wzq.play_1_round((1,4),1))
-    print(wzq.play_1_round((3,2),1))
-    print(wzq.play_1_round((3,7),1))
-    print(wzq.play_1_round((6,4),1))
-    print(wzq.play_1_round((1,5),player))
-    print(wzq.play_1_round((2,4),player))
-    print(wzq.play_1_round((3,3),player))
-    print(wzq.play_1_round((3,5),player))
-##    print(wzq.play_1_round((4,2),player))
-    print(wzq.play_1_round((4,4),player))
-    print(wzq.play_1_round((3,4),player))
-    print(wzq.play_1_round((12,12),player))
-    print(wzq.play_1_round((14,14),player))
-    print(wzq.play_1_round((9,9),player))
+##    print(wzq.play_1_round((0,6),1))
+##    print(wzq.play_1_round((1,4),1))
+##    print(wzq.play_1_round((3,2),1))
+##    print(wzq.play_1_round((3,7),1))
+##    print(wzq.play_1_round((6,4),1))
+##    print(wzq.play_1_round((1,5),player))
+##    print(wzq.play_1_round((2,4),player))
+##    print(wzq.play_1_round((3,3),player))
+##    print(wzq.play_1_round((3,5),player))
+####    print(wzq.play_1_round((4,2),player))
+##    print(wzq.play_1_round((4,4),player))
+##    print(wzq.play_1_round((3,4),player))
+    
+    print(wzq.play_1_round((12,12),1))
+    print(wzq.play_1_round((13,13),1))
+    print(wzq.play_1_round((14,14),1))
+    print(wzq.play_1_round((7,12),1))
+    print(wzq.play_1_round((7,13),1))
+    print(wzq.play_1_round((7,14),1))
+    print(wzq.play_1_round((8,12),1))
+    print(wzq.play_1_round((8,13),1))
+    print(wzq.play_1_round((8,14),1))
+##    print(wzq.play_1_round((6,12),2))
+##    print(wzq.play_1_round((6,13),2))
+##    print(wzq.play_1_round((6,14),2))
+##    print(wzq.play_1_round((9,12),2))
+##    print(wzq.play_1_round((9,13),2))
+##    print(wzq.play_1_round((9,14),2))
+    print(wzq.play_1_round((11,9),2))
+
     print(wzq.s_map)
     import time
 
