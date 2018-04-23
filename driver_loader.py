@@ -2,11 +2,38 @@
 from tkinter import *
 from win32service import *
 
+def hook_dropfiles(hwnd,func=lambda i:print(i)):
+    import ctypes
+    from ctypes.wintypes import DWORD
+    prototype = ctypes.WINFUNCTYPE(DWORD,DWORD,DWORD,DWORD,DWORD)
+    WM_DROPFILES = 0x233
+    GWL_WNDPROC = -4
+
+    def py_drop_func(hwnd,msg,wp,lp):
+        if msg == WM_DROPFILES:
+            count = ctypes.windll.shell32.DragQueryFile(wp,-1,None,None)
+            szFile = ctypes.c_buffer(260)
+            for i in range(count):
+                ctypes.windll.shell32.DragQueryFile(wp,i,szFile,ctypes.sizeof(szFile))
+                dropname = szFile.value
+                func(dropname)
+            ctypes.windll.shell32.DragFinish(wp)
+        return ctypes.windll.user32.CallWindowProcW(org_wndproc,hwnd,msg,wp,lp)
+
+    global org_wndproc,new_wndproc
+    org_wndproc = None
+    new_wndproc = prototype(py_drop_func)
+
+    ctypes.windll.shell32.DragAcceptFiles(hwnd,True)
+    org_wndproc = ctypes.windll.user32.GetWindowLongW(hwnd,GWL_WNDPROC)
+    ctypes.windll.user32.SetWindowLongW(hwnd,GWL_WNDPROC,new_wndproc)
+
+
 class MyServiceInstaller:
     def __init__(self):
         self.master = Tk()
         self.master.resizable(False,False)
-        self.master.title(u'驱动加载')
+        self.master.title(u'驱动加载(支持拖拽)')
         self.label = Label(self.master,text="welcome")
         self.entry = Entry(self.master)
         self.width = 60    
@@ -24,14 +51,24 @@ class MyServiceInstaller:
         self.tk_close.pack    (side=LEFT)
         self.label['width']          = self.width
         self.entry['width']          = self.width
-        self.tk_install['width']     = self.width/5
-        self.tk_starts['width']      = self.width/5
-        self.tk_stops['width']       = self.width/5
-        self.tk_uninstall['width']   = self.width/5
-        self.tk_close['width']       = self.width/5
+        self.tk_install['width']     = int(self.width/5)
+        self.tk_starts['width']      = int(self.width/5)
+        self.tk_stops['width']       = int(self.width/5)
+        self.tk_uninstall['width']   = int(self.width/5)
+        self.tk_close['width']       = int(self.width/5)
         self.scm = OpenSCManager(None,None,SC_MANAGER_ALL_ACCESS)
         self.service_handle = None
+        hook_dropfiles(self.entry.winfo_id(),self.func)
         mainloop()
+
+    def func(self,bstr):
+        try:
+            p = bstr.decode('gbk')
+        except:
+            p = bstr.decode('utf-8')
+        self.entry.delete(0,END)
+        self.entry.insert(0,p)
+        
 
     def fullpathname(self):
         return self.entry.get()
