@@ -18,7 +18,10 @@ def hook_dropfiles(hwnd,func=lambda i:print(i)):
     > dndhook(hwnd)
     >
     > tk.mainloop()
+
+    test: work on win7 32bit & 64bit.
     """
+    import platform
     import ctypes
     from ctypes.wintypes import DWORD
     prototype = ctypes.WINFUNCTYPE(DWORD,DWORD,DWORD,DWORD,DWORD)
@@ -40,6 +43,13 @@ def hook_dropfiles(hwnd,func=lambda i:print(i)):
     org_wndproc = None
     new_wndproc = prototype(py_drop_func)
 
+    if platform.architecture()[0] == "32bit":
+        GetWindowLong = ctypes.windll.user32.GetWindowLongW
+        SetWindowLong = ctypes.windll.user32.SetWindowLongW
+    elif platform.architecture()[0] == "64bit":
+        GetWindowLong = ctypes.windll.user32.GetWindowLongPtrW
+        SetWindowLong = ctypes.windll.user32.SetWindowLongPtrW
+
     ctypes.windll.shell32.DragAcceptFiles(hwnd,True)
-    org_wndproc = ctypes.windll.user32.GetWindowLongW(hwnd,GWL_WNDPROC)
-    ctypes.windll.user32.SetWindowLongW(hwnd,GWL_WNDPROC,new_wndproc)
+    org_wndproc = GetWindowLong(hwnd,GWL_WNDPROC)
+    SetWindowLong(hwnd,GWL_WNDPROC,new_wndproc)
