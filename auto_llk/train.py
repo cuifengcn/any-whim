@@ -1,9 +1,18 @@
+import numpy as np
 from CreateCate import CreateCate
 s = CreateCate('pic')
 s.save_mapdict('mycate_model.pickle')
 
 x = s.x/255.
 y = s.y
+
+
+# 倍化样本操作, n倍
+times = 10
+x = [x for i in range(times)]
+y = [y for i in range(times)]
+x = np.r_[tuple(x)]
+y = np.r_[tuple(y)]
 
 import keras
 from keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dense
@@ -12,14 +21,11 @@ from keras.models import Sequential
 def mkmodel(shape,classnum):
     model = Sequential()
     model.add(Conv2D(3,(3,3), padding="same", activation='relu', input_shape=shape))
-    model.add(Conv2D(3,(3,3), padding="same", activation='relu'))
     model.add(MaxPooling2D(2,2,padding="same"))
-    model.add(Conv2D(3,(3,3), padding="same", activation='relu'))
     model.add(Conv2D(3,(3,3), padding="same", activation='relu'))
     model.add(MaxPooling2D(2,2,padding="same"))
 
     model.add(Flatten())
-    model.add(Dense(64, activation='relu'))
     model.add(Dense(16, activation='relu'))
     model.add(Dense(classnum, activation='softmax'))
 

