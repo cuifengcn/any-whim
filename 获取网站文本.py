@@ -17,7 +17,7 @@ def normal_content(content,
     else:
         raise 'content type must in [bytes, str].'
     # 针对部分网页汉字粘连的问题的处理，增强鲁棒性。
-    c = re.sub('([^>]*[\u4e00-\u9fa5]{1,}[^<]*)','\g<1> ',c)
+    c = re.sub('>([^>]*[\u4e00-\u9fa5]{1,}[^<]*)<','>\g<1> <',c)
     e = etree.HTML(c)
     q = []
     for it in e.getiterator():
