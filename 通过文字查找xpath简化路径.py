@@ -4,9 +4,12 @@ import re
 import requests
 from lxml import etree
 
-def get_simple_path(e):
+def get_simple_path_tail(e):
     root = e.getroottree()
-    xp = root.getelementpath(e)
+    try:
+        xp = root.getelementpath(e)
+    except:
+        return
     v = xp.count('/')
     # 优先找路径上的id和class项优化路径
     for i in range(v):
@@ -15,40 +18,86 @@ def get_simple_path(e):
         ele = root.xpath(xpa)[0].attrib
         tag = root.xpath(xpa)[0].tag
         if 'id' in ele:
-            key = ele["id"]
+            key = '[@id="{}"]'.format(ele["id"])
             rke = '/'+rke if rke else ""
-            val = '//%s[@id="%s"]%s'%(xpa.rsplit('/',1)[1],ele["id"],rke)
-            return xp,val
+            val = '//{}{}{}'.format(xpa.rsplit('/',1)[1],key,rke)
+            return xp,val,key
         if 'class' in ele:
-            key = ele["class"]
+            if ' ' in ele["class"] and not ele["class"].startswith(' '):
+                elass = ele["class"].split(' ',1)[0]
+            else:
+                elass = ele["class"]
+            key = '[@class="{}"]'.format(elass)
             rke = '/'+rke if rke else ""
-            val = '//%s[@class="%s"]%s'%(xpa.rsplit('/',1)[1],ele["class"],rke)
-            if not key.strip():
+            val = '//{}{}{}'.format(xpa.rsplit('/',1)[1],key,rke)
+            if not elass.strip():
                 continue
-            return xp,val
+            return xp,val,key
 
-def get_xpath_by_str(strs, html_content_or_element):
-    if isinstance(html_content_or_element,(str, bytes)):
-        e = etree.HTML(html_content_or_element)
-    else:
-        e = html_content_or_element.getroottree()
+
+# 对列表的优化处理
+def get_simple_path_head(p,lilimit=5):
+    # 先通过绝对xpath路径进行分块处理
+    s = {}
+    w = {}
+    for xp, sxp, key in p:
+        q = re.sub('\[\d+\]','',xp)#.rsplit('/',1)[0]
+        if q not in s:
+            s[q] = [[xp, sxp, key]]
+        else:
+            s[q].append([xp, sxp, key])
+    rm = []
+    for px in sorted(s,key=lambda i: -len(i)):
+        xps,sxps,keys = zip(*s[px])
+        if len(sxps) == len(set(sxps)): continue
+        p = {}
+        ls = list(set(keys))
+        for j in s[px]:
+            if j[2] not in p:
+                p[j[2]] = [j]
+            else:
+                p[j[2]].append(j)
+        for i in p:
+            le = len(p[i])
+            v = ''
+            if le > lilimit:
+                for idx in range(p[i][0][0].count('/')):
+                    v = p[i][0][0].rsplit('/',idx)[0]
+                    q = list(map(lambda i:i[0].startswith(v),p[i]))
+                    if all(q):
+                        break
+                for idx,j in enumerate(p[i]):
+                    a,b,c = j
+                    t = '/{}{}'.format(a.replace(v,''),c) + b.split(c,1)[1]
+                    t = t if t.startswith('//') else '/' + t
+                    p[i][idx][1] = t
+                    p[i][idx].append(px)
+                    yield j
+
+def get_xpath_by_str(strs, html_content):
+    e = etree.HTML(html_content)
+    q = []
     p = []
     for i in e.xpath('//*'):
-        xps = get_simple_path(i)
+        xps = get_simple_path_tail(i) 
         if xps:
-            xp, sxp = xps
-            if [xp, sxp] not in p:
-                p.append([xp, sxp])
+            xp, sxp, key = xps
+            if sxp not in q:
+                q.append(xp)
+                p.append([xp, sxp, key])
     p.sort(key=lambda i: -len(i[0]))
-    for xp, sxp in p:
+    p = get_simple_path_head(p)
+    for key, xp, sxp, px in p:
         v = e.xpath('string({})'.format(xp))
         if strs in v:
-            print(xp, sxp)
-            #return xp, sxp
+            yield xp,v
 
 url = (
-    'https://www.baidu.com/'
+    'http://china.findlaw.cn/ask/browse_t00_page2/'
 )
+
+url = 'https://search.jd.com/Search?keyword=123'
+
 headers = {
     "accept-encoding": "gzip, deflate",
     "accept-language": "zh-CN,zh;q=0.9",
@@ -62,4 +111,5 @@ def get(url,headers):
     return e,s.content
 
 e,content = get(url,headers)
-get_xpath_by_str('百度',content)
+for i in get_xpath_by_str('123',content):
+    print(i)
