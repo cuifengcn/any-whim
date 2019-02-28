@@ -31,7 +31,7 @@ def create_rsa_key(length=1024):
         p = get_prime(length//2)
         q = get_prime(length//2)
         n = p * q
-        if n.bit_length() == length:
+        if n.bit_length() == length and p != q:
             break
     fn  = (p-1) * (q-1)
     # 扩展欧几里得算法获取乘法模逆元
