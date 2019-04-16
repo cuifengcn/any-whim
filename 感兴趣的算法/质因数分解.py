@@ -80,6 +80,7 @@ def test_normal(num):
     print();print();print()
 
 def test_rho(num):
+    print('=========== Pollcard Rho ============')
     import time
     c = time.time()
     try:
@@ -87,11 +88,9 @@ def test_rho(num):
     except:
         pass
     v = prime_list_rho(num)
-
     q = 1
     for i in v:
         q *= i
-    print('=========== Pollcard Rho ============')
     print('prime_list',v)
     print('test num:      ',num)
     print('multiplicative:',q)
