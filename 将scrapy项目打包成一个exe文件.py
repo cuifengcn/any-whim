@@ -13,19 +13,20 @@ r'''
 
 import os
 import sys
-
-
+import redis # 如果需要使用 scrapy_redis 那么就需要引入 redis
 ocwd = os.getcwd()
-tcwd = os.path.join(sys._MEIPASS, '$myproject')
+tcwd = os.path.join(sys._MEIPASS)
 os.chdir(tcwd)
 # 通过 os.chdir 将工作空间转到实际存放了项目文件地址的地方。
 # 这样 get_project_settings 才能找到项目，才能通过名字找到需要启动的爬虫
-
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
-
-process = CrawlerProcess(get_project_settings())
-process.crawl('baidu')
+settings = get_project_settings()
+sett = {'host': '47.99.126.229', 'port': 6379, 'password': 'vilame'}
+settings['REDIS_PARAMS'].update(sett) # 配置连接方式
+process = CrawlerProcess(settings)
+process.crawl('v')
+os.chdir(ocwd)
 process.start()
 
 # 上面的脚本注意：
