@@ -60,6 +60,7 @@ process.start()
 import os
 import sys
 import types
+import shutil
 
 spec_path = []
 def mk_contain_binaries(*files_paths):
@@ -97,6 +98,16 @@ def mk_contain_dlls():
 def mk_comtain_modules(*modules):
     pas = []
     for md in modules:
+        import importlib
+        p = importlib.import_module(md)
+        s = os.path.dirname(p.__file__)
+        r = 'c:\\'+md
+        v = 'copyfile {} to {}'.format(s,r)
+        try:
+            shutil.copytree(s,r)
+        except:
+            pass
+
         s = '''
 import {}
 if type({}) == types.ModuleType:
@@ -107,7 +118,7 @@ if type({}) == types.ModuleType:
     mk_contain_binaries(*pas)
 
 # 需要直接包进去的 scrapy 项目包（注意修改）
-startproject = r'C:\Users\Administrator\Desktop\mytest1'
+startproject = r'C:\Users\zhoulin08\Desktop\pj\vscrapy'
 
 # 需要包入函数库的函数包（对 scrapy 项目打包必须要下列几个函数库包）
 modules = (
