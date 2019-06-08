@@ -8,5 +8,8 @@ yum install python36u -y
 ln -s /bin/python3.6 /bin/python3
 yum install python36u-pip -y
 ln -s /bin/pip3.6 /bin/pip3
+pip3 install shadowsocks
 ssserver -p 6666 -k vilame -d start
+systemctl stop firewalld.service
+systemctl disable firewalld.service
 ```
