@@ -3,8 +3,6 @@
 import base64
 import zlib
 
-data = r"""setTimeout('$("#resultList").css("height", "500px").css("font-size", "18px");$("#resultList").html("\u7cfb\u7edf\u7e41\u5fd9\uff0c\u8bf7\u60a8\u7a0d\u540e\u518d\u8bd5\u3002");',100)"""
-
 def deflate_and_base64_encode(string_val):
     zlibbed_str = zlib.compress(string_val.encode())[2:-4]
     cb_string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
