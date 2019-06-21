@@ -22,6 +22,11 @@ def _wenshu_unjsfunk(string):
     d = re.findall(r'(?:\+!0)+', s)
     for i in d:
         s = re.sub(r'(?:\+!0)+', str(i.count('+!0')), s, 1)
+    # 这里是针对文书网 hidescript 的前置处理
+    hs = ''.join(map(lambda i:chr(int(i)),re.findall(r'fromCharCode\(([^\)]+)\)', s)[0].split(',')))
+    for idx,i in enumerate(hs):
+        s = s.replace('$hidescript[{}]'.format(idx), repr(i))
+        s = s.replace('$hidescript[({})]'.format(idx), repr(i))
     s = s.replace('(true0)', '"true"')
     s = s.replace('(false0)', '"false"')
     s = s.replace('!01', '2')
@@ -31,6 +36,8 @@ def _wenshu_unjsfunk(string):
     s = s.replace('[false]+{}', '"false[object Object]"')
     s = s.replace('[true]+{}', '"true[object Object]"')
     s = s.replace('1+[0]','10')
+    # 以下是针对文书网加密的的专门解密处理
+    s = s.split("""'"'""")[1].strip('+')
     p = r'"([^"]+)"\+"([^"]+)"'
     for i in range(10):
         d = re.findall(p, s)
@@ -43,12 +50,6 @@ def _wenshu_unjsfunk(string):
         a, b, c   = i
         try:    s = re.sub(p, repr(b[int(c)]), s, 1)
         except: s = re.sub(p, a, s, 1)
-    # 以下是针对文书网加密的的专门解密处理
-    hs = ''.join(map(lambda i:chr(int(i)),re.findall(r'fromCharCode\(([^\)]+)\)', s)[0].split(',')))
-    for idx,i in enumerate(hs):
-        s = s.replace('$hidescript[{}]'.format(idx), repr(i))
-        s = s.replace('$hidescript[({})]'.format(idx), repr(i))
-    s = s.split("""'"'""")[1].strip('+')
     s = s.replace("'",'')
     s = s.replace('+','')
     return s
