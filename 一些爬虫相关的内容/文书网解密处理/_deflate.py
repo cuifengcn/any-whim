@@ -56,13 +56,13 @@ def decode_base64_and_inflate(b64string):
         cb_data.extend(cb_decode(b64string[i:i+4]))
     return zlib.decompress(bytes(cb_btou(cb_data)),-15).decode()
 
-# 这里是通过自己的函数处理生成的密文。加密逻辑现在已经理清，后续的解密逻辑相信也不会太难。
+# 这里是通过自己的函数处理生成的密文。
 data = 'this is a original data.'
 print('original:',data)
 v = deflate_and_base64_encode(data); print('_wenshu_mix_deflate_b64:',v)
 v = decode_base64_and_inflate(v);    print('_wenshu_mix_inflate_b64:',v)
 
-# 这里是文书网的部分加密的数据，解密后是一个jsfuck的加密
+# 以下是文书网的部分加密的数据，解密后是一个 jsfuck 混肴的js字符串。
 runeval = 'w61aw4tuw4IwEMO8wpYgDsK2UsO1ByJOfALDh8KVFcKhQCEHSGXDkhPDosOfwpvCpMOUw43DgxDDk8OYw4HDgEjDkcKiw4TCuzvCs8OjwrfDhHTCm8Kuw5bCh0TCpsKfw7lswpHDi3TCv3nDv8KQw5luwr5dw4p5wrZawrMwCEnDgHhtw54gAsOMa8KMwpBnKMOkRcKmK1Ylw7QtDHTCh8KyMMOoPSjChsOOwoUcw5AESkAdCMKDwoJRP0rChwjCqBo6wqE4wpTChB7CgMOBQMOww5DDsCjCimfCkyTDmx9yw7nClcOkwpnCnEQxw4XCongYC8KPwqfDkk09w4cTwqfCn0gqwowQIQvCqgZOw43CnGVDf0vDtTrDvcO7dwLCscOyc8OhQUHDmULCgsKKwp8WYMOTPTgHXAZrw7HDlsO6XsOlVMOPwqbDv8KuwqAqw5Zdwok6FMK0NVzDicKtSMKaKVp7w63CpW3DqHHCi8Obw43CvsO/CxgQNTTDlErCvMK9JMKWM8K1R8Kbw73DpD0Tw4Y+wpYCVDPDkcKVbm57w6VOEE/CiWMZw4zDvcKEGV82NWN+d8OiRsK1BlvCrsKRwr8Lw55eLcONGlVHXcO4w4Yqwqx/HMOZX3ldL8OfwqPDr1EeHEosw4PDnsKJwpNbw6xHPjY8w7zCkcOHcwJnFsKsdQszwrpjesKpwpfDpkrDmSnCjhoHBcO9w5d6QhpwKcO2SDzDsMKpw4Fyw4bCo28='
 v = decode_base64_and_inflate(runeval)
 print('jsfuck:',v)
