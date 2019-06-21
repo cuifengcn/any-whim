@@ -28,8 +28,7 @@ def _get_wzws_url(string):
     b = re.findall(r'wzwsquestion="([^"]+)"',string)[0]
     c = re.findall(r'wzwsfactor="([^"]+)"',string)[0]
     r = 0
-    for i in b:
-        r += ord(i)
+    for i in b: r += ord(i)
     r = r * int(c) + 0x1b207
     r = 'WZWS_CONFIRM_PREFIX_LABEL' + str(r)
     t = '?wzwschallenge='
