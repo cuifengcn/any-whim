@@ -1,514 +1,199 @@
 # 文书网 get_vl5x 纯python实现
 
+
 import hashlib
 import base64
 
-def b64(string):  return base64.b64encode(string.encode()).decode()
-def sha1(string): return hashlib.sha1(string.encode()).hexdigest()
-def md5(string):  return hashlib.md5(string.encode()).hexdigest()
-
-def strToLong(string):
-    long = 0
-    for idx,i in enumerate(string):
-        long += ord(i) << idx%16
-    return long
-def strToLongEn(string):
-    long = 0
-    for idx,i in enumerate(string):
-        long += (ord(i) << idx%16) + idx
-    return long
-def strToLongEn2(string, step):
-    long = 0
-    for idx,i in enumerate(string):
-        long += (ord(i) << idx%16) + (idx * step)
-    return long
-def strToLongEn3(string, step):
-    long = 0
-    for idx,i in enumerate(string):
-        long += (ord(i) << idx%16) + (idx + step - ord(i))
-    return long
-def mk0(string):
-    x = string[5:30] + string[36:39]
-    return md5(x)[4:28]
-def mk1(string):
-    x = string[5:5+5*5] + '5' + string[1:3] + '1' + string[36:39]
-    a = x[5:] + x[4:]
-    b = x[12:] + a[-6:]
-    c = x[4:] + a[6:]
-    return md5(c)[4:28]
-def mk2(string):
-    x = string[5:5+5*5] + '15' + string[1:3] + string[36:39]
-    b = str(strToLong(x[5:])) + x[4:]
-    c = x[4:] + b[5:]
-    return md5(c)[1:25]
-def mk3(string):
-    x = string[5:5+5*5] + '15' + string[1:3] + string[36:39]
-    a = str(strToLongEn(x[5:])) + x[4:]
-    b = x[4:] + a[5:]
-    return md5(b)[3:27]
-def mk4(string):
-    x = string[5:5+5*5] + '2' + string[1:3] + string[36:39]
-    a = str(strToLongEn(x[5:])) + x[4:]
-    b = md5(x[1:]) + str(strToLong(a[5:]))
-    return md5(b)[3:27]
-def mk5(string):
-    x = b64(string[5:5+5*5]+string[1:3]+'1') + string[36:39]
-    return md5(x)[4:28]
-def mk6(string):
-    x = string[5:30] + string[36:39]
-    a = b64(x[4:14]) + x[2:]
-    b = x[6:] + a[2:]
-    return md5(b)[2:26]
-def mk7(string):
-    x = b64(string[5:25] + '55' + string[1:3]) + string[36:39]
-    a = str(strToLong(x[5:])) + x[4:]
-    b = md5(x[1:]) + str(strToLong(a[5:]))
-    return md5(b)[3:27]
-def mk8(string):
-    x = b64(string[5:5+5*5-1] + '5-5') + string[1:3] + string[36:39]
-    # aa = str(strToLong(x[1:])) + x[4:]
-    a = str(strToLong(x[5:])) + x[4:]
-    b = md5(x[1:]) + str(strToLongEn(a[5:]))
-    return md5(b)[4:28]
-def mk9(string):
-    x = string[5:5+5*5] + '5' + string[1:3] + '1' + string[36:39]
-    a = x[5:] + x[4:]
-    c = sha1(x[4:]) + a[6:]
-    return md5(c)[4:28]
-def mk10(string):
-    x = b64(string[5:5+5*5-1] + '5') + string[1:3] + string[36:39]
-    a = str(strToLong(x[5:])) + x[4:]
-    b = md5(x[1:]) + sha1(a[5:])
-    return md5(b)[4:28]
-def mk11(string):
-    x = string[5:5+5*5-1] + '2' + string[1:3] + string[36:39]
-    a = str(strToLong(x[5:])) + x[2:]
-    b = x[1:] + sha1(a[5:])
-    return md5(b)[2:26]
-def mk12(string):
-    x = string[5:5+5*5-1] + string[36:39] + '2' + string[1:3]
-    a = str(strToLong(x[5:])) + x[2:]
-    b = x[1:] + sha1(x[5:])
-    return md5(b)[1:25]
-def mk13(string):
-    x = string[5:5+5*5-1] + '2' + string[1:3]
-    a = str(strToLong(x[5:])) + x[2:]
-    b = b64(x[1:] + sha1(x[5:]))
-    return md5(b)[1:25]
-def mk14(string):
-    x = string[5:5+5*5-1] + '2' + string[1:3]
-    a = str(strToLong(x[5:])) + x[2:]
-    b = b64(x[1:] + x[5:] + x[1:4])
-    return sha1(b)[1:25]
-def mk15(string):
-    x = string[5:5+5*5-1] + '2' + string[1:3]
-    a = str(strToLong(x[5:])) + x[2:]
-    b = b64(a[1:] + x[5:] + x[2:5])
-    return sha1(b)[1:25]
-def mk16(string):
-    x = string[5:5+5*5-1] + '2' + string[1:3] + '-5'
-    a = str(strToLongEn(x[5:])) + x[2:]
-    b = b64(a[1:]) + str(strToLongEn2(x[5:],5)) + x[2:5]
-    return md5(b)[2:26]
-def mk17(string):
-    x = string[5:5+5*5-1] + '7' + string[1:3] + '-5'
-    a = str(strToLongEn(x[5:])) + x[2:]
-    b = b64(a[1:]) + str(strToLongEn2(x[5:],6)) + x[7:10]
-    return md5(b)[:24]
-def mk18(string):
-    x = string[5:5+5*5-1] + '7' + string[1:3] + '5' + string[7:10]
-    a = str(strToLongEn(x[5:])) + x[2:]
-    b = a[1:] + str(strToLongEn2(x[5:],6)) + x[7:10]
-    return md5(b)[:24]
-def mk19(string):
-    x = string[5:5+5*5-1] + '7' + string[5:7] + '5' + string[7:10]
-    a = str(strToLongEn(x[5:])) + x[2:]
-    b = a[1:] + str(strToLongEn3(x[5:],4)) + x[7:10]
-    return md5(b)[:24]
-def mk20(str): return md5(mk10(str) + mk5(str))[1:25]
-def mk21(str): return md5(mk11(str) + mk3(str))[2:26]
-def mk22(str): return md5(mk14(str) + mk19(str))[3:27]
-def mk23(str): return md5(mk15(str) + mk0(str))[4:28]
-def mk24(str): return md5(mk16(str) + mk1(str))[1:25]
-def mk25(str): return md5(mk9(str) + mk4(str))[2:26]
-def mk26(str): return md5(mk10(str) + mk5(str))[3:27]
-def mk27(str): return md5(mk17(str) + mk3(str))[4:28]
-def mk28(str): return md5(mk18(str) + mk7(str))[1:25]
-def mk29(str): return md5(mk19(str) + mk3(str))[2:26]
-def mk30(str): return md5(mk0(str) + mk7(str))[3:27]
-def mk31(str): return md5(mk1(str) + mk8(str))[4:28]
-def mk32(str): return md5(mk4(str) + mk14(str))[3:27]
-def mk33(str): return md5(mk5(str) + mk15(str))[4:28]
-def mk34(str): return md5(mk3(str) + mk16(str))[1:25]
-def mk35(str): return md5(mk7(str) + mk9(str))[2:26]
-def mk36(str): return md5(mk8(str) + mk10(str))[3:27]
-def mk37(str): return md5(mk6(str) + mk17(str))[1:25]
-def mk38(str): return md5(mk12(str) + mk18(str))[2:26]
-def mk39(str): return md5(mk14(str) + mk19(str))[3:27]
-def mk40(str): return md5(mk15(str) + mk0(str))[4:28]
-def mk41(str): return md5(mk16(str) + mk1(str))[3:27]
-def mk42(str): return md5(mk9(str) + mk4(str))[4:28]
-def mk43(str): return md5(mk10(str) + mk5(str))[1:25]
-def mk44(str): return md5(mk17(str) + mk3(str))[2:26]
-def mk45(str): return md5(mk18(str) + mk7(str))[3:27]
-def mk46(str): return md5(mk19(str) + mk17(str))[4:28]
-def mk47(str): return md5(mk0(str) + mk18(str))[1:25]
-def mk48(str): return md5(mk1(str) + mk19(str))[2:26]
-def mk49(str): return md5(mk4(str) + mk0(str))[3:27]
-def mk50(str): return md5(mk5(str) + mk1(str))[4:28]
-def mk51(str): return md5(mk3(str) + mk4(str))[1:25]
-def mk52(str): return md5(mk7(str) + mk14(str))[2:26]
-def mk53(str): return md5(mk12(str) + mk15(str))[3:27]
-def mk54(str): return md5(mk14(str) + mk16(str))[4:28]
-def mk55(str): return md5(mk15(str) + mk9(str))[3:27]
-def mk56(str): return md5(mk16(str) + mk10(str))[4:28]
-def mk57(str): return md5(mk9(str) + mk17(str))[1:25]
-def mk58(str): return md5(mk10(str) + mk18(str))[2:26]
-def mk59(str): return md5(mk17(str) + mk19(str))[3:27]
-def mk60(str): return md5(mk18(str) + mk0(str))[1:25]
-def mk61(str): return md5(mk19(str) + mk1(str))[2:26]
-def mk62(str): return md5(mk0(str) + mk4(str))[3:27]
-def mk63(str): return md5(mk1(str) + mk19(str))[4:28]
-def mk64(str): return md5(mk4(str) + mk0(str))[3:27]
-def mk65(str): return md5(mk14(str) + mk1(str))[1:25]
-def mk66(str): return md5(mk15(str) + mk4(str))[2:26]
-def mk67(str): return md5(mk16(str) + mk5(str))[3:27]
-def mk68(str): return md5(mk9(str) + mk3(str))[4:28]
-def mk69(str): return md5(mk10(str) + mk7(str))[1:25]
-def mk70(str): return md5(mk17(str) + mk0(str))[2:26]
-def mk71(str): return md5(mk18(str) + mk1(str))[3:27]
-def mk72(str): return md5(mk19(str) + mk4(str))[4:28]
-def mk73(str): return md5(mk0(str) + mk17(str))[1:25]
-def mk74(str): return md5(mk1(str) + mk18(str))[2:26]
-def mk75(str): return md5(mk14(str) + mk19(str))[3:27]
-def mk76(str): return md5(mk15(str) + mk0(str))[4:28]
-def mk77(str): return md5(mk16(str) + mk1(str))[3:27]
-def mk78(str): return md5(mk9(str) + mk4(str))[4:28]
-def mk79(str): return md5(mk10(str) + mk9(str))[1:25]
-def mk80(str): return md5(mk17(str) + mk10(str))[2:26]
-def mk81(str): return md5(mk18(str) + mk17(str))[3:27]
-def mk82(str): return md5(mk14(str) + mk18(str))[1:25]
-def mk83(str): return md5(mk15(str) + mk19(str))[4:28]
-def mk84(str): return md5(mk16(str) + mk0(str))[1:25]
-def mk85(str): return md5(mk9(str) + mk1(str))[2:26]
-def mk86(str): return md5(mk10(str) + mk4(str))[3:27]
-def mk87(str): return md5(mk14(str) + mk14(str))[4:28]
-def mk88(str): return md5(mk15(str) + mk15(str))[1:25]
-def mk89(str): return md5(mk16(str) + mk16(str))[2:26]
-def mk90(str): return md5(mk9(str) + mk9(str))[3:27]
-def mk91(str): return md5(mk10(str) + mk10(str))[4:28]
-def mk92(str): return md5(mk17(str) + mk17(str))[3:27]
-def mk93(str): return md5(mk18(str) + mk18(str))[4:28]
-def mk94(str): return md5(mk19(str) + mk19(str))[1:25]
-def mk95(str): return md5(mk0(str) + mk0(str))[2:26]
-def mk96(str): return md5(mk1(str) + mk1(str))[3:27]
-def mk97(str): return md5(mk4(str) + mk4(str))[4:28]
-def mk98(str): return md5(mk5(str) + mk5(str))[3:27]
-def mk99(str): return md5(mk3(str) + mk3(str))[4:28]
-def mk100(str): return md5(mk7(str) + mk3(str))[1:25]
-def mk101(str): return md5(mk10(str) + mk7(str))[2:26]
-def mk102(str): return md5(mk17(str) + mk18(str))[1:25]
-def mk103(str): return md5(mk18(str) + mk19(str))[2:26]
-def mk104(str): return md5(mk19(str) + mk0(str))[3:27]
-def mk105(str): return md5(mk0(str) + mk0(str))[4:28]
-def mk106(str): return md5(mk1(str) + mk1(str))[1:25]
-def mk107(str): return md5(mk14(str) + mk14(str))[2:26]
-def mk108(str): return md5(mk15(str) + mk15(str))[3:27]
-def mk109(str): return md5(mk16(str) + mk16(str))[4:28]
-def mk110(str): return md5(mk9(str) + mk9(str))[1:25]
-def mk111(str): return md5(mk10(str) + mk10(str))[2:26]
-def mk112(str): return md5(mk17(str) + mk17(str))[3:27]
-def mk113(str): return md5(mk18(str) + mk18(str))[4:28]
-def mk114(str): return md5(mk19(str) + mk19(str))[3:27]
-def mk115(str): return md5(mk0(str) + mk0(str))[4:28]
-def mk116(str): return md5(mk1(str) + mk1(str))[1:25]
-def mk117(str): return md5(mk4(str) + mk4(str))[2:26]
-def mk118(str): return md5(mk5(str) + mk15(str))[3:27]
-def mk119(str): return md5(mk3(str) + mk16(str))[1:25]
-def mk120(str): return md5(mk19(str) + mk9(str))[1:25]
-def mk121(str): return md5(mk0(str) + mk10(str))[2:26]
-def mk122(str): return md5(mk1(str) + mk17(str))[3:27]
-def mk123(str): return md5(mk4(str) + mk18(str))[4:28]
-def mk124(str): return md5(mk5(str) + mk19(str))[1:25]
-def mk125(str): return md5(mk3(str) + mk0(str))[2:26]
-def mk126(str): return md5(mk7(str) + mk1(str))[3:27]
-def mk127(str): return md5(mk3(str) + mk4(str))[4:28]
-def mk128(str): return md5(mk7(str) + mk5(str))[1:25]
-def mk129(str): return md5(mk8(str) + mk3(str))[2:26]
-def mk130(str): return md5(mk14(str) + mk7(str))[3:27]
-def mk131(str): return md5(mk15(str) + mk10(str))[4:28]
-def mk132(str): return md5(mk16(str) + mk17(str))[3:27]
-def mk133(str): return md5(mk9(str) + mk18(str))[4:28]
-def mk134(str): return md5(mk10(str) + mk19(str))[1:25]
-def mk135(str): return md5(mk17(str) + mk0(str))[2:26]
-def mk136(str): return md5(mk18(str) + mk1(str))[1:25]
-def mk137(str): return md5(mk19(str) + mk14(str))[2:26]
-def mk138(str): return md5(mk0(str) + mk15(str))[3:27]
-def mk139(str): return md5(mk1(str) + mk16(str))[4:28]
-def mk140(str): return md5(mk4(str) + mk9(str))[1:25]
-def mk141(str): return md5(mk5(str) + mk10(str))[2:26]
-def mk142(str): return md5(mk3(str) + mk17(str))[3:27]
-def mk143(str): return md5(mk7(str) + mk18(str))[4:28]
-def mk144(str): return md5(mk17(str) + mk19(str))[1:25]
-def mk145(str): return md5(mk18(str) + mk0(str))[2:26]
-def mk146(str): return md5(mk19(str) + mk1(str))[3:27]
-def mk147(str): return md5(mk0(str) + mk4(str))[4:28]
-def mk148(str): return md5(mk1(str) + mk5(str))[3:27]
-def mk149(str): return md5(mk4(str) + mk3(str))[4:28]
-def mk150(str): return md5(mk14(str) + mk19(str))[1:25]
-def mk151(str): return md5(mk15(str) + mk0(str))[2:26]
-def mk152(str): return md5(mk16(str) + mk1(str))[3:27]
-def mk153(str): return md5(mk9(str) + mk4(str))[1:25]
-def mk154(str): return md5(mk10(str) + mk5(str))[1:25]
-def mk155(str): return md5(mk17(str) + mk3(str))[2:26]
-def mk156(str): return md5(mk18(str) + mk7(str))[3:27]
-def mk157(str): return md5(mk19(str) + mk3(str))[4:28]
-def mk158(str): return md5(mk0(str) + mk7(str))[1:25]
-def mk159(str): return md5(mk1(str) + mk8(str))[2:26]
-def mk160(str): return md5(mk4(str) + mk14(str))[3:27]
-def mk161(str): return md5(mk19(str) + mk15(str))[4:28]
-def mk162(str): return md5(mk0(str) + mk16(str))[1:25]
-def mk163(str): return md5(mk1(str) + mk9(str))[2:26]
-def mk164(str): return md5(mk4(str) + mk10(str))[3:27]
-def mk165(str): return md5(mk5(str) + mk17(str))[4:28]
-def mk166(str): return md5(mk3(str) + mk18(str))[3:27]
-def mk167(str): return md5(mk7(str) + mk19(str))[4:28]
-def mk168(str): return md5(mk0(str) + mk0(str))[1:25]
-def mk169(str): return md5(mk1(str) + mk1(str))[2:26]
-def mk170(str): return md5(mk4(str) + mk4(str))[3:27]
-def mk171(str): return md5(mk17(str) + mk5(str))[1:25]
-def mk172(str): return md5(mk18(str) + mk3(str))[2:26]
-def mk173(str): return md5(mk19(str) + mk7(str))[3:27]
-def mk174(str): return md5(mk0(str) + mk17(str))[4:28]
-def mk175(str): return md5(mk1(str) + mk18(str))[1:25]
-def mk176(str): return md5(mk4(str) + mk19(str))[2:26]
-def mk177(str): return md5(mk9(str) + mk0(str))[3:27]
-def mk178(str): return md5(mk10(str) + mk1(str))[4:28]
-def mk179(str): return md5(mk17(str) + mk4(str))[1:25]
-def mk180(str): return md5(mk18(str) + mk14(str))[3:27]
-def mk181(str): return md5(mk19(str) + mk15(str))[1:25]
-def mk182(str): return md5(mk0(str) + mk16(str))[2:26]
-def mk183(str): return md5(mk1(str) + mk9(str))[3:27]
-def mk184(str): return md5(mk4(str) + mk10(str))[4:28]
-def mk185(str): return md5(mk14(str) + mk17(str))[3:27]
-def mk186(str): return md5(mk15(str) + mk18(str))[4:28]
-def mk187(str): return md5(mk16(str) + mk19(str))[4:28]
-def mk188(str): return md5(mk9(str) + mk0(str))[1:25]
-def mk189(str): return md5(mk10(str) + mk1(str))[2:26]
-def mk190(str): return md5(mk17(str) + mk4(str))[3:27]
-def mk191(str): return md5(mk18(str) + mk19(str))[4:28]
-def mk192(str): return md5(mk19(str) + mk0(str))[1:25]
-def mk193(str): return md5(mk0(str) + mk1(str))[2:26]
-def mk194(str): return md5(mk1(str) + mk4(str))[3:27]
-def mk195(str): return md5(mk4(str) + mk14(str))[4:28]
-def mk196(str): return md5(mk5(str) + mk15(str))[3:27]
-def mk197(str): return md5(mk3(str) + mk16(str))[4:28]
-def mk198(str): return md5(mk3(str) + mk9(str))[1:25]
-def mk199(str): return md5(mk7(str) + mk1(str))[2:26]
-def mk200(str): return md5(mk18(str) + mk19(str))[2:26]
-def mk201(str): return md5(mk19(str) + mk0(str))[3:27]
-def mk202(str): return md5(mk0(str) + mk1(str))[1:25]
-def mk203(str): return md5(mk1(str) + mk4(str))[2:26]
-def mk204(str): return md5(mk4(str) + mk5(str))[3:27]
-def mk205(str): return md5(mk14(str) + mk3(str))[4:28]
-def mk206(str): return md5(mk15(str) + mk7(str))[1:25]
-def mk207(str): return md5(mk16(str) + mk17(str))[2:26]
-def mk208(str): return md5(mk9(str) + mk18(str))[3:27]
-def mk209(str): return md5(mk10(str) + mk19(str))[4:28]
-def mk210(str): return md5(mk17(str) + mk0(str))[1:25]
-def mk211(str): return md5(mk18(str) + mk1(str))[3:27]
-def mk212(str): return md5(mk19(str) + mk4(str))[1:25]
-def mk213(str): return md5(mk0(str) + mk14(str))[2:26]
-def mk214(str): return md5(mk1(str) + mk15(str))[3:27]
-def mk215(str): return md5(mk4(str) + mk16(str))[4:28]
-def mk216(str): return md5(mk19(str) + mk9(str))[3:27]
-def mk217(str): return md5(mk0(str) + mk10(str))[4:28]
-def mk218(str): return md5(mk1(str) + mk17(str))[4:28]
-def mk219(str): return md5(mk4(str) + mk18(str))[1:25]
-def mk220(str): return md5(mk5(str) + mk19(str))[2:26]
-def mk221(str): return md5(mk3(str) + mk0(str))[3:27]
-def mk222(str): return md5(mk7(str) + mk1(str))[4:28]
-def mk223(str): return md5(mk0(str) + mk4(str))[1:25]
-def mk224(str): return md5(mk1(str) + mk5(str))[2:26]
-def mk225(str): return md5(mk4(str) + mk3(str))[3:27]
-def mk226(str): return md5(mk17(str) + mk7(str))[4:28]
-def mk227(str): return md5(mk18(str) + mk17(str))[2:26]
-def mk228(str): return md5(mk19(str) + mk18(str))[3:27]
-def mk229(str): return md5(mk0(str) + mk19(str))[1:25]
-def mk230(str): return md5(mk1(str) + mk0(str))[2:26]
-def mk231(str): return md5(mk4(str) + mk1(str))[3:27]
-def mk232(str): return md5(mk9(str) + mk4(str))[4:28]
-def mk233(str): return md5(mk10(str) + mk14(str))[1:25]
-def mk234(str): return md5(mk17(str) + mk15(str))[2:26]
-def mk235(str): return md5(mk18(str) + mk16(str))[3:27]
-def mk236(str): return md5(mk19(str) + mk9(str))[4:28]
-def mk237(str): return md5(mk0(str) + mk10(str))[1:25]
-def mk238(str): return md5(mk1(str) + mk17(str))[3:27]
-def mk239(str): return md5(mk4(str) + mk19(str))[1:25]
-def mk240(str): return md5(mk14(str) + mk0(str))[2:26]
-def mk241(str): return md5(mk15(str) + mk1(str))[3:27]
-def mk242(str): return md5(mk16(str) + mk4(str))[4:28]
-def mk243(str): return md5(mk9(str) + mk5(str))[3:27]
-def mk244(str): return md5(mk10(str) + mk3(str))[4:28]
-def mk245(str): return md5(mk17(str) + mk7(str))[4:28]
-def mk246(str): return md5(mk18(str) + mk17(str))[2:26]
-def mk247(str): return md5(mk19(str) + mk18(str))[3:27]
-def mk248(str): return md5(mk0(str) + mk19(str))[1:25]
-def mk249(str): return md5(mk1(str) + mk0(str))[2:26]
-def mk250(str): return md5(mk4(str) + mk1(str))[3:27]
-def mk251(str): return md5(mk19(str) + mk4(str))[4:28]
-def mk252(str): return md5(mk0(str) + mk14(str))[1:25]
-def mk253(str): return md5(mk1(str) + mk15(str))[2:26]
-def mk254(str): return md5(mk4(str) + mk4(str))[3:27]
-def mk255(str): return md5(mk5(str) + mk14(str))[4:28]
-def mk256(str): return md5(mk3(str) + mk15(str))[1:25]
-def mk257(str): return md5(mk7(str) + mk16(str))[3:27]
-def mk258(str): return md5(mk0(str) + mk9(str))[1:25]
-def mk259(str): return md5(mk1(str) + mk10(str))[2:26]
-def mk260(str): return md5(mk4(str) + mk17(str))[3:27]
-def mk261(str): return md5(mk17(str) + mk18(str))[4:28]
-def mk262(str): return md5(mk18(str) + mk19(str))[3:27]
-def mk263(str): return md5(mk19(str) + mk0(str))[4:28]
-def mk264(str): return md5(mk0(str) + mk1(str))[4:28]
-def mk265(str): return md5(mk1(str) + mk4(str))[1:25]
-def mk266(str): return md5(mk4(str) + mk19(str))[2:26]
-def mk267(str): return md5(mk9(str) + mk0(str))[3:27]
-def mk268(str): return md5(mk10(str) + mk1(str))[4:28]
-def mk269(str): return md5(mk17(str) + mk4(str))[1:25]
-def mk270(str): return md5(mk18(str) + mk14(str))[2:26]
-def mk271(str): return md5(mk19(str) + mk15(str))[3:27]
-def mk272(str): return md5(mk0(str) + mk16(str))[4:28]
-def mk273(str): return md5(mk1(str) + mk9(str))[3:27]
-def mk274(str): return md5(mk19(str) + mk1(str))[4:28]
-def mk275(str): return md5(mk0(str) + mk19(str))[1:25]
-def mk276(str): return md5(mk1(str) + mk0(str))[2:26]
-def mk277(str): return md5(mk4(str) + mk1(str))[2:26]
-def mk278(str): return md5(mk5(str) + mk4(str))[3:27]
-def mk279(str): return md5(mk3(str) + mk5(str))[1:25]
-def mk280(str): return md5(mk7(str) + mk3(str))[2:26]
-def mk281(str): return md5(mk17(str) + mk7(str))[3:27]
-def mk282(str): return md5(mk18(str) + mk17(str))[4:28]
-def mk283(str): return md5(mk19(str) + mk18(str))[1:25]
-def mk284(str): return md5(mk0(str) + mk19(str))[2:26]
-def mk285(str): return md5(mk1(str) + mk0(str))[3:27]
-def mk286(str): return md5(mk4(str) + mk1(str))[4:28]
-def mk287(str): return md5(mk14(str) + mk4(str))[1:25]
-def mk288(str): return md5(mk15(str) + mk14(str))[3:27]
-def mk289(str): return md5(mk16(str) + mk15(str))[1:25]
-def mk290(str): return md5(mk9(str) + mk16(str))[2:26]
-def mk291(str): return md5(mk10(str) + mk9(str))[3:27]
-def mk292(str): return md5(mk17(str) + mk10(str))[4:28]
-def mk293(str): return md5(mk18(str) + mk17(str))[3:27]
-def mk294(str): return md5(mk18(str) + mk18(str))[4:28]
-def mk295(str): return md5(mk19(str) + mk19(str))[4:28]
-def mk296(str): return md5(mk0(str) + mk0(str))[1:25]
-def mk297(str): return md5(mk1(str) + mk1(str))[2:26]
-def mk298(str): return md5(mk4(str) + mk4(str))[3:27]
-def mk299(str): return md5(mk5(str) + mk5(str))[4:28]
-def mk300(str): return md5(mk3(str) + mk3(str))[1:25]
-def mk301(str): return md5(mk7(str) + mk7(str))[2:26]
-def mk302(str): return md5(mk17(str) + mk17(str))[3:27]
-def mk303(str): return md5(mk18(str) + mk18(str))[4:28]
-def mk304(str): return md5(mk19(str) + mk19(str))[3:27]
-def mk305(str): return md5(mk0(str) + mk0(str))[4:28]
-def mk306(str): return md5(mk1(str) + mk1(str))[1:25]
-def mk307(str): return md5(mk4(str) + mk4(str))[2:26]
-def mk308(str): return md5(k(0) + mk14(str))[2:26]
-def mk309(str): return md5(mk15(str) + mk15(str))[3:27]
-def mk310(str): return md5(mk16(str) + mk16(str))[1:25]
-def mk311(str): return md5(mk9(str) + mk9(str))[2:26]
-def mk312(str): return md5(mk10(str) + mk10(str))[3:27]
-def mk313(str): return md5(mk17(str) + mk17(str))[4:28]
-def mk314(str): return md5(mk19(str) + mk19(str))[1:25]
-def mk315(str): return md5(mk0(str) + mk0(str))[2:26]
-def mk316(str): return md5(mk1(str) + mk1(str))[3:27]
-def mk317(str): return md5(mk4(str) + mk4(str))[4:28]
-def mk318(str): return md5(mk5(str) + mk5(str))[1:25]
-def mk319(str): return md5(mk3(str) + mk3(str))[3:27]
-def mk320(str): return md5(mk7(str) + mk7(str))[1:25]
-def mk321(str): return md5(mk17(str) + mk17(str))[2:26]
-def mk322(str): return md5(mk18(str) + mk18(str))[3:27]
-def mk323(str): return md5(mk19(str) + mk19(str))[4:28]
-def mk324(str): return md5(mk0(str) + mk0(str))[3:27]
-def mk325(str): return md5(mk1(str) + mk1(str))[4:28]
-def mk326(str): return md5(mk4(str) + mk4(str))[4:28]
-def mk327(str): return md5(mk19(str) + mk14(str))[1:25]
-def mk328(str): return md5(mk0(str) + mk15(str))[2:26]
-def mk329(str): return md5(mk1(str) + mk16(str))[3:27]
-def mk330(str): return md5(mk4(str) + mk9(str))[4:28]
-def mk331(str): return md5(mk19(str) + mk10(str))[1:25]
-def mk332(str): return md5(mk0(str) + mk17(str))[2:26]
-def mk333(str): return md5(mk1(str) + mk18(str))[3:27]
-def mk334(str): return md5(mk4(str) + mk18(str))[4:28]
-def mk335(str): return md5(mk5(str) + mk19(str))[3:27]
-def mk336(str): return md5(mk3(str) + mk0(str))[4:28]
-def mk337(str): return md5(mk7(str) + mk1(str))[2:26]
-def mk338(str): return md5(mk0(str) + mk4(str))[3:27]
-def mk339(str): return md5(mk1(str) + mk5(str))[1:25]
-def mk340(str): return md5(mk4(str) + mk3(str))[2:26]
-def mk341(str): return md5(mk17(str) + mk7(str))[3:27]
-def mk342(str): return md5(mk18(str) + mk17(str))[4:28]
-def mk343(str): return md5(mk19(str) + mk18(str))[1:25]
-def mk344(str): return md5(mk0(str) + mk19(str))[2:26]
-def mk345(str): return md5(mk1(str) + mk0(str))[3:27]
-def mk346(str): return md5(mk4(str) + mk1(str))[4:28]
-def mk347(str): return md5(mk9(str) + mk4(str))[1:25]
-def mk348(str): return md5(mk10(str) + mk14(str))[3:27]
-def mk349(str): return md5(mk17(str) + mk15(str))[1:25]
-def mk350(str): return md5(mk18(str) + mk16(str))[2:26]
-def mk351(str): return md5(mk19(str) + mk9(str))[3:27]
-def mk352(str): return md5(mk0(str) + mk10(str))[4:28]
-def mk353(str): return md5(mk1(str) + mk17(str))[3:27]
-def mk354(str): return md5(mk18(str) + mk19(str))[4:28]
-def mk355(str): return md5(mk19(str) + mk0(str))[4:28]
-def mk356(str): return md5(mk0(str) + mk1(str))[1:25]
-def mk357(str): return md5(mk1(str) + mk4(str))[2:26]
-def mk358(str): return md5(mk4(str) + mk5(str))[3:27]
-def mk359(str): return md5(mk5(str) + mk3(str))[4:28]
-def mk360(str): return md5(mk3(str) + mk7(str))[2:26]
-def mk361(str): return md5(mk7(str) + mk17(str))[3:27]
-def mk362(str): return md5(mk17(str) + mk18(str))[1:25]
-def mk363(str): return md5(mk18(str) + mk19(str))[2:26]
-def mk364(str): return md5(mk19(str) + mk0(str))[3:27]
-def mk365(str): return md5(mk0(str) + mk1(str))[4:28]
-def mk366(str): return md5(mk1(str) + mk4(str))[1:25]
-def mk367(str): return md5(mk4(str) + mk7(str))[2:26]
-def mk368(str): return md5(k(0) + mk17(str))[3:27]
-def mk369(str): return md5(mk15(str) + mk18(str))[4:28]
-def mk370(str): return md5(mk16(str) + mk19(str))[1:25]
-def mk371(str): return md5(mk9(str) + mk0(str))[3:27]
-def mk372(str): return md5(mk10(str) + mk1(str))[1:25]
-def mk373(str): return md5(mk17(str) + mk4(str))[2:26]
-def mk374(str): return md5(mk19(str) + mk17(str))[3:27]
-def mk375(str): return md5(mk0(str) + mk18(str))[4:28]
-def mk376(str): return md5(mk1(str) + mk19(str))[3:27]
-def mk377(str): return md5(mk4(str) + mk0(str))[4:28]
-def mk378(str): return md5(mk5(str) + mk1(str))[4:28]
-def mk379(str): return md5(mk3(str) + mk4(str))[1:25]
-def mk380(str): return md5(mk7(str) + mk9(str))[2:26]
-def mk381(str): return md5(mk17(str) + mk10(str))[3:27]
-def mk382(str): return md5(mk18(str) + mk17(str))[4:28]
-def mk383(str): return md5(mk19(str) + mk18(str))[1:25]
-def mk384(str): return md5(mk0(str) + mk19(str))[2:26]
-def mk385(str): return md5(mk1(str) + mk0(str))[3:27]
-def mk386(str): return md5(mk4(str) + mk1(str))[4:28]
-def mk387(str): return md5(mk17(str) + mk1(str))[2:26]
-def mk388(str): return md5(mk18(str) + mk4(str))[3:27]
-def mk389(str): return md5(mk19(str) + mk7(str))[1:25]
-def mk390(str): return md5(mk0(str) + mk17(str))[2:26]
-def mk391(str): return md5(mk1(str) + mk18(str))[3:27]
-def mk392(str): return md5(mk4(str) + mk19(str))[4:28]
-def mk393(str): return md5(mk9(str) + mk0(str))[1:25]
-def mk394(str): return md5(mk10(str) + mk1(str))[2:26]
-def mk395(str): return md5(mk17(str) + mk4(str))[3:27]
-def mk396(str): return md5(mk18(str) + mk17(str))[4:28]
-def mk397(str): return md5(mk19(str) + mk18(str))[1:25]
-def mk398(str): return md5(mk0(str) + mk19(str))[3:27]
-def mk399(str): return md5(mk1(str) + mk0(str))[1:25]
-
 def getvl5x(cookie):
-    i = strToLong(cookie) % 400
-    f = eval('mk{}'.format(i))
-    return f(cookie)
+    def b64(string):  return base64.b64encode(string.encode()).decode()
+    def sha1(string): return hashlib.sha1(string.encode()).hexdigest()
+    def md5(string):  return hashlib.md5(string.encode()).hexdigest()
+    def strToLong(string):
+        long = 0
+        for idx,i in enumerate(string):
+            long += ord(i) << idx%16
+        return long
+    def strToLongEn(string):
+        long = 0
+        for idx,i in enumerate(string):
+            long += (ord(i) << idx%16) + idx
+        return long
+    def strToLongEn2(string, step):
+        long = 0
+        for idx,i in enumerate(string):
+            long += (ord(i) << idx%16) + (idx * step)
+        return long
+    def strToLongEn3(string, step):
+        long = 0
+        for idx,i in enumerate(string):
+            long += (ord(i) << idx%16) + (idx + step - ord(i))
+        return long
+    def mk0(string):
+        x = string[5:30] + string[36:39]
+        return md5(x)[4:28]
+    def mk1(string):
+        x = string[5:5+5*5] + '5' + string[1:3] + '1' + string[36:39]
+        a = x[5:] + x[4:]
+        b = x[12:] + a[-6:]
+        c = x[4:] + a[6:]
+        return md5(c)[4:28]
+    def mk2(string):
+        x = string[5:5+5*5] + '15' + string[1:3] + string[36:39]
+        b = str(strToLong(x[5:])) + x[4:]
+        c = x[4:] + b[5:]
+        return md5(c)[1:25]
+    def mk3(string):
+        x = string[5:5+5*5] + '15' + string[1:3] + string[36:39]
+        a = str(strToLongEn(x[5:])) + x[4:]
+        b = x[4:] + a[5:]
+        return md5(b)[3:27]
+    def mk4(string):
+        x = string[5:5+5*5] + '2' + string[1:3] + string[36:39]
+        a = str(strToLongEn(x[5:])) + x[4:]
+        b = md5(x[1:]) + str(strToLong(a[5:]))
+        return md5(b)[3:27]
+    def mk5(string):
+        x = b64(string[5:5+5*5]+string[1:3]+'1') + string[36:39]
+        return md5(x)[4:28]
+    def mk6(string):
+        x = string[5:30] + string[36:39]
+        a = b64(x[4:14]) + x[2:]
+        b = x[6:] + a[2:]
+        return md5(b)[2:26]
+    def mk7(string):
+        x = b64(string[5:25] + '55' + string[1:3]) + string[36:39]
+        a = str(strToLong(x[5:])) + x[4:]
+        b = md5(x[1:]) + str(strToLong(a[5:]))
+        return md5(b)[3:27]
+    def mk8(string):
+        x = b64(string[5:5+5*5-1] + '5-5') + string[1:3] + string[36:39]
+        # aa = str(strToLong(x[1:])) + x[4:]
+        a = str(strToLong(x[5:])) + x[4:]
+        b = md5(x[1:]) + str(strToLongEn(a[5:]))
+        return md5(b)[4:28]
+    def mk9(string):
+        x = string[5:5+5*5] + '5' + string[1:3] + '1' + string[36:39]
+        a = x[5:] + x[4:]
+        c = sha1(x[4:]) + a[6:]
+        return md5(c)[4:28]
+    def mk10(string):
+        x = b64(string[5:5+5*5-1] + '5') + string[1:3] + string[36:39]
+        a = str(strToLong(x[5:])) + x[4:]
+        b = md5(x[1:]) + sha1(a[5:])
+        return md5(b)[4:28]
+    def mk11(string):
+        x = string[5:5+5*5-1] + '2' + string[1:3] + string[36:39]
+        a = str(strToLong(x[5:])) + x[2:]
+        b = x[1:] + sha1(a[5:])
+        return md5(b)[2:26]
+    def mk12(string):
+        x = string[5:5+5*5-1] + string[36:39] + '2' + string[1:3]
+        a = str(strToLong(x[5:])) + x[2:]
+        b = x[1:] + sha1(x[5:])
+        return md5(b)[1:25]
+    def mk13(string):
+        x = string[5:5+5*5-1] + '2' + string[1:3]
+        a = str(strToLong(x[5:])) + x[2:]
+        b = b64(x[1:] + sha1(x[5:]))
+        return md5(b)[1:25]
+    def mk14(string):
+        x = string[5:5+5*5-1] + '2' + string[1:3]
+        a = str(strToLong(x[5:])) + x[2:]
+        b = b64(x[1:] + x[5:] + x[1:4])
+        return sha1(b)[1:25]
+    def mk15(string):
+        x = string[5:5+5*5-1] + '2' + string[1:3]
+        a = str(strToLong(x[5:])) + x[2:]
+        b = b64(a[1:] + x[5:] + x[2:5])
+        return sha1(b)[1:25]
+    def mk16(string):
+        x = string[5:5+5*5-1] + '2' + string[1:3] + '-5'
+        a = str(strToLongEn(x[5:])) + x[2:]
+        b = b64(a[1:]) + str(strToLongEn2(x[5:],5)) + x[2:5]
+        return md5(b)[2:26]
+    def mk17(string):
+        x = string[5:5+5*5-1] + '7' + string[1:3] + '-5'
+        a = str(strToLongEn(x[5:])) + x[2:]
+        b = b64(a[1:]) + str(strToLongEn2(x[5:],6)) + x[7:10]
+        return md5(b)[:24]
+    def mk18(string):
+        x = string[5:5+5*5-1] + '7' + string[1:3] + '5' + string[7:10]
+        a = str(strToLongEn(x[5:])) + x[2:]
+        b = a[1:] + str(strToLongEn2(x[5:],6)) + x[7:10]
+        return md5(b)[:24]
+    def mk19(string):
+        x = string[5:5+5*5-1] + '7' + string[5:7] + '5' + string[7:10]
+        a = str(strToLongEn(x[5:])) + x[2:]
+        b = a[1:] + str(strToLongEn3(x[5:],4)) + x[7:10]
+        return md5(b)[:24]
+    d = {
+        20:[(mk10, mk5),1,25],   21:[(mk11, mk3),2,26],   22:[(mk14, mk19),3,27],  23:[(mk15, mk0),4,28],   24:[(mk16, mk1),1,25],   25:[(mk9, mk4),2,26],    
+        26:[(mk10, mk5),3,27],   27:[(mk17, mk3),4,28],   28:[(mk18, mk7),1,25],   29:[(mk19, mk3),2,26],   30:[(mk0, mk7),3,27],    31:[(mk1, mk8),4,28],    
+        32:[(mk4, mk14),3,27],   33:[(mk5, mk15),4,28],   34:[(mk3, mk16),1,25],   35:[(mk7, mk9),2,26],    36:[(mk8, mk10),3,27],   37:[(mk6, mk17),1,25],   
+        38:[(mk12, mk18),2,26],  39:[(mk14, mk19),3,27],  40:[(mk15, mk0),4,28],   41:[(mk16, mk1),3,27],   42:[(mk9, mk4),4,28],    43:[(mk10, mk5),1,25],   
+        44:[(mk17, mk3),2,26],   45:[(mk18, mk7),3,27],   46:[(mk19, mk17),4,28],  47:[(mk0, mk18),1,25],   48:[(mk1, mk19),2,26],   49:[(mk4, mk0),3,27],    
+        50:[(mk5, mk1),4,28],    51:[(mk3, mk4),1,25],    52:[(mk7, mk14),2,26],   53:[(mk12, mk15),3,27],  54:[(mk14, mk16),4,28],  55:[(mk15, mk9),3,27],   
+        56:[(mk16, mk10),4,28],  57:[(mk9, mk17),1,25],   58:[(mk10, mk18),2,26],  59:[(mk17, mk19),3,27],  60:[(mk18, mk0),1,25],   61:[(mk19, mk1),2,26],   
+        62:[(mk0, mk4),3,27],    63:[(mk1, mk19),4,28],   64:[(mk4, mk0),3,27],    65:[(mk14, mk1),1,25],   66:[(mk15, mk4),2,26],   67:[(mk16, mk5),3,27],   
+        68:[(mk9, mk3),4,28],    69:[(mk10, mk7),1,25],   70:[(mk17, mk0),2,26],   71:[(mk18, mk1),3,27],   72:[(mk19, mk4),4,28],   73:[(mk0, mk17),1,25],   
+        74:[(mk1, mk18),2,26],   75:[(mk14, mk19),3,27],  76:[(mk15, mk0),4,28],   77:[(mk16, mk1),3,27],   78:[(mk9, mk4),4,28],    79:[(mk10, mk9),1,25],   
+        80:[(mk17, mk10),2,26],  81:[(mk18, mk17),3,27],  82:[(mk14, mk18),1,25],  83:[(mk15, mk19),4,28],  84:[(mk16, mk0),1,25],   85:[(mk9, mk1),2,26],    
+        86:[(mk10, mk4),3,27],   87:[(mk14, mk14),4,28],  88:[(mk15, mk15),1,25],  89:[(mk16, mk16),2,26],  90:[(mk9, mk9),3,27],    91:[(mk10, mk10),4,28],  
+        92:[(mk17, mk17),3,27],  93:[(mk18, mk18),4,28],  94:[(mk19, mk19),1,25],  95:[(mk0, mk0),2,26],    96:[(mk1, mk1),3,27],    97:[(mk4, mk4),4,28],    
+        98:[(mk5, mk5),3,27],    99:[(mk3, mk3),4,28],    100:[(mk7, mk3),1,25],   101:[(mk10, mk7),2,26],  102:[(mk17, mk18),1,25], 103:[(mk18, mk19),2,26], 
+        104:[(mk19, mk0),3,27],  105:[(mk0, mk0),4,28],   106:[(mk1, mk1),1,25],   107:[(mk14, mk14),2,26], 108:[(mk15, mk15),3,27], 109:[(mk16, mk16),4,28], 
+        110:[(mk9, mk9),1,25],   111:[(mk10, mk10),2,26], 112:[(mk17, mk17),3,27], 113:[(mk18, mk18),4,28], 114:[(mk19, mk19),3,27], 115:[(mk0, mk0),4,28],   
+        116:[(mk1, mk1),1,25],   117:[(mk4, mk4),2,26],   118:[(mk5, mk15),3,27],  119:[(mk3, mk16),1,25],  120:[(mk19, mk9),1,25],  121:[(mk0, mk10),2,26],  
+        122:[(mk1, mk17),3,27],  123:[(mk4, mk18),4,28],  124:[(mk5, mk19),1,25],  125:[(mk3, mk0),2,26],   126:[(mk7, mk1),3,27],   127:[(mk3, mk4),4,28],   
+        128:[(mk7, mk5),1,25],   129:[(mk8, mk3),2,26],   130:[(mk14, mk7),3,27],  131:[(mk15, mk10),4,28], 132:[(mk16, mk17),3,27], 133:[(mk9, mk18),4,28],  
+        134:[(mk10, mk19),1,25], 135:[(mk17, mk0),2,26],  136:[(mk18, mk1),1,25],  137:[(mk19, mk14),2,26], 138:[(mk0, mk15),3,27],  139:[(mk1, mk16),4,28],  
+        140:[(mk4, mk9),1,25],   141:[(mk5, mk10),2,26],  142:[(mk3, mk17),3,27],  143:[(mk7, mk18),4,28],  144:[(mk17, mk19),1,25], 145:[(mk18, mk0),2,26],  
+        146:[(mk19, mk1),3,27],  147:[(mk0, mk4),4,28],   148:[(mk1, mk5),3,27],   149:[(mk4, mk3),4,28],   150:[(mk14, mk19),1,25], 151:[(mk15, mk0),2,26],  
+        152:[(mk16, mk1),3,27],  153:[(mk9, mk4),1,25],   154:[(mk10, mk5),1,25],  155:[(mk17, mk3),2,26],  156:[(mk18, mk7),3,27],  157:[(mk19, mk3),4,28],  
+        158:[(mk0, mk7),1,25],   159:[(mk1, mk8),2,26],   160:[(mk4, mk14),3,27],  161:[(mk19, mk15),4,28], 162:[(mk0, mk16),1,25],  163:[(mk1, mk9),2,26],   
+        164:[(mk4, mk10),3,27],  165:[(mk5, mk17),4,28],  166:[(mk3, mk18),3,27],  167:[(mk7, mk19),4,28],  168:[(mk0, mk0),1,25],   169:[(mk1, mk1),2,26],   
+        170:[(mk4, mk4),3,27],   171:[(mk17, mk5),1,25],  172:[(mk18, mk3),2,26],  173:[(mk19, mk7),3,27],  174:[(mk0, mk17),4,28],  175:[(mk1, mk18),1,25],  
+        176:[(mk4, mk19),2,26],  177:[(mk9, mk0),3,27],   178:[(mk10, mk1),4,28],  179:[(mk17, mk4),1,25],  180:[(mk18, mk14),3,27], 181:[(mk19, mk15),1,25], 
+        182:[(mk0, mk16),2,26],  183:[(mk1, mk9),3,27],   184:[(mk4, mk10),4,28],  185:[(mk14, mk17),3,27], 186:[(mk15, mk18),4,28], 187:[(mk16, mk19),4,28], 
+        188:[(mk9, mk0),1,25],   189:[(mk10, mk1),2,26],  190:[(mk17, mk4),3,27],  191:[(mk18, mk19),4,28], 192:[(mk19, mk0),1,25],  193:[(mk0, mk1),2,26],   
+        194:[(mk1, mk4),3,27],   195:[(mk4, mk14),4,28],  196:[(mk5, mk15),3,27],  197:[(mk3, mk16),4,28],  198:[(mk3, mk9),1,25],   199:[(mk7, mk1),2,26],   
+        200:[(mk18, mk19),2,26], 201:[(mk19, mk0),3,27],  202:[(mk0, mk1),1,25],   203:[(mk1, mk4),2,26],   204:[(mk4, mk5),3,27],   205:[(mk14, mk3),4,28],  
+        206:[(mk15, mk7),1,25],  207:[(mk16, mk17),2,26], 208:[(mk9, mk18),3,27],  209:[(mk10, mk19),4,28], 210:[(mk17, mk0),1,25],  211:[(mk18, mk1),3,27],  
+        212:[(mk19, mk4),1,25],  213:[(mk0, mk14),2,26],  214:[(mk1, mk15),3,27],  215:[(mk4, mk16),4,28],  216:[(mk19, mk9),3,27],  217:[(mk0, mk10),4,28],  
+        218:[(mk1, mk17),4,28],  219:[(mk4, mk18),1,25],  220:[(mk5, mk19),2,26],  221:[(mk3, mk0),3,27],   222:[(mk7, mk1),4,28],   223:[(mk0, mk4),1,25],   
+        224:[(mk1, mk5),2,26],   225:[(mk4, mk3),3,27],   226:[(mk17, mk7),4,28],  227:[(mk18, mk17),2,26], 228:[(mk19, mk18),3,27], 229:[(mk0, mk19),1,25],  
+        230:[(mk1, mk0),2,26],   231:[(mk4, mk1),3,27],   232:[(mk9, mk4),4,28],   233:[(mk10, mk14),1,25], 234:[(mk17, mk15),2,26], 235:[(mk18, mk16),3,27], 
+        236:[(mk19, mk9),4,28],  237:[(mk0, mk10),1,25],  238:[(mk1, mk17),3,27],  239:[(mk4, mk19),1,25],  240:[(mk14, mk0),2,26],  241:[(mk15, mk1),3,27],  
+        242:[(mk16, mk4),4,28],  243:[(mk9, mk5),3,27],   244:[(mk10, mk3),4,28],  245:[(mk17, mk7),4,28],  246:[(mk18, mk17),2,26], 247:[(mk19, mk18),3,27], 
+        248:[(mk0, mk19),1,25],  249:[(mk1, mk0),2,26],   250:[(mk4, mk1),3,27],   251:[(mk19, mk4),4,28],  252:[(mk0, mk14),1,25],  253:[(mk1, mk15),2,26],  
+        254:[(mk4, mk4),3,27],   255:[(mk5, mk14),4,28],  256:[(mk3, mk15),1,25],  257:[(mk7, mk16),3,27],  258:[(mk0, mk9),1,25],   259:[(mk1, mk10),2,26],  
+        260:[(mk4, mk17),3,27],  261:[(mk17, mk18),4,28], 262:[(mk18, mk19),3,27], 263:[(mk19, mk0),4,28],  264:[(mk0, mk1),4,28],   265:[(mk1, mk4),1,25],   
+        266:[(mk4, mk19),2,26],  267:[(mk9, mk0),3,27],   268:[(mk10, mk1),4,28],  269:[(mk17, mk4),1,25],  270:[(mk18, mk14),2,26], 271:[(mk19, mk15),3,27], 
+        272:[(mk0, mk16),4,28],  273:[(mk1, mk9),3,27],   274:[(mk19, mk1),4,28],  275:[(mk0, mk19),1,25],  276:[(mk1, mk0),2,26],   277:[(mk4, mk1),2,26],   
+        278:[(mk5, mk4),3,27],   279:[(mk3, mk5),1,25],   280:[(mk7, mk3),2,26],   281:[(mk17, mk7),3,27],  282:[(mk18, mk17),4,28], 283:[(mk19, mk18),1,25], 
+        284:[(mk0, mk19),2,26],  285:[(mk1, mk0),3,27],   286:[(mk4, mk1),4,28],   287:[(mk14, mk4),1,25],  288:[(mk15, mk14),3,27], 289:[(mk16, mk15),1,25], 
+        290:[(mk9, mk16),2,26],  291:[(mk10, mk9),3,27],  292:[(mk17, mk10),4,28], 293:[(mk18, mk17),3,27], 294:[(mk18, mk18),4,28], 295:[(mk19, mk19),4,28], 
+        296:[(mk0, mk0),1,25],   297:[(mk1, mk1),2,26],   298:[(mk4, mk4),3,27],   299:[(mk5, mk5),4,28],   300:[(mk3, mk3),1,25],   301:[(mk7, mk7),2,26],   
+        302:[(mk17, mk17),3,27], 303:[(mk18, mk18),4,28], 304:[(mk19, mk19),3,27], 305:[(mk0, mk0),4,28],   306:[(mk1, mk1),1,25],   307:[(mk4, mk4),2,26],   
+        308:[(mk14, mk14),2,26], 309:[(mk15, mk15),3,27], 310:[(mk16, mk16),1,25], 311:[(mk9, mk9),2,26],   312:[(mk10, mk10),3,27], 313:[(mk17, mk17),4,28], 
+        314:[(mk19, mk19),1,25], 315:[(mk0, mk0),2,26],   316:[(mk1, mk1),3,27],   317:[(mk4, mk4),4,28],   318:[(mk5, mk5),1,25],   319:[(mk3, mk3),3,27],   
+        320:[(mk7, mk7),1,25],   321:[(mk17, mk17),2,26], 322:[(mk18, mk18),3,27], 323:[(mk19, mk19),4,28], 324:[(mk0, mk0),3,27],   325:[(mk1, mk1),4,28],   
+        326:[(mk4, mk4),4,28],   327:[(mk19, mk14),1,25], 328:[(mk0, mk15),2,26],  329:[(mk1, mk16),3,27],  330:[(mk4, mk9),4,28],   331:[(mk19, mk10),1,25], 
+        332:[(mk0, mk17),2,26],  333:[(mk1, mk18),3,27],  334:[(mk4, mk18),4,28],  335:[(mk5, mk19),3,27],  336:[(mk3, mk0),4,28],   337:[(mk7, mk1),2,26],   
+        338:[(mk0, mk4),3,27],   339:[(mk1, mk5),1,25],   340:[(mk4, mk3),2,26],   341:[(mk17, mk7),3,27],  342:[(mk18, mk17),4,28], 343:[(mk19, mk18),1,25], 
+        344:[(mk0, mk19),2,26],  345:[(mk1, mk0),3,27],   346:[(mk4, mk1),4,28],   347:[(mk9, mk4),1,25],   348:[(mk10, mk14),3,27], 349:[(mk17, mk15),1,25], 
+        350:[(mk18, mk16),2,26], 351:[(mk19, mk9),3,27],  352:[(mk0, mk10),4,28],  353:[(mk1, mk17),3,27],  354:[(mk18, mk19),4,28], 355:[(mk19, mk0),4,28],  
+        356:[(mk0, mk1),1,25],   357:[(mk1, mk4),2,26],   358:[(mk4, mk5),3,27],   359:[(mk5, mk3),4,28],   360:[(mk3, mk7),2,26],   361:[(mk7, mk17),3,27],  
+        362:[(mk17, mk18),1,25], 363:[(mk18, mk19),2,26], 364:[(mk19, mk0),3,27],  365:[(mk0, mk1),4,28],   366:[(mk1, mk4),1,25],   367:[(mk4, mk7),2,26],   
+        368:[(mk14, mk17),3,27], 369:[(mk15, mk18),4,28], 370:[(mk16, mk19),1,25], 371:[(mk9, mk0),3,27],   372:[(mk10, mk1),1,25],  373:[(mk17, mk4),2,26],  
+        374:[(mk19, mk17),3,27], 375:[(mk0, mk18),4,28],  376:[(mk1, mk19),3,27],  377:[(mk4, mk0),4,28],   378:[(mk5, mk1),4,28],   379:[(mk3, mk4),1,25],   
+        380:[(mk7, mk9),2,26],   381:[(mk17, mk10),3,27], 382:[(mk18, mk17),4,28], 383:[(mk19, mk18),1,25], 384:[(mk0, mk19),2,26],  385:[(mk1, mk0),3,27],   
+        386:[(mk4, mk1),4,28],   387:[(mk17, mk1),2,26],  388:[(mk18, mk4),3,27],  389:[(mk19, mk7),1,25],  390:[(mk0, mk17),2,26],  391:[(mk1, mk18),3,27],  
+        392:[(mk4, mk19),4,28],  393:[(mk9, mk0),1,25],   394:[(mk10, mk1),2,26],  395:[(mk17, mk4),3,27],  396:[(mk18, mk17),4,28], 397:[(mk19, mk18),1,25], 
+        398:[(mk0, mk19),3,27],  399:[(mk1, mk0),1,25],
+    }
+    (f1,f2), l, r = d[strToLong(cookie) % 400]
+    return md5(f1(cookie) + f2(cookie))[l:r]
 
-print(getvl5x('3651a6394ff4969810151189b635aa414f945c77'))
+if __name__ == '__main__':
+    print(getvl5x('3651a6394ff4969810151189b635aa414f945c77'))
