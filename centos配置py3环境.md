@@ -16,6 +16,11 @@ ln -s /bin/pip3.6 /bin/pip3
 # rm -f /bin/python ; rm -f /bin/pip ; ln -s /bin/python3 /bin/python; ln -s /bin/pip3 /bin/pip
 
 # 关于ss
-# pip3 install shadowsocks ; systemctl stop firewalld.service ; systemctl disable firewalld.service
+# pip install shadowsocks ; pip3 install shadowsocks ; systemctl stop firewalld.service ; systemctl disable firewalld.service
 # ssserver -p 6666 -k vilame -d start
+
+# 关于连接ss端口进行下载
+# sslocal -s xxx.xxx.xxx.xxx -p 6666 -b 127.0.0.1 -l 1080 -k vilame -d start
+# you-get -s 127.0.0.1:1080 --skip-existing-file-size-check url1,url2,url3...
+# youtube-dl --proxy socks5://127.0.0.1:1080/ url1,url2,url3...
 ```
