@@ -2,7 +2,7 @@
 
 import zlib
 import ctypes
-from struct import pack, calcsize
+from struct import pack, calcsize, unpack
 GetWindowDC             = ctypes.windll.user32.GetWindowDC
 GetSystemMetrics        = ctypes.windll.user32.GetSystemMetrics
 SelectObject            = ctypes.windll.gdi32.SelectObject
@@ -12,7 +12,11 @@ GetDIBits               = ctypes.windll.gdi32.GetDIBits
 CreateCompatibleDC      = ctypes.windll.gdi32.CreateCompatibleDC
 CreateCompatibleBitmap  = ctypes.windll.gdi32.CreateCompatibleBitmap
 
-def screenshot():
+def screenshot(shape:'top,bottom,width,height'=None):
+    ''' 
+    无依赖库的截屏处理，生成png类型的图片数据流
+    默认参数 None ，全屏截图 
+    '''
     def png_bit(data, size, level=6):
         width, height = size
         line = width * 3
@@ -33,12 +37,13 @@ def screenshot():
         iend[0] = pack(">I", len(iend[2]))
         return magic + b"".join(ihdr + idat + iend)
 
-    width, height = GetSystemMetrics(0),GetSystemMetrics(1)
-    bmi      = pack('LHhHH', calcsize('LHHHH'), width, height, 1, 32)
+    top, bottom, width, height = shape if shape else (0, 0, GetSystemMetrics(0), GetSystemMetrics(1))
+    print(top, bottom, width, height)
+    bmi      = pack('LHHHH', calcsize('LHHHH'), width, height, 1, 32)
     srcdc    = GetWindowDC(0)
     memdc    = CreateCompatibleDC(srcdc)
     svbmp    = CreateCompatibleBitmap(srcdc, width, height)
-    SelectObject(memdc, svbmp); BitBlt(memdc, 0, 0, width, height, srcdc, 0, 0, 13369376)
+    SelectObject(memdc, svbmp); BitBlt(memdc, 0, 0, width, height, srcdc, top, bottom, 13369376)
     _data    = ctypes.create_string_buffer(height * width * 4)
     got_bits = GetDIBits(memdc, svbmp, 0, height, _data, bmi, 0)
     DeleteObject(memdc)
@@ -47,7 +52,36 @@ def screenshot():
     rgb[0::3],rgb[1::3],rgb[2::3] = data[2::4],data[1::4],data[0::4]
     size = (width, height)
     return png_bit(rgb, size) # 全屏截图 png bit 数据
-    
+
+def create_png_pixel(png_bit):
+    ''' 
+    从 png 图片流数据中解析出像素信息生成列表 pixel
+        其中r,g,b均为0-255的正整数
+        该功能用于无依赖库处理小图片的相似度对比
+    pixel = [[[r,g,b], [r,g,b], [r,g,b]...],
+             [[r,g,b], [r,g,b], [r,g,b]...],
+             [[r,g,b], [r,g,b], [r,g,b]...],
+             [[r,g,b], [r,g,b], [r,g,b]...],]
+    '''
+    b = png_bit.find(b'IHDR')
+    q = calcsize(">2I")
+    w, h = unpack(">2I", png_bit[b+4:b+4+q])
+    b = png_bit.find(b'IDAT')
+    q = calcsize(">I")
+    v = unpack(">I", png_bit[b-q:b])[0]
+    v = png_bit[b+4:b+4+v]
+    z = zlib.decompress(v[2:-4], -15)
+    l, pixel = w * 3 + 1, []
+    for i in range(h):
+        li = z[i*l:(i+1)*l][1:]
+        ni = [list(li[j*3:(j+1)*3]) for j in range(w)]
+        pixel.append(ni)
+    return {'pixel': pixel, 'width': w, 'height': h}
+
 if __name__ == '__main__':
-    with open('screenshot.png','wb') as f:
-        f.write(screenshot())
+    filename = './screenshot.png'
+    screenshot_bit = screenshot(shape=(0,0,50,50))
+    with open(filename,'wb') as f:
+        f.write(screenshot_bit)
+    png_pixel = create_png_pixel(screenshot_bit)
+    print(png_pixel['pixel'][:10])
