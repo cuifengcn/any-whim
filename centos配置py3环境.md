@@ -12,7 +12,7 @@ yum install python36u-devel -y
 ln -s /bin/python3.6 /bin/python3
 ln -s /bin/pip3.6 /bin/pip3
 
-# 用python3覆盖原python和pip名字
+# 用python3覆盖原python和pip名字（强烈不建议覆盖，因为yum工具使用的是py2，所以修改后会导致yum使用异常）
 # rm -f /bin/python ; rm -f /bin/pip ; ln -s /bin/python3 /bin/python; ln -s /bin/pip3 /bin/pip
 
 # 关于ss
