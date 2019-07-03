@@ -126,6 +126,10 @@ def getvl5x(cookie):
         a = str(strToLongEn(x[5:])) + x[2:]
         b = a[1:] + str(strToLongEn3(x[5:],4)) + x[7:10]
         return md5(b)[:24]
+    e = {
+        0:mk0, 1:mk1, 2:mk2, 3:mk3, 4:mk4, 5:mk5, 6:mk6, 7:mk7, 8:mk8, 9:mk9, 10:mk10, 
+        11:mk11, 12:mk12, 13:mk13, 14:mk14, 15:mk15, 16:mk16, 17:mk17, 18:mk18, 19:mk19, 
+    }
     d = {
         20:[(mk10, mk5),1,25],   21:[(mk11, mk3),2,26],   22:[(mk14, mk19),3,27],  23:[(mk15, mk0),4,28],   24:[(mk16, mk1),1,25],   25:[(mk9, mk4),2,26],    
         26:[(mk10, mk5),3,27],   27:[(mk17, mk3),4,28],   28:[(mk18, mk7),1,25],   29:[(mk19, mk3),2,26],   30:[(mk0, mk7),3,27],    31:[(mk1, mk8),4,28],    
@@ -192,8 +196,12 @@ def getvl5x(cookie):
         392:[(mk4, mk19),4,28],  393:[(mk9, mk0),1,25],   394:[(mk10, mk1),2,26],  395:[(mk17, mk4),3,27],  396:[(mk18, mk17),4,28], 397:[(mk19, mk18),1,25], 
         398:[(mk0, mk19),3,27],  399:[(mk1, mk0),1,25],
     }
-    (f1,f2), l, r = d[strToLong(cookie) % 400]
-    return md5(f1(cookie) + f2(cookie))[l:r]
+    s = strToLong(cookie) % 400
+    if s in e:
+        return e[s](cookie)
+    else:
+        (f1,f2), l, r = d[s]
+        return md5(f1(cookie) + f2(cookie))[l:r]
 
 if __name__ == '__main__':
     print(getvl5x('3651a6394ff4969810151189b635aa414f945c77'))
