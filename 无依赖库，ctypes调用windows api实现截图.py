@@ -12,7 +12,8 @@ GetDIBits               = ctypes.windll.gdi32.GetDIBits
 CreateCompatibleDC      = ctypes.windll.gdi32.CreateCompatibleDC
 CreateCompatibleBitmap  = ctypes.windll.gdi32.CreateCompatibleBitmap
 
-def screenshot(shape:'top,bottom,width,height'=None):
+
+def screenshot(shape:'left,top,width,height'=None):
     ''' 
     无依赖库的截屏处理，生成png类型的图片数据流
     默认参数 None ，全屏截图 
@@ -37,13 +38,12 @@ def screenshot(shape:'top,bottom,width,height'=None):
         iend[0] = pack(">I", len(iend[2]))
         return magic + b"".join(ihdr + idat + iend)
 
-    top, bottom, width, height = shape if shape else (0, 0, GetSystemMetrics(0), GetSystemMetrics(1))
-    print(top, bottom, width, height)
+    left, top, width, height = shape if shape else (0, 0, GetSystemMetrics(0), GetSystemMetrics(1))
     bmi      = pack('LHHHH', calcsize('LHHHH'), width, height, 1, 32)
     srcdc    = GetWindowDC(0)
     memdc    = CreateCompatibleDC(srcdc)
     svbmp    = CreateCompatibleBitmap(srcdc, width, height)
-    SelectObject(memdc, svbmp); BitBlt(memdc, 0, 0, width, height, srcdc, top, bottom, 13369376)
+    SelectObject(memdc, svbmp); BitBlt(memdc, 0, 0, width, height, srcdc, left, top, 13369376)
     _data    = ctypes.create_string_buffer(height * width * 4)
     got_bits = GetDIBits(memdc, svbmp, 0, height, _data, bmi, 0)
     DeleteObject(memdc)
@@ -52,6 +52,7 @@ def screenshot(shape:'top,bottom,width,height'=None):
     rgb[0::3],rgb[1::3],rgb[2::3] = data[2::4],data[1::4],data[0::4]
     size = (width, height)
     return png_bit(rgb, size) # 全屏截图 png bit 数据
+
 
 def create_png_pixel(png_bit):
     ''' 
@@ -78,10 +79,33 @@ def create_png_pixel(png_bit):
         pixel.append(ni)
     return {'pixel': pixel, 'width': w, 'height': h}
 
+
+from ctypes.wintypes import LONG
+byref        = ctypes.byref
+GetCursorPos = ctypes.windll.user32.GetCursorPos
+class POINT(ctypes.Structure): _fields_ = [("x", LONG), ("y", LONG)]
+def get_cursor_rect(size=(50, 50)):
+    '''
+    根据鼠标当前位置获取一鼠标为中心，以size为大小的 shape
+    其中，图片的大小在窗口边缘有约束限制，注意
+    主要是用于单点判断，在鼠标处进行图片判断逻辑的生成，方便后续写工具使用
+    '''
+    width, height = GetSystemMetrics(0), GetSystemMetrics(1)
+    point = POINT()
+    GetCursorPos(byref(point))
+    w, h = size
+    x, y =  point.x, point.y
+    lx, ly = max([x - w//2, 0]),     max([y - h//2, 0])
+    rx, ry = min([x + w//2, width]), min([y + h//2, height])
+    left, top, width, height = lx, ly, rx-lx, ry-ly
+    return left, top, width, height
+
+
 if __name__ == '__main__':
     filename = './screenshot.png'
-    screenshot_bit = screenshot(shape=(0,0,50,50))
+    screenshot_bit = screenshot(shape=get_cursor_rect(size=(100, 100)))
     with open(filename,'wb') as f:
         f.write(screenshot_bit)
     png_pixel = create_png_pixel(screenshot_bit)
     print(png_pixel['pixel'][:10])
+    
