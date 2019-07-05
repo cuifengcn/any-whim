@@ -2,30 +2,28 @@ s = '''LwiPhsqht=hu9hj9huLhk[huIhu_ho^hkyhnu&Qzkqttwefuuq~eDeeievwhpqrItJ}ym\\On
 
 
 i = 0
-
-def som(s):
+def main_spliter(s):
     global i
-    v = some(s)
+    def _sub_spliter(s):
+        global i
+        v = ord(s[i])
+        if v >= 40:
+            i += 1
+            return v - 40
+        else:
+            kv = 39 - v
+            v = 0
+            for j in range(kv):
+                v *= 87
+                v += ord(s[j+1+i]) - 40
+            i += kv + 1
+            return v + 87
+    v = _sub_spliter(s)
     c = s[i:i+v]
     i += v
     return c
 
-def some(s):
-    global i
-    v = ord(s[i])
-    if v >= 40:
-        i += 1
-        return v - 40
-    else:
-        kv = 39 - v
-        v = 0
-        for j in range(kv):
-            v *= 87
-            v += ord(s[j+1+i]) - 40
-        i += kv + 1
-        return v + 87
-        
-def somee(ss):
+def spliter_1(ss):
     a = len(ss)
     b = ord(ss[0]) - 40
     c = ''
@@ -38,13 +36,34 @@ def somee(ss):
         c += chr(v)
     return c
 
-a = som(s)
-b = som(s)
-a = somee(a).split('`')
-b = somee(b).split('`')
-c = list(zip(a,b))
-for _ in c:
+def split_by_num(ss, num):
+    ret = []
+    for i in range(len(ss)//num):
+        ret.append(ss[i*num:(i+1)*num])
+    return ret
+
+v1 = main_spliter(s)
+v2 = main_spliter(s)
+v3 = main_spliter(s)
+v4 = main_spliter(s)
+v5 = main_spliter(s)
+v6 = main_spliter(s)
+v7 = main_spliter(s)
+v8 = main_spliter(s)
+# v9 = main_spliter(s)
+# v10 = main_spliter(s)
+# v11 = main_spliter(s)
+# v12 = main_spliter(s)
+# print(v9)
+# print(v10)
+# print(v11)
+# print(v12)
+
+r1 = spliter_1(v1).split('`')
+r2 = spliter_1(v2).split('`')
+for _ in zip(r1,r2):
     print(_)
+
 
 def someee(ss):
     a = ss.split(c[3][1]) if c[3][1] else list(ss)
@@ -52,32 +71,115 @@ def someee(ss):
         a[i],a[i+1] = a[i+1],a[i]
     return c[3][1].join(a)
 
-def split_by_num(ss, num):
-    ret = []
-    for i in range(len(ss)//num):
-        ret.append(ss[i*num:(i+1)*num])
-    return ret
+print()
+print(v3) # 太短的加密被放弃了
+v3 = spliter_1(v3)
+print(v4)
+print(v5)
+print()
 
-v1 = som(s)
-v2 = som(s)
-v3 = som(s)
-v4 = som(s)
-v5 = som(s)
-v6 = som(s)
-print()
-print(v1) # 太短的加密被放弃了
-print(v2)
-print(v3)
-print()
-print('加密===',v4)
-print('解密===',split_by_num(somee(v4), 2))
-print()
-print('加密===',v5)
-print('解密===',somee(v5).split('`'))
-print()
-print('加密===',v6)
-print('解密===',somee(v6).split('`'))
-d = split_by_num(somee(v4), 2)
-e = somee(v5).split('`') + somee(v6).split('`')
-for _ in zip(d,e):
-    print(_)
+r6 = split_by_num(spliter_1(v6), 2)
+r7 = spliter_1(v7).split('`')
+r8 = spliter_1(v8).split('`')
+
+def init_algorithm_box():
+    # 这里的 mD和m1是硬编码，后续会根据需求修改
+    mD = 'qrcklmDoExthWJiHAp1sVYKU3RFMQw8IGfPO92bvLNj.7zXBaSnu0TC6gy_4Ze5d{}|~ !#$%()*+,-:=?@[]^'
+    m1 = ''
+    ls = mD.split(m1) if m1 else list(mD)
+    bbox = [[None,]*256 for _ in range(5)]
+    bbox.append([-1,]*256)
+    for i in range(len(ls)):
+        ii = ord(ls[i])
+        bbox[0][ii] = i<<2
+        bbox[1][ii] = i>>4
+        bbox[2][ii] = (i&15)<<4
+        bbox[3][ii] = i>>2
+        bbox[4][ii] = (i&3)<<6
+        bbox[5][ii] = i
+    return bbox
+
+# 这个加密不太懂，就叫做盒子加密把
+bbox = init_algorithm_box()
+
+def deal_box(string):
+    l = len(string) - 3
+    q = [None]*(len(string)*3//4)
+    r = 0
+    i = 0
+    while i < l:
+        a = ord(string[i]); i += 1
+        b = ord(string[i]); i += 1
+        c = ord(string[i]); i += 1
+        d = ord(string[i]); i += 1
+        q[r] = bbox[0][a] ^ bbox[1][b]; r+= 1
+        q[r] = bbox[2][b] ^ bbox[3][c]; r+= 1
+        q[r] = bbox[4][c] ^ bbox[5][d]; r+= 1
+    if i < len(string):
+        a = ord(string[i]); i += 1
+        b = ord(string[i]); i += 1
+        q[r] = bbox[0][a] ^ bbox[1][b]; r+= 1
+        if i < len(string):
+            c = ord(string[i]); i += 1
+            q[r] = bbox[2][b] ^ bbox[3][c]; r+= 1
+    return q
+
+def deal_box2(ls):
+    # 这里的l5是硬编码，后续需要修改
+    l5 = '?'
+    n = []
+    m = ord(l5[0])
+    i = 0
+    while i < len(ls):
+        t = ls[i]
+        if t < 0x80:
+            t = t
+        elif t < 0xc0:
+            t = m
+        elif t < 0xe0:
+            t = ((m & 0x3f) << 6) ^ (ls[i+1] & 0x3f)
+            i += 1
+        elif t < 0xf0:
+            t = ((m & 0x0f) << 12) ^ ((ls[i+1] & 0x3f) << 6) ^ (ls[i+2] & 0x3f)
+            i += 2
+        elif t < 0xf8:
+            t = m
+            i += 4
+        elif t < 0xfe:
+            t = m
+            i += 5
+        else:
+            t = m
+        i += 1
+        n.append(t)
+    return ls
+
+def deal_box3(ls):
+    # 这里的m1为硬编码
+    m1 = ''
+    x = len(ls)
+    q,p = int(len(ls)/40960), len(ls)/40960 
+    c = [None]*(q if q==p else q+1)
+    s = x - 40960
+    r = 0
+    b = 0
+    while r < s:
+        c[b] = [chr(i) for i in ls[r:r+40960]] ; b += 1; r += 40960
+    if r < x:
+        c[b] = [chr(i) for i in ls[r:x]]; b += 1
+    p = []
+    for i in c:
+        p.extend(i)
+    return ''.join(p)
+
+def decrypt2(string):
+    ls = deal_box(string)
+    ls = deal_box2(ls)
+    rt = deal_box3(ls)
+    return spliter_1(rt)
+
+v = decrypt2('AG')
+print(v)
+for _ in zip(r6,r7+r8):
+    v = '{:-<60}'.format(str(_)) + '  ' + decrypt2(_[1])
+    print(v)
