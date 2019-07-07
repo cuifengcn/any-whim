@@ -65,10 +65,10 @@ v8 = main_spliter(s)
 
 r1 = spliter_1(v1).split('`')
 r2 = spliter_1(v2).split('`')
-for _ in zip(r1,r2):
-    v = list(_)
-    v[0] = '_$' + v[0] + '()'
-    print(v,end=',\n')
+# for _ in zip(r1,r2):
+#     v = list(_)
+#     v[0] = '_$' + v[0] + '()'
+#     print(v,end=',\n')
 
 def spliter_2(ss):
     # 这里的m1是硬编码，所以后续需要考虑变化的可能
@@ -78,11 +78,11 @@ def spliter_2(ss):
         a[i],a[i+1] = a[i+1],a[i]
     return m1.join(a)
 
-print()
-print(v3) # 太短的加密被放弃了
-print(v4)
-print(v5)
-print()
+# print()
+# print(v3) # 太短的加密被放弃了
+# print(v4)
+# print(v5)
+# print()
 
 r6 = split_by_num(spliter_1(v6), 2)
 r7 = spliter_1(v7).split('`')
@@ -188,12 +188,12 @@ def decrypt2(string):
     return spliter_1(rt)
 
 pk2 = list(zip(r6,r7+r8))
-for _ in pk2:
-    # v = '{:-<60}'.format(str(_)) + '  ' + decrypt2(_[1])
-    v = list(_)
-    v.append(decrypt2(_[1]))
-    v[0] = '_$' + v[0] + '()'
-    print(v,end=',\n')
+# for _ in pk2:
+#     # v = '{:-<60}'.format(str(_)) + '  ' + decrypt2(_[1])
+#     v = list(_)
+#     v.append(decrypt2(_[1]))
+#     v[0] = '_$' + v[0] + '()'
+#     print(v,end=',\n')
 
 
 
@@ -277,7 +277,10 @@ from random import random
 def mh(c3):
     sb = len(c3)-1
     while sb > 1:
-        ca = int(random() * sb)
+        # ca = int(random() * sb)
+        # 这里很重要，因为这里会将数据进行随机化，随机不利于调试
+        # 所以这里将修改成一个固定的常量。
+        ca = sb//2
         lk = c3[sb]
         c3[sb] = c3[ca]
         c3[ca] = lk
@@ -289,9 +292,6 @@ def al(ca):
     lk = 0
     st = nl()
     while lk < sb:
-        # 目前问题的关键出现的st的处理上面，#
-        # 在处理这一步之前 st 有进行前置解密处理生成一个 256 位长度的列表
-        # 这里的 st 就应该是那个列表，目前暂时还没有处理这一步。
         c3[lk] = st[ord(ca[lk])]
         lk += 1
     return ''.join(c3)
@@ -300,6 +300,18 @@ def hc(lk, c3):
     ca = None
     def func(sb, st):
         ca = bw
+
+
+def me(lk):
+    def _(ca=None, sb=None):
+        return al(lk)
+    return _
+def bq(lk, ca):
+    for i in range(len(ca)):
+        a = al(lk[i])
+        b = me(ca[i])
+        print(a,b())
+
 
 import time
 def decrypt3(rx, r5, ca):
@@ -361,12 +373,14 @@ def decrypt3(rx, r5, ca):
             # 暂时用不到就不考虑处理
             pass
         sw = 0
+        nonlocal r
         while sw < eh:
             si[sw] = r8(1)
             sw += 1
         sw = 0
         while sw < su:
             sm[sw] = r8(1)
+            sw += 1
         mh(sm)
         sw = 0
         pt, rq = 0, 0
@@ -393,17 +407,18 @@ def decrypt3(rx, r5, ca):
             bw[sw] = sm[rq]
             sw += 1
             rq += 1
+        while None in bw: bw[bw.index(None)] = ''
         return ''.join(bw)
 
 
 
     def of():
         nonlocal r
-        t = rx[r]
+        t = rx[r] if r < len(rx) else TypeError
         r += 1
         return t
     def oF():
-        nonlocal r
+        nonlocal r, rx
         eh = rx[r]
         if eh & 0x80 == 0:
             r += 1
@@ -441,17 +456,14 @@ def decrypt3(rx, r5, ca):
             else:
                 su[rq] = bd[sw](si)
                 rq += 1
-
-        ret = ''.join(su)
-        print(ret)
-        return ret
+        return ''.join(su)
     def c3(_=None):
         su = r8(1)
         r8(1)
         si = r8(1)
         r8(1)
         eh = r8(1)
-        # print('============',al(su),hc(si,eh))
+        print('============',al(su),hc(si,eh))
 
 
 
@@ -476,13 +488,10 @@ def decrypt3(rx, r5, ca):
     kv = r5[0    :ca[0]]
     im = r5[ca[3]:ca[4]]
     sr = [fw, im, [], kv, pl]
-    print(kv)
     bd = [None,None,None,None,None,st,r8,c3]
     lk = r8(1)
-    print(lk)
-
-    # print(rx)
-    print(r, o)
+    bq(im, qm)
+    print(al(lk))
 
 
 def mq():
