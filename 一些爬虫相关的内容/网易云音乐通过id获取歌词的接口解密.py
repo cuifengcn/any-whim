@@ -754,9 +754,8 @@ def get_postbody(realparams):
         edata = base64.b64encode(enc.feed(edata)).decode()
         return edata
 
-    def get_encSecKey():
+    def get_encSecKey(rdkey):
         # rsa 加密
-        i = rdkey
         def parse_base2int(string):
             v = 0
             for i in range(0,len(string)):
@@ -764,7 +763,7 @@ def get_postbody(realparams):
                 t = ord(string[p]) << p*8
                 v += t
             return v
-        iint = parse_base2int(i)
+        iint = parse_base2int(rdkey)
         fint = 157794750267131502212476817800345498121872783333389747424011531025366277535262539913701806290766479189477533597854989606803194253978660329941980786072432806427833685472618792592200595694346872951301770580765135349259590167490536138082469680638514416594216629258349130257685001248172188325316586707301643237607
         eint = 65537
         q = pow(iint,eint,fint)
@@ -772,7 +771,7 @@ def get_postbody(realparams):
 
     rdkey = mk_rdkey()
     params = get_params(realparams)
-    encSecKey = get_encSecKey()
+    encSecKey = get_encSecKey(rdkey)
     return params, encSecKey
 
 
