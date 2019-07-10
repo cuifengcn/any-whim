@@ -3,6 +3,7 @@
 
 ```bash
 # 这里是多行处理(不覆盖原来python2的python和pip名字，以python3,pip3使用python3)
+# 安装 python36u-devel 是为了处理某些安装异常，例如 twisted。
 yum install epel-release -y
 yum install https://centos7.iuscommunity.org/ius-release.rpm -y
 yum install python36u -y
@@ -23,4 +24,18 @@ ln -s /bin/pip3.6 /bin/pip3
 # sslocal -s xxx.xxx.xxx.xxx -p 6666 -b 127.0.0.1 -l 1080 -k vilame -d start
 # you-get -s 127.0.0.1:1080 --skip-existing-file-size-check url1,url2,url3...
 # youtube-dl --proxy socks5://127.0.0.1:1080/ url1,url2,url3...
+```
+
+安装ffmpeg
+
+```bash
+# centos7
+sudo rpm --import http://li.nux.ro/download/nux/RPM-GPG-KEY-nux.ro
+sudo rpm -Uvh http://li.nux.ro/download/nux/dextop/el7/x86_64/nux-dextop-release-0-5.el7.nux.noarch.rpm
+sudo yum install ffmpeg ffmpeg-devel -y
+
+# centos6
+sudo rpm --import http://li.nux.ro/download/nux/RPM-GPG-KEY-nux.ro
+sudo rpm -Uvh http://li.nux.ro/download/nux/dextop/el6/x86_64/nux-dextop-release-0-2.el6.nux.noarch.rpm
+sudo yum install ffmpeg ffmpeg-devel -y
 ```
