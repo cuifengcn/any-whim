@@ -741,7 +741,7 @@ def get_postbody(realparams):
         rdstring = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
         return ''.join([random.choice(rdstring) for i in range(16)])
 
-    def get_params(data):
+    def get_params(rdkey, data):
         # aes 加密
         key  = '0CoJUm6Qyw8W8jud'.encode()
         iv   = '0102030405060708'.encode()
@@ -770,7 +770,7 @@ def get_postbody(realparams):
         return hex(q)[2:]
 
     rdkey = mk_rdkey()
-    params = get_params(realparams)
+    params = get_params(rdkey, realparams)
     encSecKey = get_encSecKey(rdkey)
     return params, encSecKey
 
