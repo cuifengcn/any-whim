@@ -115,11 +115,6 @@ def _get_docid(runeval, node):
                     self._last_cipherblock = [ 0 ] * 16
                 else:
                     self._last_cipherblock = iv
-            def encrypt(self, plaintext):
-                plaintext = plaintext
-                precipherblock = [ (p ^ l) for (p, l) in zip(plaintext, self._last_cipherblock) ]
-                self._last_cipherblock = self._aes.encrypt(precipherblock)
-                return bytes(self._last_cipherblock)
             def decrypt(self, ciphertext):
                 cipherblock = ciphertext
                 plaintext = [ (p ^ l) for (p, l) in zip(self._aes.decrypt(cipherblock), self._last_cipherblock) ]
