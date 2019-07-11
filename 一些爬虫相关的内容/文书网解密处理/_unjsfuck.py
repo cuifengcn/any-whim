@@ -4,20 +4,20 @@
 import re
 
 def _wenshu_unjsfunk(string):
-    q = {
-        "!![]": "true",
-        "![]": "false",
-        "[][[]]": "undefined",
-        "+[![]]": "NaN",
-        "[]+[]": "\"\"",
-        "+[]": "0",
-        "+!+[]": "1",
-        "!+[]+!+[]": "2",
-        "[+!+[]]+[+[]]": "10"
-    }
+    q = [
+        ["!![]", "true"],
+        ["![]", "false"],
+        ["[][[]]", "undefined"],
+        ["+[![]]", "NaN"],
+        ["[]+[]", "\"\""],
+        ["+[]", "0"],
+        ["+!+[]", "1"],
+        ["!+[]+!+[]", "2"],
+        ["[+!+[]]+[+[]]", "10"]
+    ]
     s = string
     for i in range(10):
-        for a,b in q.items():
+        for a,b in q:
             s = s.replace(a,b)
     d = re.findall(r'(?:\+!0)+', s)
     for i in d:
