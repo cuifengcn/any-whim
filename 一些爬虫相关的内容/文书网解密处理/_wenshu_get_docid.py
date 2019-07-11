@@ -1,7 +1,6 @@
 # 文书网解密处理，纯python实现，并且不需要外部库
 # 直接执行本py文件进行测试即可
 
-
 import base64
 import zlib
 import re
@@ -222,54 +221,28 @@ def _get_docid(runeval, node):
 
     def _wenshu_unjsfunk(string):
         q = [
-            ["!![]", "true"],
-            ["![]", "false"],
-            ["[][[]]", "undefined"],
-            ["+[![]]", "NaN"],
-            ["[]+[]", "\"\""],
-            ["+[]", "0"],
-            ["+!+[]", "1"],
-            ["!+[]+!+[]", "2"],
-            ["[+!+[]]+[+[]]", "10"]
+            ['!+[]', '1'],
+            ['!![]', '"true"'],
+            ['![]', '"false"'],
+            ['("true"+[])', '"true"'],
+            ['("false"+[])','"false"'],
+            ['[+[]]', '[0]'],
+            ['(+[])', '0'],
+            ['[][[]]', '"undefined"'],
+            ['[]+[]', '""'],
+            ['""+{}', '"[object Object]"'],
+            ['["false"]+{}', '"false[object Object]"'],
+            ['+1+[0]', '10'],
+            ['+{}+""', '"NaN"'],
+            ['["false"]', '"false"'],
         ]
         s = string
-        for i in range(10):
-            for a,b in q:
-                s = s.replace(a,b)
-        d = re.findall(r'(?:\+!0)+', s)
-        for i in d:
-            s = re.sub(r'(?:\+!0)+', str(i.count('+!0')), s, 1)
-        # 这里是针对文书网 hidescript 的前置处理
-        hs = ''.join(map(lambda i:chr(int(i)),re.findall(r'fromCharCode\(([^\)]+)\)', s)[0].split(',')))
-        for idx,i in enumerate(hs):
-            s = s.replace('$hidescript[{}]'.format(idx), repr(i))
-            s = s.replace('$hidescript[({})]'.format(idx), repr(i))
-        s = s.replace('(true0)', '"true"')
-        s = s.replace('(false0)', '"false"')
-        s = s.replace('!01', '2')
-        s = s.replace('!02', '3')
-        s = s.replace('""+undefined', '"undefined"')
-        s = s.replace('""+{}', '"[object Object]"')
-        s = s.replace('[false]+{}', '"false[object Object]"')
-        s = s.replace('[true]+{}', '"true[object Object]"')
-        s = s.replace('1+[0]','10')
-        # 以下是针对文书网加密的的专门解密处理
-        s = s.split("""'"'""")[1].strip('+')
-        p = r'"([^"]+)"\+"([^"]+)"'
-        for i in range(10):
-            d = re.findall(p, s)
-            for a,b in d:
-                s = re.sub(p, '"{}"'.format(a+b), s, 1)
-        s = re.sub(r'\(("[^"]+")\)',r'\1',s)
-        p = r'("([^"]+)"\[([^\[\]]+)\])'
-        d = re.findall(p, s)
-        for i in d:
-            a, b, c   = i
-            try:    s = re.sub(p, repr(b[int(c)]), s, 1)
-            except: s = re.sub(p, a, s, 1)
-        s = s.replace("'",'')
-        s = s.replace('+','')
-        return s
+        for a, b in q: s = s.replace(a, b)
+        # 后续是针对文书网的处理
+        h = ''.join(map(lambda i:chr(eval(i)),re.findall(r'fromCharCode\(([^\)]+)\)', s)[0].split(',')))
+        s = s.split(';_[_][_]')[-1][:-3]
+        s = s.replace('$hidescript', repr(h))
+        return re.findall('_KEY="([^"]+)";', eval(s))[0]
 
     r = _wenshu_unzip(runeval)
     n = _wenshu_unzip(node)
