@@ -13,14 +13,6 @@ def _get_docid(runeval, node):
         return zlib.decompress(btou, -15).decode()
 
     def _wenshu_decrypt_aes(data, key):
-        def _compact_word(word):
-            return (word[0] << 24) | (word[1] << 16) | (word[2] << 8) | word[3]
-        xrange = range
-        def _string_to_bytes(text):
-            if isinstance(text, bytes):
-                return text
-            return [ord(c) for c in text]
-        def _bytes_to_string(binary): return bytes(binary)
         class AES(object):
             number_of_rounds = {16: 10, 24: 12, 32: 14}
             rcon = [ 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91 ]
@@ -40,8 +32,8 @@ def _get_docid(runeval, node):
             U4 = [ 0x00000000, 0x090d0b0e, 0x121a161c, 0x1b171d12, 0x24342c38, 0x2d392736, 0x362e3a24, 0x3f23312a, 0x48685870, 0x4165537e, 0x5a724e6c, 0x537f4562, 0x6c5c7448, 0x65517f46, 0x7e466254, 0x774b695a, 0x90d0b0e0, 0x99ddbbee, 0x82caa6fc, 0x8bc7adf2, 0xb4e49cd8, 0xbde997d6, 0xa6fe8ac4, 0xaff381ca, 0xd8b8e890, 0xd1b5e39e, 0xcaa2fe8c, 0xc3aff582, 0xfc8cc4a8, 0xf581cfa6, 0xee96d2b4, 0xe79bd9ba, 0x3bbb7bdb, 0x32b670d5, 0x29a16dc7, 0x20ac66c9, 0x1f8f57e3, 0x16825ced, 0x0d9541ff, 0x04984af1, 0x73d323ab, 0x7ade28a5, 0x61c935b7, 0x68c43eb9, 0x57e70f93, 0x5eea049d, 0x45fd198f, 0x4cf01281, 0xab6bcb3b, 0xa266c035, 0xb971dd27, 0xb07cd629, 0x8f5fe703, 0x8652ec0d, 0x9d45f11f, 0x9448fa11, 0xe303934b, 0xea0e9845, 0xf1198557, 0xf8148e59, 0xc737bf73, 0xce3ab47d, 0xd52da96f, 0xdc20a261, 0x766df6ad, 0x7f60fda3, 0x6477e0b1, 0x6d7aebbf, 0x5259da95, 0x5b54d19b, 0x4043cc89, 0x494ec787, 0x3e05aedd, 0x3708a5d3, 0x2c1fb8c1, 0x2512b3cf, 0x1a3182e5, 0x133c89eb, 0x082b94f9, 0x01269ff7, 0xe6bd464d, 0xefb04d43, 0xf4a75051, 0xfdaa5b5f, 0xc2896a75, 0xcb84617b, 0xd0937c69, 0xd99e7767, 0xaed51e3d, 0xa7d81533, 0xbccf0821, 0xb5c2032f, 0x8ae13205, 0x83ec390b, 0x98fb2419, 0x91f62f17, 0x4dd68d76, 0x44db8678, 0x5fcc9b6a, 0x56c19064, 0x69e2a14e, 0x60efaa40, 0x7bf8b752, 0x72f5bc5c, 0x05bed506, 0x0cb3de08, 0x17a4c31a, 0x1ea9c814, 0x218af93e, 0x2887f230, 0x3390ef22, 0x3a9de42c, 0xdd063d96, 0xd40b3698, 0xcf1c2b8a, 0xc6112084, 0xf93211ae, 0xf03f1aa0, 0xeb2807b2, 0xe2250cbc, 0x956e65e6, 0x9c636ee8, 0x877473fa, 0x8e7978f4, 0xb15a49de, 0xb85742d0, 0xa3405fc2, 0xaa4d54cc, 0xecdaf741, 0xe5d7fc4f, 0xfec0e15d, 0xf7cdea53, 0xc8eedb79, 0xc1e3d077, 0xdaf4cd65, 0xd3f9c66b, 0xa4b2af31, 0xadbfa43f, 0xb6a8b92d, 0xbfa5b223, 0x80868309, 0x898b8807, 0x929c9515, 0x9b919e1b, 0x7c0a47a1, 0x75074caf, 0x6e1051bd, 0x671d5ab3, 0x583e6b99, 0x51336097, 0x4a247d85, 0x4329768b, 0x34621fd1, 0x3d6f14df, 0x267809cd, 0x2f7502c3, 0x105633e9, 0x195b38e7, 0x024c25f5, 0x0b412efb, 0xd7618c9a, 0xde6c8794, 0xc57b9a86, 0xcc769188, 0xf355a0a2, 0xfa58abac, 0xe14fb6be, 0xe842bdb0, 0x9f09d4ea, 0x9604dfe4, 0x8d13c2f6, 0x841ec9f8, 0xbb3df8d2, 0xb230f3dc, 0xa927eece, 0xa02ae5c0, 0x47b13c7a, 0x4ebc3774, 0x55ab2a66, 0x5ca62168, 0x63851042, 0x6a881b4c, 0x719f065e, 0x78920d50, 0x0fd9640a, 0x06d46f04, 0x1dc37216, 0x14ce7918, 0x2bed4832, 0x22e0433c, 0x39f75e2e, 0x30fa5520, 0x9ab701ec, 0x93ba0ae2, 0x88ad17f0, 0x81a01cfe, 0xbe832dd4, 0xb78e26da, 0xac993bc8, 0xa59430c6, 0xd2df599c, 0xdbd25292, 0xc0c54f80, 0xc9c8448e, 0xf6eb75a4, 0xffe67eaa, 0xe4f163b8, 0xedfc68b6, 0x0a67b10c, 0x036aba02, 0x187da710, 0x1170ac1e, 0x2e539d34, 0x275e963a, 0x3c498b28, 0x35448026, 0x420fe97c, 0x4b02e272, 0x5015ff60, 0x5918f46e, 0x663bc544, 0x6f36ce4a, 0x7421d358, 0x7d2cd856, 0xa10c7a37, 0xa8017139, 0xb3166c2b, 0xba1b6725, 0x8538560f, 0x8c355d01, 0x97224013, 0x9e2f4b1d, 0xe9642247, 0xe0692949, 0xfb7e345b, 0xf2733f55, 0xcd500e7f, 0xc45d0571, 0xdf4a1863, 0xd647136d, 0x31dccad7, 0x38d1c1d9, 0x23c6dccb, 0x2acbd7c5, 0x15e8e6ef, 0x1ce5ede1, 0x07f2f0f3, 0x0efffbfd, 0x79b492a7, 0x70b999a9, 0x6bae84bb, 0x62a38fb5, 0x5d80be9f, 0x548db591, 0x4f9aa883, 0x4697a38d ]
             def __init__(self, key):
                 rounds = self.number_of_rounds[len(key)]
-                self._Ke = [[0] * 4 for i in xrange(rounds + 1)]
-                self._Kd = [[0] * 4 for i in xrange(rounds + 1)]
+                self._Ke = [[0] * 4 for i in range(rounds + 1)]
+                self._Kd = [[0] * 4 for i in range(rounds + 1)]
                 round_key_count = (rounds + 1) * 4
                 KC = len(key) // 4
                 def b2integer(b):
@@ -50,8 +42,8 @@ def _get_docid(runeval, node):
                         ret += i<<(idx*8)
                         idx += 1
                     return ret
-                tk = [ b2integer(key[i:i + 4]) for i in xrange(0, len(key), 4) ]
-                for i in xrange(0, KC):
+                tk = [ b2integer(key[i:i + 4]) for i in range(0, len(key), 4) ]
+                for i in range(0, KC):
                     self._Ke[i // 4][i % 4] = tk[i]
                     self._Kd[rounds - (i // 4)][i % 4] = tk[i]
                 rconpointer = 0
@@ -66,17 +58,17 @@ def _get_docid(runeval, node):
                               (self.rcon[rconpointer] << 24))
                     rconpointer += 1
                     if KC != 8:
-                        for i in xrange(1, KC):
+                        for i in range(1, KC):
                             tk[i] ^= tk[i - 1]
                     else:
-                        for i in xrange(1, KC // 2):
+                        for i in range(1, KC // 2):
                             tk[i] ^= tk[i - 1]
                         tt = tk[KC // 2 - 1]
                         tk[KC // 2] ^= (self.S[ tt        & 0xFF]        ^
                                        (self.S[(tt >>  8) & 0xFF] <<  8) ^
                                        (self.S[(tt >> 16) & 0xFF] << 16) ^
                                        (self.S[(tt >> 24) & 0xFF] << 24))
-                        for i in xrange(KC // 2 + 1, KC):
+                        for i in range(KC // 2 + 1, KC):
                             tk[i] ^= tk[i - 1]
                     j = 0
                     while j < KC and t < round_key_count:
@@ -84,43 +76,21 @@ def _get_docid(runeval, node):
                         self._Kd[rounds - (t // 4)][t % 4] = tk[j]
                         j += 1
                         t += 1
-                for r in xrange(1, rounds):
-                    for j in xrange(0, 4):
+                for r in range(1, rounds):
+                    for j in range(0, 4):
                         tt = self._Kd[r][j]
                         self._Kd[r][j] = (self.U1[(tt >> 24) & 0xFF] ^
                                           self.U2[(tt >> 16) & 0xFF] ^
                                           self.U3[(tt >>  8) & 0xFF] ^
                                           self.U4[ tt        & 0xFF])
 
-            def encrypt(self, plaintext):
-                rounds = len(self._Ke) - 1
-                (s1, s2, s3) = [1, 2, 3]
-                a = [0, 0, 0, 0]
-                t = [(_compact_word(plaintext[4 * i:4 * i + 4]) ^ self._Ke[0][i]) for i in xrange(0, 4)]
-                for r in xrange(1, rounds):
-                    for i in xrange(0, 4):
-                        a[i] = (self.T1[(t[ i          ] >> 24) & 0xFF] ^
-                                self.T2[(t[(i + s1) % 4] >> 16) & 0xFF] ^
-                                self.T3[(t[(i + s2) % 4] >>  8) & 0xFF] ^
-                                self.T4[ t[(i + s3) % 4]        & 0xFF] ^
-                                self._Ke[r][i])
-                    t = a.copy()
-                result = [ ]
-                for i in xrange(0, 4):
-                    tt = self._Ke[rounds][i]
-                    result.append((self.S[(t[ i           ] >> 24) & 0xFF] ^ (tt >> 24)) & 0xFF)
-                    result.append((self.S[(t[(i + s1) % 4] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
-                    result.append((self.S[(t[(i + s2) % 4] >>  8) & 0xFF] ^ (tt >>  8)) & 0xFF)
-                    result.append((self.S[ t[(i + s3) % 4]        & 0xFF] ^  tt       ) & 0xFF)
-                return result
-
             def decrypt(self, ciphertext):
                 rounds = len(self._Kd) - 1
                 (s1, s2, s3) = [3, 2, 1]
                 a = [0, 0, 0, 0]
-                t = [(_compact_word(ciphertext[4 * i:4 * i + 4]) ^ self._Kd[0][i]) for i in xrange(0, 4)]
-                for r in xrange(1, rounds):
-                    for i in xrange(0, 4):
+                t = [(self._compact_word(ciphertext[4 * i:4 * i + 4]) ^ self._Kd[0][i]) for i in range(0, 4)]
+                for r in range(1, rounds):
+                    for i in range(0, 4):
                         a[i] = (self.T5[(t[ i          ] >> 24) & 0xFF] ^
                                 self.T6[(t[(i + s1) % 4] >> 16) & 0xFF] ^
                                 self.T7[(t[(i + s2) % 4] >>  8) & 0xFF] ^
@@ -128,13 +98,15 @@ def _get_docid(runeval, node):
                                 self._Kd[r][i])
                     t = a.copy()
                 result = [ ]
-                for i in xrange(0, 4):
+                for i in range(0, 4):
                     tt = self._Kd[rounds][i]
                     result.append((self.Si[(t[ i           ] >> 24) & 0xFF] ^ (tt >> 24)) & 0xFF)
                     result.append((self.Si[(t[(i + s1) % 4] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
                     result.append((self.Si[(t[(i + s2) % 4] >>  8) & 0xFF] ^ (tt >>  8)) & 0xFF)
                     result.append((self.Si[ t[(i + s3) % 4]        & 0xFF] ^  tt       ) & 0xFF)
                 return result
+            def _compact_word(self, word):
+                return (word[0] << 24) | (word[1] << 16) | (word[2] << 8) | word[3]
 
         class AESModeOfOperationCBC:
             def __init__(self, key, iv = None):
@@ -142,81 +114,45 @@ def _get_docid(runeval, node):
                 if iv is None:
                     self._last_cipherblock = [ 0 ] * 16
                 else:
-                    self._last_cipherblock = _string_to_bytes(iv)
+                    self._last_cipherblock = iv
             def encrypt(self, plaintext):
-                plaintext = _string_to_bytes(plaintext)
+                plaintext = plaintext
                 precipherblock = [ (p ^ l) for (p, l) in zip(plaintext, self._last_cipherblock) ]
                 self._last_cipherblock = self._aes.encrypt(precipherblock)
-                return _bytes_to_string(self._last_cipherblock)
+                return bytes(self._last_cipherblock)
             def decrypt(self, ciphertext):
-                cipherblock = _string_to_bytes(ciphertext)
+                cipherblock = ciphertext
                 plaintext = [ (p ^ l) for (p, l) in zip(self._aes.decrypt(cipherblock), self._last_cipherblock) ]
                 self._last_cipherblock = cipherblock
-                return _bytes_to_string(plaintext)
+                return bytes(plaintext)
 
-        PADDING_NONE = 'none'
-        PADDING_DEFAULT = 'default'
-        def _get_byte(c):
-            if isinstance(c, (bytes,int)):
-                return c
-            return ord(c)
-        def to_bufferable(binary):
-            if isinstance(binary, bytes):
-                return binary
-            return bytes(ord(b) for b in binary)
-        def append_PKCS7_padding(data):
-            pad = 16 - (len(data) % 16)
-            return data + to_bufferable(chr(pad) * pad)
-        def strip_PKCS7_padding(data): return data[:-_get_byte(data[-1])]
-        def _block_can_consume(self, size):
-            return 16 if size >= 16 else 0
-        def _block_final_encrypt(self, data, padding = PADDING_DEFAULT):
-            if padding == PADDING_DEFAULT: data = append_PKCS7_padding(data)
-            if len(data) not in (16,32): raise Exception('invalid padding option')
-            if len(data) == 32: return self.encrypt(data[:16]) + self.encrypt(data[16:])
-            return self.encrypt(data)
-        def _block_final_decrypt(self, data, padding = PADDING_DEFAULT):
-            if padding == PADDING_DEFAULT: return strip_PKCS7_padding(self.decrypt(data))
-            if padding == PADDING_NONE: return self.decrypt(data)
-        AESModeOfOperationCBC._can_consume = _block_can_consume
-        AESModeOfOperationCBC._final_encrypt = _block_final_encrypt
-        AESModeOfOperationCBC._final_decrypt = _block_final_decrypt
+        def strip_PKCS7_padding(data): return data[:-(data[-1])]
+        AESModeOfOperationCBC._can_consume = lambda self, size:16 if size >= 16 else 0
+        AESModeOfOperationCBC._final_decrypt = lambda self,data:strip_PKCS7_padding(self.decrypt(data))
 
-        class BlockFeeder(object):
-            def __init__(self, mode, feed, final, padding = PADDING_DEFAULT):
+        class Decrypter(object):
+            def __init__(self, mode):
                 self._mode = mode
-                self._feed = feed
-                self._final = final
-                self._buffer = to_bufferable("")
-                self._padding = padding
+                self._feed = mode.decrypt
+                self._final = mode._final_decrypt
+                self._buffer = b''
 
             def feed(self, data = None):
-                if self._buffer is None:
-                    raise ValueError('already finished feeder')
-                if data is None:
-                    result = self._final(self._buffer, self._padding)
-                    self._buffer = None
-                    return result
-
-                self._buffer += to_bufferable(data)
-                result = to_bufferable('')
+                self._buffer += data
+                result = b''
                 while len(self._buffer) > 0:
                     can_consume = self._mode._can_consume(len(self._buffer) - 16)
                     if can_consume == 0:
-                        result += self._final(self._buffer, self._padding)
+                        result += self._final(self._buffer)
                         break
                     result += self._feed(self._buffer[:can_consume])
                     self._buffer = self._buffer[can_consume:]
                 return result
 
-        class Decrypter(BlockFeeder):
-            def __init__(self, mode, padding = PADDING_DEFAULT):
-                BlockFeeder.__init__(self, mode, mode.decrypt, mode._final_decrypt, padding)
-
-        def dec(data, key, iv, padding='default'):
-            s = Decrypter(AESModeOfOperationCBC(key.encode(), iv), padding=padding)
+        def dec(data, key, iv):
+            s = Decrypter(AESModeOfOperationCBC(key.encode(), iv))
             return s.feed(a2b_hex(data)).decode()
-        iv = 'abcd134556abcedf'
+        iv = b'abcd134556abcedf'
         return dec(dec(data, key, iv), key, iv)
 
     def _wenshu_unjsfunk(string):
