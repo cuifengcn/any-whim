@@ -9,35 +9,9 @@ from binascii import a2b_hex, b2a_hex
 
 def _get_docid(runeval, node):
 
-    def decode_base64_and_inflate(b64string):
-        cb_string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-        cb_tab, idx = {}, 0
-        for i in cb_string:
-            cb_tab[i] = idx
-            idx += 1
-        def cb_decode(t):
-            l = len(t)
-            q = ((cb_tab[t[0]] << 18) if l>0 and t[0] in cb_tab else 0) + \
-                ((cb_tab[t[1]] << 12) if l>1 and t[1] in cb_tab else 0) + \
-                ((cb_tab[t[2]] << 6 ) if l>2 and t[2] in cb_tab else 0) + \
-                (cb_tab[t[3]]         if l>3 and t[3] in cb_tab else 0)
-            c = [(q>>16), ((q>>8)&0xff), (q&0xff)]
-            return c
-        lrange1 = list(range(0xC0, 0xDF+1))
-        lrange2 = list(range(0x80, 0xBF+1))
-        def cb_btou(t):
-            ret, idx = [], 0
-            for i in range(0,len(t)):
-                if t[i] in lrange1 and t[i+1] in lrange2:
-                    ret.append(((t[i]&0x1f)<<6) + (0x3f&t[i+1]))
-                    idx = i+2
-                elif i>=idx:
-                    ret.append(t[i])
-            return ret
-        cb_data = []
-        for i in range(0, len(b64string), 4):
-            cb_data.extend(cb_decode(b64string[i:i+4]))
-        return zlib.decompress(bytes(cb_btou(cb_data)),-15).decode()
+    def _wenshu_unzip(b64string):
+        btou = bytes(ord(i) for i in base64.b64decode(b64string).decode())
+        return zlib.decompress(btou, -15).decode()
 
     def _wenshu_decrypt_aes(data, key):
         def _compact_word(word):
@@ -296,8 +270,8 @@ def _get_docid(runeval, node):
         s = s.replace('+','')
         return s
 
-    r = decode_base64_and_inflate(runeval)
-    n = decode_base64_and_inflate(node)
+    r = _wenshu_unzip(runeval)
+    n = _wenshu_unzip(node)
     j = _wenshu_unjsfunk(r)
     f = _wenshu_decrypt_aes(n, j)
     return f
