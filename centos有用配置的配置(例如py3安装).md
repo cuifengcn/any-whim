@@ -40,10 +40,20 @@ sudo rpm -Uvh http://li.nux.ro/download/nux/dextop/el6/x86_64/nux-dextop-release
 sudo yum install ffmpeg ffmpeg-devel -y
 ```
 
-安装http代理
+使用squid安装http代理
 
 ```bash
-# 使用squid作为代理工具，安装配置在centos上的方法，注意先配置账号密码。
+# 无密码
+yum install squid -y
+# 在配置文件 /etc/squid/squid.conf 的 http_access deny all 之前写入下面内容
+http_access allow all
+http_port 6666
+# 命令行启动，和开机启动
+systemctl start squid
+systemctl enable squid
+# 请求时候需要使用 http://xxx.xxx.xxx.xxx:1234 这样的结构来请求
+
+# 带密码
 yum install squid -y
 yum install httpd-tools -y
 mkdir /etc/squid/ ; htpasswd -bc /etc/squid/passwords uname pword
@@ -54,7 +64,9 @@ acl auth_user proxy_auth REQUIRED
 http_access allow auth_user
 http_access allow all
 http_port 6666
-# 再在命令行内键入如下命令启动服务即可。
+# 再在命令行内键入如下命令启动服务，开机启动
 systemctl start squid
+systemctl enable squid
 # 后续请注意例如阿里云之类的端口需要在账户的防火墙策略内打开。
+# 请求时候需要使用 http://uname:pword@xxx.xxx.xxx.xxx:1234 这样的结构来请求
 ```
