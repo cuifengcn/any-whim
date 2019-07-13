@@ -1,4 +1,4 @@
-# -*- coding: cp936 -*-
+ï»¿# -*- coding: cp936 -*-
 from tkinter import *
 from win32service import *
 
@@ -33,17 +33,17 @@ class MyServiceInstaller:
     def __init__(self):
         self.master = Tk()
         self.master.resizable(False,False)
-        self.master.title(u'Çı¶¯¼ÓÔØ(Ö§³ÖÍÏ×§)')
+        self.master.title(u'é©±åŠ¨åŠ è½½(æ”¯æŒæ‹–æ‹½)')
         self.label = Label(self.master,text="welcome")
         self.entry = Entry(self.master)
         self.width = 60    
         self.label.pack(fill=X)
         self.entry.pack(fill=X)
-        self.tk_install   = Button(self.master,command=self.install      ,text = u"°²×°")
-        self.tk_starts    = Button(self.master,command=self.starts       ,text = u"Æô¶¯")
-        self.tk_stops     = Button(self.master,command=self.stops        ,text = u"Í£Ö¹")
-        self.tk_uninstall = Button(self.master,command=self.uninstall    ,text = u"Ğ¶ÔØ")
-        self.tk_close     = Button(self.master,command=self.master.quit  ,text = u"¹Ø±Õ")
+        self.tk_install   = Button(self.master,command=self.install      ,text = u"å®‰è£…")
+        self.tk_starts    = Button(self.master,command=self.starts       ,text = u"å¯åŠ¨")
+        self.tk_stops     = Button(self.master,command=self.stops        ,text = u"åœæ­¢")
+        self.tk_uninstall = Button(self.master,command=self.uninstall    ,text = u"å¸è½½")
+        self.tk_close     = Button(self.master,command=self.master.quit  ,text = u"å…³é—­")
         self.tk_install.pack  (side=LEFT)
         self.tk_starts.pack   (side=LEFT)
         self.tk_stops.pack    (side=LEFT)
@@ -82,13 +82,13 @@ class MyServiceInstaller:
         fullpathname = self.fullpathname()
         try:
             self.service_handle = CreateService( self.scm,
-                                  name, #Çı¶¯³ÌĞòµÄÔÚ×¢²á±íÖĞµÄÃû×Ö    
-                                  name, # ×¢²á±íÇı¶¯³ÌĞòµÄ DisplayName Öµ    
-                                  SERVICE_ALL_ACCESS, # ¼ÓÔØÇı¶¯³ÌĞòµÄ·ÃÎÊÈ¨ÏŞ    
-                                  SERVICE_KERNEL_DRIVER,# ±íÊ¾¼ÓÔØµÄ·şÎñÊÇÇı¶¯³ÌĞò    
-                                  SERVICE_DEMAND_START, # ×¢²á±íÇı¶¯³ÌĞòµÄ Start Öµ    
-                                  SERVICE_ERROR_IGNORE, # ×¢²á±íÇı¶¯³ÌĞòµÄ ErrorControl Öµ    
-                                  fullpathname, # *****×¢²á±íÇı¶¯³ÌĞòµÄ ImagePath Öµ*****
+                                  name, #é©±åŠ¨ç¨‹åºçš„åœ¨æ³¨å†Œè¡¨ä¸­çš„åå­—    
+                                  name, # æ³¨å†Œè¡¨é©±åŠ¨ç¨‹åºçš„ DisplayName å€¼    
+                                  SERVICE_ALL_ACCESS, # åŠ è½½é©±åŠ¨ç¨‹åºçš„è®¿é—®æƒé™    
+                                  SERVICE_KERNEL_DRIVER,# è¡¨ç¤ºåŠ è½½çš„æœåŠ¡æ˜¯é©±åŠ¨ç¨‹åº    
+                                  SERVICE_DEMAND_START, # æ³¨å†Œè¡¨é©±åŠ¨ç¨‹åºçš„ Start å€¼    
+                                  SERVICE_ERROR_IGNORE, # æ³¨å†Œè¡¨é©±åŠ¨ç¨‹åºçš„ ErrorControl å€¼    
+                                  fullpathname, # *****æ³¨å†Œè¡¨é©±åŠ¨ç¨‹åºçš„ ImagePath å€¼*****
                                   None,    
                                   0,    
                                   None,    

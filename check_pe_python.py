@@ -1,4 +1,4 @@
-#¾²Ì¬peÎÄ¼ş·ÖÎöpython½Å±¾
+ï»¿#é™æ€peæ–‡ä»¶åˆ†æpythonè„šæœ¬
 #------------------------
 from struct import unpack
 import time
