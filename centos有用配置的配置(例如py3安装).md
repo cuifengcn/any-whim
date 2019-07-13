@@ -17,7 +17,7 @@ ln -s /bin/pip3.6 /bin/pip3
 # rm -f /bin/python ; rm -f /bin/pip ; ln -s /bin/python3 /bin/python; ln -s /bin/pip3 /bin/pip
 
 # 关于ss
-# pip install shadowsocks ; pip3 install shadowsocks ; systemctl stop firewalld.service ; systemctl disable firewalld.service
+# pip3 install shadowsocks ; systemctl stop firewalld.service ; systemctl disable firewalld.service
 # ssserver -p 6666 -k vilame -d start
 
 # 关于连接ss端口进行下载
@@ -38,4 +38,35 @@ sudo yum install ffmpeg ffmpeg-devel -y
 sudo rpm --import http://li.nux.ro/download/nux/RPM-GPG-KEY-nux.ro
 sudo rpm -Uvh http://li.nux.ro/download/nux/dextop/el6/x86_64/nux-dextop-release-0-2.el6.nux.noarch.rpm
 sudo yum install ffmpeg ffmpeg-devel -y
+```
+
+使用squid安装http代理
+
+```bash
+# 无密码
+yum install squid -y
+# 在配置文件 /etc/squid/squid.conf 的 http_access deny all 之前写入下面内容
+http_access allow all
+http_port 6666
+# 命令行启动，和开机启动
+systemctl start squid
+systemctl enable squid
+# 请求时候需要使用 http://xxx.xxx.xxx.xxx:1234 这样的结构来请求
+
+# 带密码
+yum install squid -y
+yum install httpd-tools -y
+mkdir /etc/squid/ ; htpasswd -bc /etc/squid/passwords uname pword
+# 用 which ncsa_auth 命令找到该工具的地址，配合上面的密码存储地址使用
+# 在配置文件 /etc/squid/squid.conf 中的 http_access deny all 之前写入下面的内容（包括配置端口）
+auth_param basic program /usr/lib64/squid/basic_ncsa_auth /etc/squid/passwords
+acl auth_user proxy_auth REQUIRED
+http_access allow auth_user
+http_access allow all
+http_port 6666
+# 再在命令行内键入如下命令启动服务，开机启动
+systemctl start squid
+systemctl enable squid
+# 后续请注意例如阿里云之类的端口需要在账户的防火墙策略内打开。
+# 请求时候需要使用 http://uname:pword@xxx.xxx.xxx.xxx:1234 这样的结构来请求
 ```
