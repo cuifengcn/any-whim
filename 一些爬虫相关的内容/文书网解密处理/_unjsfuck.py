@@ -58,8 +58,10 @@ def _wenshu_unjsfunk_my(string):
 
 def _wenshu_unjsfunk(string):
     # 受到别人代码启发的新的解析方式，这样更可能会解决通用jsfunck解析的方式
-    # 之前由于我司框架问题不能用 eval 函数，所以没深究带有 eval 这种处理方式，可惜不是第一个这么处理的人
+    # 之前由于我司框架问题不能用 eval 函数，所以没深究带有 eval 这种处理方式
     # 感谢作者的启发：https://github.com/songguoxiong/wenshu_utils/blob/master/wenshu_utils/docid/runeval.py
+    # 后续发觉到，直接映射的方式并不能处理通解类型的数据，所以以下的处理实际上还是存在一定可能不通过，不过代码确实足够简洁。
+    # 后续还是考虑写一个对于 js 来说更加通解的处理方式
     q = [
         ['!+[]', '1'],
         ['!![]', '"true"'],
