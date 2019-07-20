@@ -1,11 +1,5 @@
 # 想要更加通用的处理 jsfuck 的解密
-# 现在的处理方式面前还能使用，不过还差一个就是在切分元运算的部分并没有将字符串适配进去
-# 并且在异常的处理上目前还不够完善，有些异常直接忽略的话会存在很大的问题。
-# 倘若粗暴处理异常，那么在一些非完全使用六字符的 jsfuck 的处理里面就不能更好的解压代码。
-# 后续还需要考虑八字符的 jsfuck ，也就是再加上 {} 这种类型处理的部分。
-# 目前这里能处理的字符串统一使用单引号，后续再考虑双引号的处理
-# 目前发掘可能 eval 函数的处理不太可靠，后续会改
-# 还有在字符串里面的 中括号 内容会被当做微计算小群匹配到，导致字符串的改变，这里非常重要，需要早点修改。
+# 目前在解密上已经有比较好的完成度，后续在 “函数映射” 处理好就能对六字符的 jsfuck 基本完成通配解密
 
 '''
 一些运算参考表
@@ -247,14 +241,14 @@ def allplus(ls):
         [r"^\+?'(\d+)'$",               None,       _int],
         [r"^\+?(\d+)e(\d+)$",           "_sint",    _int], # 科学计数法，我TM惊呆了
         [r"^\+?'(\d+)e(\d+)'$",         "_sint",    _int], # py与js自动变化的位数不同，py:16, js:21
-        [r"^\+'(\.\d+)'$",              "_sfloat",  _int], # 这里需要负数的科学计数法
+        [r"^\+'(\.\d+)'$",              "_sfloat",  _int], # 这里需要负指数的科学计数法
         [r"^'([^']*)'$",                None,       _str],
         [r"^('[^']*'\[\d+\])$",         "_eval_",   _str],
         [r"^('[^']*'\['\d+'\])$",       "_evalr_",  _str],
         [r"^\['([^']+)'\]$",            None,       _str],
         [r'^\[([^\[\]]*)\]$',           None,       _list],
-        [r"^\+?\d+\['([^'\[\]]+)'\]$",  "_numfunc", _func],
-        [r"^\+?'[^']*'\['([^']+)'\]$",  "_strfunc", _func],
+        [r"^\+?\d+\['([^'\[\]]+)'\]$",  "_numfunc", _func], # typeobj[?]
+        [r"^\+?'[^']*'\['([^']+)'\]$",  "_strfunc", _func], # eg. []["filter"]
         [r"^\+?\[\]\['([^'\[\]]+)'\]$", "_arrfunc", _func],
         [r"^\+?true\['([^'\[\]]+)'\]$", "_boofunc", _func],
         [r"^\+?false\['([^'\[\]]+)'\]$","_boofunc", _func],
@@ -273,13 +267,17 @@ def allplus(ls):
         [r"^!\+\['([^']+)'\]$",         "true",     _boolen],
         [r'^!\+\[(\d+)\]$',             "_int_",    _boolen],
         [r'^!\+\[\w+\]$',               "true",     _boolen],
-        [r'^!\+\[\w+\]$',               "true",     _boolen],
-        # []['filter']['constructor']
-        [r"^\+?\d+\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",  "_numfunc2",_func],
-        [r"^\+?'[^']*'\['([^']+)'\]\['([^'\[\]]+)'\]$",  "_strfunc2",_func],
-        [r"^\+?\[\]\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$", "_arrfunc2",_func], # 这里存在查找函数可能，若找不到才会是 undefined
-        [r"^\+?true\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$", "_boofunc2",_func],
-        [r"^\+?false\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$","_boofunc2",_func],
+        # 101['toString'](21)[1]
+        [r"^(\d+)\['toString'\]\('?(\d+)'?\)\[('?\d+'?)\]$","_base_n",  _str],
+        [r"^(\d+)\['toString'\]\('?(\d+)'?\)$",             "_base_n2", _str],
+        [r"^'([^']*)'\['italics'\]\(\)\[('?\d+'?)\]$",      "_itafunc", _str], # 'false0'['italics']()['10']
+        # ''['fontcolor']()['12']
+        # ['']['concat']('')+[]
+        [r"^\+?\d+\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",     "_numfunc2",_func], # []['filter']['constructor']
+        [r"^\+?'[^']*'\['([^']+)'\]\['([^'\[\]]+)'\]$",     "_strfunc2",_func],
+        [r"^\+?\[\]\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",    "_arrfunc2",_func],
+        [r"^\+?true\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",    "_boofunc2",_func],
+        [r"^\+?false\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",   "_boofunc2",_func],
     ]
     arrf = [
         "concat",      "copyWithin",  "entries",     "every",       "fill",
@@ -356,6 +354,17 @@ def allplus(ls):
             i = i.copy()
             v = re.findall(i[0], s)
             if v:
+                def base_n(s, n, i=0):
+                    m = '0123456789abcdefghijklmnopqrstuvwxyz'
+                    q = []
+                    e = True
+                    while e:
+                        e = s//n
+                        y = s%n
+                        s = e
+                        q.append(m[y])
+                    v = q[::-1][i]
+                    return v
                 def _parse_get_func(func, type, i, v):
                     f2string = func(v, type)
                     if f2string:
@@ -392,6 +401,9 @@ def allplus(ls):
                 elif i[1] == '_arrfunc2': _parse_get_func(_get_func2, 'arr', i, v)
                 elif i[1] == '_numfunc2': _parse_get_func(_get_func2, 'num', i, v)
                 elif i[1] == '_boofunc2': _parse_get_func(_get_func2, 'boo', i, v)
+                elif i[1] == '_itafunc':  i[1] = "<i>{}</i>".format(v[0][0])[int(v[0][1].strip("'"))]
+                elif i[1] == '_base_n':   i[1] = base_n(*map(int,v[0]))
+                elif i[1] == '_base_n2':  i[1] = base_n(*map(int,v[0]))
                 return i
         return ['', s, _unfind]
     def parse_type(xv, xt, tp):
@@ -470,29 +482,29 @@ def allplus(ls):
             p = [_plus(left, right)]
     return repr(p[0][1]) if p[0][2] == _str else p[0][1]
 
-def some(s, dlevel=10):
+def some(s, dlevel=10, log=False):
     '''
-    在一定程度上获取最微小单元的处理上，并没有想象中那么的好。不过应对常规的jsfuck应该是没有问题
-    微小单元计算非常重要，目前最终还是使用了正则代换规避一些问题，后续还是需要考虑其他部分
-    暂时还没有解决 ''['length'] 的问题，不过目前暂时用的不多。
+    应对常规的jsfuck应该是没有问题
+    暂时还没有解决 ''['length'] 的问题，不过实际上 jsfuck 本身生成就已经很重了
+    一般也很少用复杂函数混肴生成比原本还要更加大几倍的超大字符串，会影响性能。
     '''
-    unique, unit = '##', '[]'
-    uleft, uright = '@', '&'
-    pleft, pright = '%', '`'
-    x = r'(^|\+|\[|\(|\)|\]|%s|%s|%s|%s)' % (uright, pright, uleft, pleft)
+    unique, unit   = '##', '[]'
+    _unique, _unit = '**', '()'
+    uleft, uright  = '@', '&'
+    pleft, pright  = '%', '`'
+    x = r'(^|\+|\[|\(|\)|\]|%s|%s|%s|%s|%s|%s)' % (uright, pright, uleft, pleft, unique, '\\' + _unique)
     expa = x + r'(\([^\(\)\[\]]+\))' + x # 找到计算块
     expb = r'\[[^\(\)\[\]]+\]'
     expc = r"'[^']*'"
     expd = r"\[([a-zA-Z0-9$_']+)\]"
+    expe = r"\(([a-zA-Z0-9$_']+)\)"
     def _repa(string): return string.replace('[',uleft).replace(']',uright).replace('(',pleft).replace(')',pright)
     def _repb(string): return string.replace(uleft,'[').replace(uright,']').replace(pleft,'(').replace(pright,')')
-    def _repc(string): return allplus(cuter( _repb(string[1:-1].replace(unique,unit)) ))
+    def _repc(string): return allplus(cuter( _repb(string[1:-1].replace(unique,unit).replace(_unique,_unit)) ))
     def parse_idxstr(string):
         '''
         将解析差不多干净的字符串下标单字部分清理成单个字符串
         并且将所有连接在一起的部分进行合并
-        不过这个函数功能暂时还不太稳定，我觉得还是不要放在循环里面会更安全一点
-        考虑到一些正则上的模糊性，最好放在循环外面，最后跑一次即可
         '''
         a = r"(^|\+)'([^']*)'\[(\d+)\]"
         b = r"(^|\+)'([^']*)'\['(\d+)'\]"
@@ -529,30 +541,36 @@ def some(s, dlevel=10):
     v = s
     def e(g): return _repa(g.group(0))                  # 规避函数
     def h(g): return uleft + g.group(1) + uright        # 规避函数
+    def i(g): return pleft + g.group(1) + pright        # 规避函数
     def j(g): return '[{}]'.format(_repc(g.group(0)))    # 处理抽取中括号中的计算体
     def f(g): 
         l, c, r = _repb(g.group(1)), _repc(g.group(2)), _repb(g.group(3))
         return (l + '({})'.format(c) + r) if l in (')',']') or r in ('(',) else (l + c + r)
-    for i in range(dlevel):
-        v = v.replace(unit,unique)
+    for _ in range(dlevel):
+        v = v.replace(unit,unique).replace(_unit,_unique)
         v = re.sub(expc, e, v) # 规避字符串内的中小括号
         v = re.sub(expd, h, v) 
+        v = re.sub(expe, i, v) 
+        if log: print(v)
         v = re.sub(expa, f, v) # 从小括号中的内容获取解析式，并计算
-        v = _repb(v.replace(unique,unit))
-        v = v.replace(unit,unique)
+        v = _repb(v.replace(unique,unit).replace(_unique,_unit))
+        v = v.replace(unit,unique).replace(_unit,_unique)
         v = re.sub(expc, e, v)
         v = re.sub(expd, h, v)
+        v = re.sub(expe, i, v) 
         v = re.sub(expb, j, v) # 从中括号中的内容获取解析式，并计算
-        v = _repb(v.replace(unique,unit))
+        v = _repb(v.replace(unique,unit).replace(_unique,_unit))
         v = parse_idxstr(v)
         if v != s: 
             s = v
         else:
             break
         
-        # print(v)
-        # print('======= level: {} ======='.format(i+1))
-        # print()
+        if log:
+            print(v)
+            print('======= level: {} ======='.format(_+1))
+            print(cuter(v))
+            print()
     return v
 
 _0 = '[+[]]+[]'
@@ -673,12 +691,16 @@ for i in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
 
 # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ （最后一位是空格）
 for i in '0123456789abcdefghijklmnopqrstuvw':
-    p, q = locals()['__c{}'.format(i)], locals()['__x{}'.format(i)]
-    f = some('[{}]'.format(q), 10)
-    print(p, f)
+    try:
+        p, q = locals()['__c{}'.format(i)], locals()['__x{}'.format(i)]
+        f = some('[{}]'.format(q), 10)
+        print(p, f)
+    except:
+        print(p, 'error')
 
-# f = some(_F, 10)
-# print(f)
+
+f = some('['+__xv+']', 10, log=True)
+print(f)
 
 # s = "('r'+'et'+([]['']+[])[0]+'r'+([]['']+[])[1]  +(![]+[0])[([false]+[][''])[+!+[]+[0]]+'tal'+([false]+[][''])[+!+[]+[0]]+([]['f'+([false]+[][''])[+!+[]+[0]]+'lter']+[])[3]+'s']()[+!+[]+[0]]+[0]+(![]+[0])[([false]+[][''])[+!+[]+[0]]+'tal'+([false]+[][''])[+!+[]+[0]]+([]['f'+([false]+[][''])[+!+[]+[0]]+'lter']+[])[3]+'s']()[+!+[]+[0]])"
 # print(some(s))
