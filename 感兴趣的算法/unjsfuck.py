@@ -1,70 +1,22 @@
 # 想要更加通用的处理 jsfuck 的解密
-# 目前在解密上已经有比较好的完成度，后续在 “函数映射” 处理好就能对六字符的 jsfuck 基本完成通配解密
-
-'''
-一些运算参考表
-
-# +
-+true       1
-+false      0
-+[]         0
-+''         0
-+'asdf'     NaN
-+'123123'   123123
-+123        123
-+undefined  NaN
-
-# !
-![]         false
-!''         true
-!'asdf'     false
-!true       false
-!false      true
-!undefined  true
-
-# [?] 
-[][[]]      undefined
-[][true]    undefined
-[?][?]      undefined # 通常 [][?] 这种类型就是通过找列表对象找不到则返回一个undefined
-
-# ''
-'' + 'asdf'     # 'asdf'        字符串
-'' + 123        # '123'         字符串
-'' + undefined  # 'undefined'   字符串
-'' + true       # 'true'        字符串
-'' + false      # 'false'       字符串
-'' + [true]     # 'true'        字符串
-'' + [false]    # 'false'       字符串
-'' + [123,123]  # '123,123'     字符串
-'' + NaN        # 'NaN'         字符串
-
-# []
-同上，都会生成字符串
-
-# 123
-123 + 'asdf'    # 字符串
-123 + 123       # 数字
-123 + undefined # NaN
-123 + true      # 124
-123 + false     # 123
-123 + [true]    # 字符串
-123 + [false]   # 字符串
-123 + [123,123] # '123123,123'
-123 + NaN       # NaN
-
-
-
-自行实现js的计算，统计一下所有的类型：
-数字
-字符串
-undefined
-true,false 
-null
-NaN
-
-'''
+# 目前在解密上已经有比较好的完成度，不过在 “函数映射” 的处理上还是会差一点
+# 由于是将特殊类型的作硬编码处理了，会有部分特殊符号因为被我使用到
+# 所以转换出来后会有部分因为逻辑关系出现错误，后续会继续修改
+# & [']']
+# ' error
+# , ["+"]
+# : ['c']
+# ? ['n']
+# @ ['[']
+# \ ['\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\']
+# ` [')']
+# ~ ['(']
+# 将这九个符号的bug处理完，jsfuck的通用解密大概应该是可以完成了
+# 因为不同的 jsfuck 使用者会使用不同的 jsfuck 处理方式，所以还是需
+# 部分硬编码会作为一个开关的接口，若是不需要解硬编码的部分，可以关掉，处理完bug会考虑这个。
 
 import re
+import urllib.parse
 
 def cuter(string, force=True):
     # 正确的分割算数单元，结果返回一个列表
@@ -267,17 +219,24 @@ def allplus(ls):
         [r"^!\+\['([^']+)'\]$",         "true",     _boolen],
         [r'^!\+\[(\d+)\]$',             "_int_",    _boolen],
         [r'^!\+\[\w+\]$',               "true",     _boolen],
-        # 101['toString'](21)[1]
-        [r"^(\d+)\['toString'\]\('?(\d+)'?\)\[('?\d+'?)\]$","_base_n",  _str],
+        [r"^(\d+)\['toString'\]\('?(\d+)'?\)\[('?\d+'?)\]$","_base_n",  _str], # 101['toString'](21)[1]
         [r"^(\d+)\['toString'\]\('?(\d+)'?\)$",             "_base_n2", _str],
         [r"^'([^']*)'\['italics'\]\(\)\[('?\d+'?)\]$",      "_itafunc", _str], # 'false0'['italics']()['10']
-        # ''['fontcolor']()['12']
+        [r"^'([^']*)'\['fontcolor'\]\(\)\[('?\d+'?)\]$",    "_fontfunc",_str], # ''['fontcolor']()['12']
         # ['']['concat']('')+[]
         [r"^\+?\d+\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",     "_numfunc2",_func], # []['filter']['constructor']
         [r"^\+?'[^']*'\['([^']+)'\]\['([^'\[\]]+)'\]$",     "_strfunc2",_func],
         [r"^\+?\[\]\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",    "_arrfunc2",_func],
         [r"^\+?true\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",    "_boofunc2",_func],
         [r"^\+?false\['([^'\[\]]+)'\]\['([^'\[\]]+)'\]$",   "_boofunc2",_func],
+        # 下面这些应该是目前为止最TM硬的硬编码了
+        [r"\[\]\['filter'\]\['constructor'\]\('return escape'\)\(\)\('(.)'\)\['?(\d+)'?\]",     '_escape',  _str],
+        [r"\[\]\['filter'\]\['constructor'\]\('return unescape'\)\(\)\('([^']+)'\)",            '_unescape',_str],
+        [r"\[\]\['filter'\]\['constructor'\]\('return/0/'\)\(\)\['constructor'\]",              '_regexp',  _str],
+        [r"\[\]\['filter'\]\['constructor'\]\('return new Date\(200000000\)'\)\(\)",            '_date',    _str],
+        [r"\[\]\['filter'\]\['constructor'\]\('return new Date\(24000000000\)'\)\(\)",          '_date2',   _str],
+        [r"\[\]\['filter'\]\['constructor'\]\('return Date'\)\(\)\(\)",                         '_date3',   _str], # []['filter']['constructor']('return Date')()()
+        [r"\[\]\['filter'\]\['constructor'\]\('return this'\)\(\)",                             '_window',  _str], # []['filter']['constructor']('return Date')()()
     ]
     arrf = [
         "concat",      "copyWithin",  "entries",     "every",       "fill",
@@ -402,8 +361,16 @@ def allplus(ls):
                 elif i[1] == '_numfunc2': _parse_get_func(_get_func2, 'num', i, v)
                 elif i[1] == '_boofunc2': _parse_get_func(_get_func2, 'boo', i, v)
                 elif i[1] == '_itafunc':  i[1] = "<i>{}</i>".format(v[0][0])[int(v[0][1].strip("'"))]
+                elif i[1] == '_fontfunc': i[1] = '<font color="undefined">{}</font>'.format(v[0][0])[int(v[0][1].strip("'"))]
                 elif i[1] == '_base_n':   i[1] = base_n(*map(int,v[0]))
                 elif i[1] == '_base_n2':  i[1] = base_n(*map(int,v[0]))
+                elif i[1] == '_escape':   i[1] = urllib.parse.quote(v[0][0].encode())[int(v[0][1])]
+                elif i[1] == '_unescape': i[1] = urllib.parse.unquote(v[0])
+                elif i[1] == '_regexp':   i[1] = "function RegExp() { [native code] }"
+                elif i[1] == '_date':     i[1] = "Sat Jan 03 1970 15:33:20 GMT+0800"
+                elif i[1] == '_date2':    i[1] = "Tue Oct 06 1970 02:40:00 GMT+0800"
+                elif i[1] == '_date3':    i[1] = "Sat Jan 03 1970 15:33:20 GMT+0800"
+                elif i[1] == '_window':   i[1] = "[object Window]"
                 return i
         return ['', s, _unfind]
     def parse_type(xv, xt, tp):
@@ -469,6 +436,7 @@ def allplus(ls):
     p = []
     if len(l) < 2:
         v = get_fit(l.pop())
+        # if v[-1] == _unfind: print('\n\n------------- error unfind. {}\n\n'.format(v))
         if v[2] == _str: 
             return repr(v[1])
         v = parse_type(v[1], v[2], _str)
@@ -479,6 +447,8 @@ def allplus(ls):
         if len(p) == 2:
             left  = get_fit(p[0])
             right = get_fit(p[1])
+            # if left[-1]  == _unfind: print('\n\n------------- error unfind left. {}\n\n'.format(left))
+            # if right[-1] == _unfind: print('\n\n------------- error unfind right. {}\n\n'.format(right))
             p = [_plus(left, right)]
     return repr(p[0][1]) if p[0][2] == _str else p[0][1]
 
@@ -488,19 +458,24 @@ def some(s, dlevel=10, log=False):
     暂时还没有解决 ''['length'] 的问题，不过实际上 jsfuck 本身生成就已经很重了
     一般也很少用复杂函数混肴生成比原本还要更加大几倍的超大字符串，会影响性能。
     '''
-    unique, unit   = '##', '[]'
-    _unique, _unit = '**', '()'
     uleft, uright  = '@', '&'
-    pleft, pright  = '%', '`'
-    x = r'(^|\+|\[|\(|\)|\]|%s|%s|%s|%s|%s|%s)' % (uright, pright, uleft, pleft, unique, '\\' + _unique)
+    pleft, pright  = '~', '`'
+    unique, unit   = uleft+uright, '[]'
+    _unique, _unit = pleft+pright, '()'
+    x = r'(^|\+|\[|\(|\)|\]|%s|%s|%s|%s)' % (uright, pright, uleft, pleft)
     expa = x + r'(\([^\(\)\[\]]+\))' + x # 找到计算块
     expb = r'\[[^\(\)\[\]]+\]'
     expc = r"'[^']*'"
-    expd = r"\[([a-zA-Z0-9$_']+)\]"
+    elef = erit = r"([\)|\]|{}|{}|\(|\[|{}|{}])".format(uright, pright, uleft,  pleft)
+    expd = elef + r"\(('[^']*')\)" + erit
+    expf = r"\[([a-zA-Z0-9$_']+)\]"
     expe = r"\(([a-zA-Z0-9$_']+)\)"
     def _repa(string): return string.replace('[',uleft).replace(']',uright).replace('(',pleft).replace(')',pright)
     def _repb(string): return string.replace(uleft,'[').replace(uright,']').replace(pleft,'(').replace(pright,')')
-    def _repc(string): return allplus(cuter( _repb(string[1:-1].replace(unique,unit).replace(_unique,_unit)) ))
+    def _repc(string): 
+        # print(_repb(string[1:-1]), 'precut')
+        # print(cuter( _repb(string[1:-1]) ), 'cuter')
+        return allplus(cuter( _repb(string[1:-1]) ))
     def parse_idxstr(string):
         '''
         将解析差不多干净的字符串下标单字部分清理成单个字符串
@@ -508,17 +483,17 @@ def some(s, dlevel=10, log=False):
         '''
         a = r"(^|\+)'([^']*)'\[(\d+)\]"
         b = r"(^|\+)'([^']*)'\['(\d+)'\]"
-        c = r"'([^']*)'\[(\d+)\]($|\+)"
-        d = r"'([^']*)'\['(\d+)'\]($|\+)"
+        c = r"([^\)\]])'([^']*)'\[(\d+)\]($|\+)"
+        d = r"([^\)\]])'([^']*)'\['(\d+)'\]($|\+)"
         x = r"(?:(?:^|\+)?'[^'\[\]\(\)\+]+')+([^\[])"
         def _inindex(g, left=True):
-            s = g.group(2)      if left else g.group(1)
-            i = int(g.group(3)) if left else int(g.group(2))
+            s = g.group(2)
+            i = int(g.group(3))
             if i > len(s):
                 r = 'undefined'
             else:
                 r = s[i]
-            return g.group(1) + repr(r) if left else repr(r) + g.group(3)
+            return g.group(1) + repr(r) if left else g.group(1) + repr(r) + g.group(4)
         _inindex_left  = lambda g:_inindex(g)
         _inindex_right = lambda g:_inindex(g, left=False)
         def _combine_single(g):
@@ -535,31 +510,35 @@ def some(s, dlevel=10, log=False):
         v = re.sub(c, _inindex_right, v)
         v = re.sub(d, _inindex_right, v)
         v = re.sub(x, _combine_single, v)
-        v = re.sub(r"([\]\)])('[^']+')([\(\[])", lambda i:i.group(1) + "({})".format(i.group(2)) + i.group(3), v)
+        # v = re.sub(r"([\]\)])('[^']*')([\(\[])", lambda i:i.group(1) + "({})".format(i.group(2)) + i.group(3), v)
         return v
 
     v = s
     def e(g): return _repa(g.group(0))                  # 规避函数
     def h(g): return uleft + g.group(1) + uright        # 规避函数
     def i(g): return pleft + g.group(1) + pright        # 规避函数
-    def j(g): return '[{}]'.format(_repc(g.group(0)))    # 处理抽取中括号中的计算体
-    def f(g): 
+    def j(g): return g.group(1) + pleft + g.group(2) + pright + g.group(3)
+    def l(g): return '[{}]'.format(_repc(g.group(0)))    # 处理抽取中括号中的计算体
+    def k(g): 
         l, c, r = _repb(g.group(1)), _repc(g.group(2)), _repb(g.group(3))
-        return (l + '({})'.format(c) + r) if l in (')',']') or r in ('(',) else (l + c + r)
+        return (l + '({})'.format(c) + r) if l in (')',']',uright,pright,_unit) or r in ('(',pleft) else (l + c + r)
     for _ in range(dlevel):
         v = v.replace(unit,unique).replace(_unit,_unique)
         v = re.sub(expc, e, v) # 规避字符串内的中小括号
-        v = re.sub(expd, h, v) 
+        v = re.sub(expf, h, v) 
         v = re.sub(expe, i, v) 
-        if log: print(v)
-        v = re.sub(expa, f, v) # 从小括号中的内容获取解析式，并计算
-        v = _repb(v.replace(unique,unit).replace(_unique,_unit))
+        v = re.sub(expd, j, v) 
+        if log: print(v, 111111111111111)
+        v = re.sub(expa, k, v) # 从小括号中的内容获取解析式，并计算
+        v = _repb(v)
         v = v.replace(unit,unique).replace(_unit,_unique)
         v = re.sub(expc, e, v)
-        v = re.sub(expd, h, v)
+        v = re.sub(expf, h, v)
         v = re.sub(expe, i, v) 
-        v = re.sub(expb, j, v) # 从中括号中的内容获取解析式，并计算
-        v = _repb(v.replace(unique,unit).replace(_unique,_unit))
+        v = re.sub(expd, j, v) 
+        if log: print(v, 222222222222222)
+        v = re.sub(expb, l, v) # 从中括号中的内容获取解析式，并计算
+        v = _repb(v)
         v = parse_idxstr(v)
         if v != s: 
             s = v
@@ -674,33 +653,29 @@ __cw, __xw = ' ', '(+[![]]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])
 # ABCDEFGHIJKLMNOPQRSTUVWXYZ            验证：目前已经全部正常
 # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~    验证：目前已经全部正常（这里包含空格，且空格解析正常）
 
-# 0123456789abcdefghijklmnopqrstuvwxyz
-for i in '0123456789abcdefghijklmnopqrstuvwxyz':
-    q = locals()['_{}'.format(i)]
-    f = some('[{}]'.format(q), 10)
-    print(i,f)
+# # 0123456789abcdefghijklmnopqrstuvwxyz
+# for i in '0123456789abcdefghijklmnopqrstuvwxyz':
+#     q = locals()['_{}'.format(i)]
+#     f = some('[{}]'.format(q), 10)
+#     print(i,f)
 
-# ABCDEFGHIJKLMNOPQRSTUVWXYZ
-for i in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
-    try:
-        q = locals()['_{}'.format(i)]
-        f = some('[{}]'.format(q), 11)
-        print(i,f)
-    except:
-        print(i,'error')
+# # ABCDEFGHIJKLMNOPQRSTUVWXYZ
+# for i in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+#     try:
+#         q = locals()['_{}'.format(i)]
+#         f = some('[{}]'.format(q), 11)
+#         print(i,f)
+#     except:
+#         print(i,'error')
 
-# !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ （最后一位是空格）
-for i in '0123456789abcdefghijklmnopqrstuvw':
-    try:
-        p, q = locals()['__c{}'.format(i)], locals()['__x{}'.format(i)]
-        f = some('[{}]'.format(q), 10)
-        print(p, f)
-    except:
-        print(p, 'error')
+# # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ （最后一位是空格）
+# for i in '0123456789abcdefghijklmnopqrstuvw':
+#     try:
+#         p, q = locals()['__c{}'.format(i)], locals()['__x{}'.format(i)]
+#         f = some('[{}]'.format(q), 10)
+#         print(p, f)
+#     except:
+#         print(p, 'error')
 
-
-f = some('['+__xv+']', 10, log=True)
+f = some('['+_Q+']', 10, log=True)
 print(f)
-
-# s = "('r'+'et'+([]['']+[])[0]+'r'+([]['']+[])[1]  +(![]+[0])[([false]+[][''])[+!+[]+[0]]+'tal'+([false]+[][''])[+!+[]+[0]]+([]['f'+([false]+[][''])[+!+[]+[0]]+'lter']+[])[3]+'s']()[+!+[]+[0]]+[0]+(![]+[0])[([false]+[][''])[+!+[]+[0]]+'tal'+([false]+[][''])[+!+[]+[0]]+([]['f'+([false]+[][''])[+!+[]+[0]]+'lter']+[])[3]+'s']()[+!+[]+[0]])"
-# print(some(s))
