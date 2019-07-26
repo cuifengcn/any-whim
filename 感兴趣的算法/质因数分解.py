@@ -14,24 +14,6 @@ def isprime_mr(a,b=None):
                 t //= 2
     return True
 
-# 普通的质因数分解函数：配合素性测试的质因数分解，速度较慢，勉强处理亿等级数字足够
-def prime_list(curr):
-    if isprime_mr(curr): return [curr]
-    ret = []
-    limit = int(curr**.5)+1
-    index = 1
-    while index < limit:
-        index += 1
-        if isprime_mr(index):
-            if curr%index == 0:
-                curr  = curr//index
-                limit = int(curr**.5)+1
-                ret.append(index)
-                index -= 1
-                if isprime_mr(curr):
-                    return ret + [curr]
-    return ret
-
 # Pollcard Rho 质因数分解，比普通质因分解更好的一种算法，能处理更大的数字
 def prime_list_rho(n,root=None):
     # 之所以不用 def prime_list_rho(n,root=[]): 的方式是因为这里有坑
@@ -64,21 +46,6 @@ def prime_list_rho(n,root=None):
                 j <<= 1
             i += 1
 
-
-def test_normal(num):
-    print('============ normal ================')
-    import time
-    c = time.time()
-    v = prime_list(num)
-    q = 1
-    for i in v:
-        q *= i
-    print('test_rho:',v)
-    print('test num:      ',num)
-    print('multiplicative:',q)
-    print('==================== cost time:',time.time()-c)
-    print();print();print()
-
 def test_rho(num):
     print('=========== Pollcard Rho ============')
     import time
@@ -97,7 +64,5 @@ def test_rho(num):
     print('==================== cost time:',time.time()-c)
     print();print();print()
 
-test_rho   (12345678987654321)
-test_normal(12345678987654321)
-
-test_rho   (2222222222222222222222222222)
+test_rho(12345678987654321)
+test_rho(2222222222222222222222222222)

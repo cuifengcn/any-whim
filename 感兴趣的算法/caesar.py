@@ -1,26 +1,36 @@
-def caesar(t, n, l='abcdefghijklmnopqrstuvwxyz'):
-    s = list(l)
+def caesar(t, n, keys='abcdefghijklmnopqrstuvwxyz'):
+    s = list(keys)
     r = ''
     for i in t:
         if i in s:
-            r += s[(s.index(i) + n)% len(l)]
+            r += s[(s.index(i) + n)% len(keys)]
         else:
             r += i
     return r
 
-def map_caesar(t, func=None, l='abcdefghijklmnopqrstuvwxyz'):
-    left = len(l) // 2
-    right = len(l) - left
-    ls = []
-    for n in range(-left, right, 1):
-        v = caesar(t, n, l)
+def map_caesar(t, func=None, keys='abcdefghijklmnopqrstuvwxyz'):
+    l = len(keys) // 2
+    r = len(keys) - l
+    o = []
+    for n in range(-l, r, 1):
+        v = caesar(t, n, keys)
         v = func(v) if func else v
-        ls.append(v)
-    return ls
+        o.append(v)
+    return o
+
+
+import base64
+import hashlib
+def func(i):
+    e = base64.b64encode
+    return e(i.encode()).decode()
+
+def func2(i):
+    v = hashlib.new('md5',i.encode())
+    v = v.hexdigest()
+    return v
 
 if __name__ == '__main__':
-    import base64
-    func = lambda i:base64.b64encode(i.encode()).decode()
     v = map_caesar('asdf', func)
     for i in v:
         print(i)
