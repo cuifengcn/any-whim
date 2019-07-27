@@ -212,8 +212,9 @@ def idea_decrypt(key:bytes, plaintext:bytes, defunc=base64.b64decode):
 
 if __name__ == '__main__':
     key = "1234567812345678".encode()   # 必须为16位
-    plaintext = "1234567812345678".encode() # 如果没有PKCS7，则必须为8的倍数，每次加密使用八位，加密后加和在一起，ecb模式
+    plaintext = "1234567812345678".encode() # 如果没有PKCS7，则必须为8的倍数，每次加密使用八位，加密后加和在一起
 
+    # 这种直接加密的方式不需要使用 iv 也就相当于 ecb 的模式
     v = idea_encrypt(key, plaintext)
     print(v)
     v = idea_decrypt(key, v)
