@@ -3,7 +3,7 @@
 
 import decimal
 
-# 使用自带函数库实现高精度计算，十进制100位已经够用
+# 使用自带函数库实现高精度计算，十进制1000位已经够用
 decimal.getcontext().prec = 1000
 Decimal = decimal.Decimal
 
