@@ -427,40 +427,96 @@ def PKCS7_padding(data, num):
 def PKCS7_unpadding(data):
     return data[:-data[-1]]
 
+
+#CBC Encrypt - Jason Reaves
+def twofish_cbc_encrypt(key, data, iv=b'\x00'*16):
+    out = b""
+    last = iv
+    if len(iv) != 16: raise KeyError('iv len must be 16(128bit).')
+    cryptor     = Twofish(key)
+    for i in range((len(data)//16)):
+        temp = data[i*16:(i+1)*16]
+        to_encode = b""
+        for j in range(4):
+            temp1 = struct.unpack_from('<I', temp[j*4:])[0]
+            temp2 = struct.unpack_from('<I', last[j*4:])[0]
+            to_encode += struct.pack('<I',((temp1 ^ temp2) & 0xffffffff))
+        last= cryptor.encrypt(to_encode)
+        out += last
+    return out
+
+#CBC Decrypt - Jason Reaves
+def twofish_cbc_decrypt(key,data,iv=b'\x00'*16):
+    out2 = b""
+    last = iv
+    if len(iv) != 16: raise KeyError('iv len must be 16(128bit).')
+    cryptor     = Twofish(key)
+    for i in range((len(data)//16)):
+        temp = cryptor.decrypt(data[i*16:(i+1)*16])
+        to_decode = b""
+        for j in range(4):
+            temp1 = struct.unpack_from('<I', temp[j*4:])[0]
+            temp2 = struct.unpack_from('<I', last[j*4:])[0]
+            to_decode += struct.pack('<I',((temp1 ^ temp2) & 0xffffffff))
+        out2 += to_decode
+        last = data[i*16:(i+1)*16]
+    return out2
+
+
 import base64
 def twofish_encrypt(
         key:bytes,          # 必须为 16，24，32 位
         plaintext:bytes,    # 如果没有PKCS7，必须位 16 的倍数
+        iv = None,
+        mode= 'cbc',
         enfunc=base64.b64encode,
     ):
     # 默认使用 PKCS7 的方式对数据块进行加密
     block_size  = 16
     _plaintext  = PKCS7_padding(plaintext, block_size)
-    cryptor     = Twofish(key)
-    ret = b''
-    for i in range(0, len(_plaintext), block_size):
-        ret += cryptor.encrypt(_plaintext[i:i+block_size])
-    return enfunc(ret)
+    if mode == 'cbc':
+        plaintext = PKCS7_padding(plaintext, block_size)
+        return enfunc(twofish_cbc_encrypt(key, plaintext, iv))
+    elif mode == 'ecb':
+        cryptor     = Twofish(key)
+        ret = b''
+        for i in range(0, len(_plaintext), block_size):
+            ret += cryptor.encrypt(_plaintext[i:i+block_size])
+        return enfunc(ret)
 
 def twofish_decrypt(
         key:bytes, 
         plaintext:bytes, 
+        iv = None,
+        mode= 'cbc',
         defunc=base64.b64decode,
     ):
     block_size  = 16
     _plaintext  = defunc(plaintext)
-    cryptor     = Twofish(key)
-    ret = b''
-    for i in range(0, len(_plaintext), block_size):
-        ret += cryptor.decrypt(_plaintext[i:i+block_size])
-    return PKCS7_unpadding(ret)
+    if mode == 'cbc':
+        plaintext = defunc(PKCS7_padding(plaintext, block_size))
+        return PKCS7_unpadding(twofish_cbc_decrypt(key, plaintext, iv))
+    elif mode == 'ecb':
+        cryptor     = Twofish(key)
+        ret = b''
+        for i in range(0, len(_plaintext), block_size):
+            ret += cryptor.decrypt(_plaintext[i:i+block_size])
+        return PKCS7_unpadding(ret)
 
 if __name__ == '__main__':
     key         = b'1234567812345678' # 必须为 16，24，32 位
     plaintext   = b'1234567812345678' # 如果没有PKCS7，则必须为 16 的倍数
+    iv          = b'1234567812345678' # 必须为 16 位
 
     # 这种直接加密的方式不需要使用 iv 也就相当于 ecb 的模式
-    v = twofish_encrypt(key, plaintext)
+    v = twofish_encrypt(key, plaintext, iv=iv, mode='cbc')
     print(v)
-    v = twofish_decrypt(key, v)
+    v = twofish_decrypt(key, v, iv=iv, mode='cbc')
+    print(v)
+
+
+    # 这种直接加密的方式不需要使用 iv 也就相当于 ecb 的模式
+    v = twofish_encrypt(key, plaintext, iv=iv, mode='ecb')
+    print(v)
+    v = twofish_decrypt(key, v, iv=iv, mode='ecb')
     print(v)

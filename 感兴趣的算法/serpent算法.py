@@ -3047,7 +3047,7 @@ if __name__ == '__main__':
     print(s)
 
 
-    s = serpent_encrypt(key, plaintext, mode='ecb')
+    s = serpent_encrypt(key, plaintext, iv=None, mode='ecb')
     print(s)
-    s = serpent_decrypt(key, s, mode='ecb')
+    s = serpent_decrypt(key, s, iv=None, mode='ecb')
     print(s)
