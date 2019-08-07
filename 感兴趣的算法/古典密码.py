@@ -356,3 +356,30 @@ if __name__ == '__main__':
     print(s)
     s = bacon_v2_dec(s)
     print(s)
+
+
+
+# railfence                 # 栅栏密码
+# rot13                     # 循环位移密码
+# caesar                    # 凯撒密码
+
+# simplesubstitution        # 简单换位密码      # 就是简单的一一对应置换的密码，大量数据可以通过频谱分析进行处理，不过单条解密仍需密码解密
+# vigenere                  # 维吉尼亚密码
+# atbash                    # 埃特巴什码密码：a->z,b->y,...,z->a
+# affine                    # 仿射密码
+# beaufort                  # 博福德密码
+# bifid                     # 双密码 
+# columnartransposition     # 列位移密码
+# delastelle                # 三分密码
+# enigma                    # 恩格尼密码 
+# foursquare                # 四方密码
+# polybius                  # 棋盘密码
+# porta                     # 多表代换密码
+# fracmorse
+# gronsfeld
+# m209
+# playfair
+# adfgvx
+# adfgx
+# autokey
+
