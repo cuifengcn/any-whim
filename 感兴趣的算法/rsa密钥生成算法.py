@@ -1,5 +1,7 @@
 # 根据二进制数字长度需求生成rsa密钥，length需要为2的倍数
-def create_rsa_key(length=1024):
+def create_rsa_key(length=1024, e=65537):
+    # 参数 e 一定不能为 2，否则算法失效。
+    if e == 2: raise KeyError('The parameter E must not be equal to 2.')
     # miller-rabin 算法素性检测
     def isprime_mr(a,b=None):
         # 暂时选一百以内的全部素数作为检测标准
@@ -19,13 +21,13 @@ def create_rsa_key(length=1024):
         return True
     # 根据长度随机迭代，获取质数
     import random
-    def get_prime(halflen):
-        rd = random.randint(1<<(halflen-1),1<<(halflen))
-        rd = rd+1 if rd%2==0 else rd
+    # 根据长度随机迭代，获取质数
+    def get_prime(bitlen=1024):
+        num = (1<<(bitlen-1)) + random.randint(0,1<<(bitlen-1)) | 1
         while True:
-            rd += 2
-            if isprime_mr(rd):
-                return rd
+            num += 2
+            if isprime_mr(num):
+                return num
     # 确保公共参数n的位数，以便保证密钥长度。
     while True:
         p = get_prime(length//2)
@@ -45,8 +47,11 @@ def create_rsa_key(length=1024):
         return (x,y,r)
     # 由于主动设定了e为素数，所以一次获取肯定能获取到符合要求的模逆元
     # 该数也是一般通用标准，是为了方便计算机计算而选的数字：0x10001==65537
-    e = 65537 
+    # 值得注意的是，如果模拟元 b 等于 1 时就会出现 rsa 加密失效的情况，需要非常注意
+    # 同时 当加密参数 e == 2 的时候模拟元基本就等于 1 所以，加密参数一定不能是 2
+    # 当 e 为大于 2 的素数并且 e 的值很小时会有一定几率模拟元等于 1 的情况
     a, b, r = ex_gcd(fn, e)
+    if b == 1: return create_rsa_key(length, e)
     d = b + fn
     # 公钥n,e 私钥n,d
     return e,d,n
