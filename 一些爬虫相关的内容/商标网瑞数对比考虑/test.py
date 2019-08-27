@@ -268,10 +268,12 @@ def me(lk):
         return al(lk)
     return _
 def bq(lk, ca):
+    mapls = []
     for i in range(len(ca)):
         a = al(lk[i])
         b = me(ca[i])
-        print(a,b())
+        mapls.append(a,b())
+    return mapls
 
 
 import time
@@ -424,7 +426,7 @@ def decrypt3(rx, r5, ca):
         si = r8(1)
         r8(1)
         eh = r8(1)
-        print('============',al(su),hc(si,eh)) # 这里函数未完成，不过暂时不影响js字符串的解密
+        # print('============',al(su),hc(si,eh)) # 这里函数未完成，不过暂时不影响js字符串的解密
 
     # qp = int(time.time()*1000)
     sb = '`'
@@ -448,8 +450,8 @@ def decrypt3(rx, r5, ca):
     sr = [fw, im, [], kv, pl]
     bd = [None,None,None,None,None,st,r8,c3]
     lk = r8(1)
-    bq(im, qm)
-    print(al(lk)) # 这里赞数未完成
+    # print(al(lk)) # 这里暂时未完成
+    return bq(im, qm), al(lk)
 
 
 def mq():
@@ -461,7 +463,7 @@ def mq():
     lk = a5() # 这个函数用到了全局参数 content
     sb = a5() # 这个函数用到了全局参数 content
     qb, db, sl = sb
-    decrypt3(ec, st, lk)
+    return decrypt3(ec, st, lk)
 
 
 
@@ -504,8 +506,19 @@ for _ in pk2:
     v[0] = '_$' + v[0] + '()'
     print(v,end=',\n')
 print('---------- 3 -------------')
-mq()
+v = mq()
 
 
 
+
+# 后续动态生成一些代码需要整理的部分。
+# # 解密后的 eval 字符串
+# # 这里需要去除一个函数才能使用，解释起来挺复杂的，不详细说了。
+# mapls, s = mq()
+# for a,b in mapls:
+#     s = s.replace(a + '()', repr(b))
+# v = re.findall(r'var _\$\w{2}=\[\];_\$\w{2}\(\)', s)[0].split(';')[-1]
+# s = s.replace(v+';', '')
+# print(repr(s))
+# print(v)
 
