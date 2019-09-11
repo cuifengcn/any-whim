@@ -1,0 +1,41 @@
+# 主页
+http://wenshu.court.gov.cn/website/wenshu/181217BMTKHNT2W0/index.html?s8=02
+
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9
+Cache-Control: no-cache
+Cookie: _gscu_2116842793=59790526j2yoz120; Hm_lvt_d2caefee2de09b8a6ea438d74fd98db2=1564553856,1566966079; HM4hUBT0dDOn80S=4AtguDTrfEU5ev8LhNh8gkPhYAxfYuWa9cc2wBxYJD2mb5vf8_ktHUTiX8BtAWfM; SESSION=28a0689e-3638-472a-b702-dda129610200; HM4hUBT0dDOn80T=4lXanAALzhAsc59P65HDhM8XIhOhFudDUq2jWkkC18JGf_yEyOYNf8qo3RG2_reAO8JvOOFHX0VPRemOFjpV43HLir1eZG1_1NlhdFy5LF9uzwdaDdjpIgeEHz.vIs9QwloNRJfu5Zh8WxQn.AcaKwb.0OXuf4hKWZ6AjmzVyrGwDiZfoeKPAs8p62EQmZxggF4ea1jW_T5bPgFbhRPgBc4RrDLpos_ceWOMyglaFZcbkW.hBpCtlxma2sUCUTOqontDtLHEFhLL83rMGhfyavKBfzPK7kLZuV0vsyEYO8hOKTNNOqiPCP9bKMeoqSQxf4g7
+Host: wenshu.court.gov.cn
+Pragma: no-cache
+Proxy-Connection: keep-alive
+Referer: http://wenshu.court.gov.cn/website/wenshu/181217BMTKHNT2W0/index.html?s8=02
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36
+
+
+# 数据请求
+http://wenshu.court.gov.cn/website/parse/rest.q4w?HifJzoc9=4wENVxCSh1Ct9vc4pvNIzcg6y1m1ZjRISRkujF2B0o.yoOIpI_uaoob85qDZQ3Mxmo.5m_ZKEzn4d9O_Zu6JwrNSLGr8PV0GO9xOQYILviayVE0cMDAnk2flNQNI05fWbuWWQtjbKr0byYn.jQ6bcNfvTeZoRwlYKM1gmf_E5JcoZciKY0nQ6aYT0hKyeiLz1pUFtZ7iMhv2P84XHjUx2hUBY94PyCIGOVs2CKatAiyzX042dfPOSZY7HhWxdbw__ZCd3InlSap5ePUQaqIi4VDMG2AG0s1oqTQro4DiQ6ikTOsB4fzuk7u6j5KAEbBqXPPq3BkaoqidJ7RL6.A1A737V554Ex_aYSky9xpOkwwiDmevUHn2Pnc2Lmi6.0CvVmxn
+
+Accept: application/json, text/javascript, */*; q=0.01
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9
+Cache-Control: no-cache
+Connection: keep-alive
+Content-Length: 739
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Cookie: _gscu_2116842793=59790526j2yoz120; Hm_lvt_d2caefee2de09b8a6ea438d74fd98db2=1564553856,1566966079; HM4hUBT0dDOn80S=4AtguDTrfEU5ev8LhNh8gkPhYAxfYuWa9cc2wBxYJD2mb5vf8_ktHUTiX8BtAWfM; SESSION=28a0689e-3638-472a-b702-dda129610200; HM4hUBT0dDOn80T=4UtxZk0pO30jWzqMyz.dmE_Up3onVGMdRsrscAvHQJNRBNwS6aSABJ95KtlQ01RNzJN8za5CGvaMUXfFVyTzTh.pqeZtEPqfK3mNeOG0k2ARUaw80Y1gp2IvP4ieRQi08iMMMXePg3lir.ABMEaruYeYhW3zgeLWyn5.9O5S3Vg9q1xjgMDx0Ytjz_KR.OwK2vr9XHCnxv_D.a8ojDvQ1v.Jmys8vR0UiFhc4Z9p_mHSJRBoFhMu7WMfblyfmXiA.MDv6J23doM_GRgMBsHAccb8yHbJwijnJpYw5QwFZUNMvGjvfEynlw4fDLa73iLBkaMq
+Host: wenshu.court.gov.cn
+Origin: http://wenshu.court.gov.cn
+Pragma: no-cache
+Referer: http://wenshu.court.gov.cn/website/wenshu/181217BMTKHNT2W0/index.html?s8=02
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36
+X-Requested-With: XMLHttpRequest
+
+s8: 02
+sortFields: s50:desc
+ciphertext: 110010 1001110 1110101 110001 1010101 110111 1010010 1110011 1000110 110000 1001111 1100110 110011 1011001 1001011 1111000 1101110 1110111 1101101 1011000 1011000 1010101 1001101 1010010 110010 110000 110001 111001 110000 111001 110001 110000 110110 110101 1110001 1000001 1111000 1010100 1000010 1001110 110110 1000111 110100 1111001 1101100 1010000 101111 111000 1101001 1111001 110011 1101010 1001101 1010001 111101 111101
+pageNum: 1
+queryCondition: [{"key":"s8","value":"02"},{"key":"cprq","value":"2019-09-09 TO 2019-09-09"}]
+cfg: com.lawyee.judge.dc.parse.dto.SearchDataDsoDTO@queryDoc
+__RequestVerificationToken: ahkBYQUrSRt2CGULd9ZBfH39
