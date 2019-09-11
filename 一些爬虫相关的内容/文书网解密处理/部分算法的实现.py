@@ -343,3 +343,32 @@ v = _W9("s__ru~qr{f__N_ru~qr{f_@qmpq~;{pq")
 print(v)
 
 
+
+
+
+# 目前分析的结果是 cookie 的设置是放置在 meta 中的 content 之中。
+# 并且下面的 _u3 是个全局变量，其中被设置的两个值都是动态的，暂时没有分析到配置的位置。不过一般来说都是与 content 绑定的（相同的content，则_u3内的数据相同）
+content = "{q~FUfRjMnGvxba1QbYkt2WvVfwuRPVXY1NBMbQeVKY.J0EVUummRSaTAGpbWTyBoKYOrDrj1pJ2ra7AK17hhqrNVCYCR9giVOzEHqE3Uc28mT7WYDYYcmEy8q3icU2jcfVOo6wNxCVTmSZ.kSlmkuyX8SGeJO0swk0ScKQuorpvWsLghcLMtkR2lrJzJGZQkCggDfEaRs93mYA0En0Gorq9cbVblqgDVfSwcSlCk1NAWOG1tka9iOyzcbLqQr3gmbecFVraocTWHV7dccTkipqjDPSxQrLgDb5CFMpa_cCglQGEafUzD.VjdOH8R8e.7O6kF5VHdfvUFj7JeKIGlWqpgG45JHm2c80qKbwk7DB39__gAPMNDaYPdXGqr0l4098h1Ouzhf5VO9qqqqqqqqqqDdfe167txxSU.fKGmAlsQSPql3650h9iIrggUBygKJ1568217323822qqqqqqqqFwKrDV9JKsmrmK0JwA2SJVVpIsq{7EOWAcp7DDmzoAAxuA0SolA7VpYyKFlzAp0pJVVQHpcwpxTR.cnAAISRSDqRrHl7dpSxztVGNAs9WhTEdsP2c3SfbDC2AWYWG1npo8VlyAsmoHwnNDD0VFsfYrD0Eqr1qk162qqq!x7z,aac,amr,asm,avi,bak,bat,bmp,bin,c,cab,css,csv,com,cpp,dat,dll,doc,dot,docx,exe,eot,fla,flc,fon,fot,font,gdb,gif,gz,gho,hlp,hpp,htc,ico,ini,inf,ins,iso,js,jar,jpg,jpeg,json,java,lib,log,mid,mp4,mpa,m4a,mp3,mpg,mkv,mod,mov,mim,mpp,msi,mpeg,obj,ocx,ogg,olb,ole,otf,py,pyc,pas,pgm,ppm,pps,ppt,pdf,pptx,png,pic,pli,psd,qif,qtx,ra,rm,ram,rmvb,reg,res,rtf,rar,so,sbl,sfx,swa,swf,svg,sys,tar,taz,tif,tiff,torrent,txt,ttf,vsd,vss,vsw,vxd,woff,woff2,wmv,wma,wav,wps,xbm,xpm,xls,xlsx,xsl,xml,z,zip,apk,plist,ipaqqqqqU4kUyzUi8kgD7ll6J2MqFBA;k136ZhmGkh094UuJ3HGW.1sJIJ22aoYGwVSTYMPyghCA.8mp4YaWrAGTxlGEkKqmqqV3KSAKYwYVTeKUmJlKlrsr0t1074790464Y1B2tLiUbzlloPVjW1zsZwqqqqqqqq"
+_qf = _g7(content)
+_u3 = lambda:None
+_u3._u3 = 1
+_u3._mz = 9
+for i in range(64):
+    try:
+        print(i, _sX(_8o(_CB(i))).decode()) # 这里是 HM4hUBT0dDOn80T 的一次的变化，后续的还会再变化一次。
+    except:
+        pass
+
+print('\n\n\n----------------------------------------------------------------\n\n\n')
+
+for idx, i in enumerate(_qf):
+    print(idx, i)
+
+
+# print(_CB(6))
+# v = _tp('zkOCGNGLhwSyXir8bIJTuV6Ffwr1TheeXQoifFRZErzkjIgMlqjK0xA92uo7wTv61YUPMTE2UcdEXLD0tuROumSeodCJYD6uqW8CnoidrFAcunitAiHQbfDj6sSrcyDzzp0C2id5wbfpYU7o6VIhO0RO4VEuo1Dw3jBx4fP8BHgJSYfusS3wEPHWf5Rni0qXacFc2.N454SDEKLBQMjGLqXs')
+# print(v)
+# print(len(v))
+# for idx,i in enumerate(v[:65]):
+#     v[idx] ^= 162
+# print(v)
