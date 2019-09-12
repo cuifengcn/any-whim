@@ -225,6 +225,88 @@ s = r'''
         }
         return _$nR.apply(null, _$Iz);
     }
+
+    function _$6t(_$s6, _$DS) {
+        if (_$DS === _$Sj || _$DS)
+            _$W_ |= _$s6;
+    }
+    function _$Tg(_$s6) {
+        var _$K5 = _$MF.Math[_$k1[55]](_$MF.Math[_$k1[550]]() * 256);
+        _$s6 = _$s6[_$k1[8]](_$jn(_$3n()));
+        for (var _$k9 = 0; _$k9 < _$s6.length; _$k9++) {
+            _$s6[_$k9] ^= _$K5;
+        }
+        _$s6[_$k9] = _$K5;
+        return _$s6;
+    }
+    function _$jn(_$s6) {
+        return [(_$s6 >>> 24) & 0xFF, (_$s6 >>> 16) & 0xFF, (_$s6 >>> 8) & 0xFF, _$s6 & 0xFF];
+    }
+
+
+    function _$9t(_$s6) {
+        var _$K5 = _$s6[_$k1[1]](0);
+        if (_$K5.length < 5) {
+            return;
+        }
+        var _$k9 = _$K5.pop();
+        var _$Eo = 0
+          , _$Ye = _$K5.length;
+        while (_$Eo < _$Ye) {
+            _$K5[_$Eo++] ^= _$k9;
+        }
+        var _$td = _$K5.length - 4;
+        var _$fI = _$3n() - _$rH(_$K5[_$k1[1]](_$td))[0];
+        _$K5 = _$K5[_$k1[1]](0, _$td);
+        var _$b8 = _$MF.Math[_$k1[5]](_$MF[_$k1[78]].log(_$fI / 1.164 + 1));
+        var _$E3 = _$K5.length;
+        var _$sZ = [0, _$rL._$S1][_$U$];
+        _$Eo = 0;
+        while (_$Eo < _$E3) {
+            _$K5[_$Eo] = _$b8 | (_$K5[_$Eo++] ^ _$sZ);
+        }
+        _$yk(8, _$b8);
+        return _$K5;
+    }
+
+
+    function _$5J(_$cK) {
+        var _$fz = _$cK.length;
+        var _$xA, _$F1 = new Array(_$fz - 1), _$vR = _$cK.charCodeAt(0) - 97;
+        for (var _$Li = 0, _$cU = 1; _$cU < _$fz; ++_$cU) {
+            _$xA = _$cK.charCodeAt(_$cU);
+            if (_$xA >= 40 && _$xA < 92) {
+                _$xA += _$vR;
+                if (_$xA >= 92)
+                    _$xA = _$xA - 52;
+            } else if (_$xA >= 97 && _$xA < 127) {
+                _$xA += _$vR;
+                if (_$xA >= 127)
+                    _$xA = _$xA - 30;
+            }
+            _$F1[_$Li++] = _$xA;
+        }
+        return _$hT.apply(null, _$F1);
+    }
+
+
+
+
+
+
+    function _$TM() {
+        var _$fz = [];
+        for (var _$xA = 0; _$xA < 256; ++_$xA) {
+            var _$F1 = _$xA;
+            for (var _$vR = 0; _$vR < 8; ++_$vR) {
+                if ((_$F1 & 0x80) !== 0)
+                    _$F1 = (_$F1 << 1) ^ 7;
+                else
+                    _$F1 <<= 1;
+            }
+            _$fz[_$xA] = _$F1 & 0xff;
+        }
+        return _$fz;
 '''
 
 import re
