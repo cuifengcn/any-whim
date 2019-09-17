@@ -307,6 +307,36 @@ s = r'''
             _$fz[_$xA] = _$F1 & 0xff;
         }
         return _$fz;
+
+
+
+
+    function _$zj(_$hD, _$pZ) {
+        if (typeof _$hD === _$hB[8])
+            _$hD = _$KH(_$hD);
+        _$pZ = _$pZ || _$aG;
+        var _$OQ, _$uj = _$43 = 0, _$Mr = _$hD.length, _$IB, _$Ug;
+        _$OQ = new _$2T(_$0g[_$hB[91]](_$Mr * 4 / 3));
+        _$Mr = _$hD.length - 2;
+        while (_$uj < _$Mr) {
+            _$IB = _$hD[_$uj++];
+            _$OQ[_$43++] = _$pZ[_$IB >> 2];
+            _$Ug = _$hD[_$uj++];
+            _$OQ[_$43++] = _$pZ[((_$IB & 3) << 4) | (_$Ug >> 4)];
+            _$IB = _$hD[_$uj++];
+            _$OQ[_$43++] = _$pZ[((_$Ug & 15) << 2) | (_$IB >> 6)];
+            _$OQ[_$43++] = _$pZ[_$IB & 63];
+        }
+        if (_$uj < _$hD.length) {
+            _$IB = _$hD[_$uj];
+            _$OQ[_$43++] = _$pZ[_$IB >> 2];
+            _$Ug = _$hD[++_$uj];
+            _$OQ[_$43++] = _$pZ[((_$IB & 3) << 4) | (_$Ug >> 4)];
+            if (_$Ug !== _$iM) {
+                _$OQ[_$43++] = _$pZ[(_$Ug & 15) << 2];
+            }
+        }
+        return _$OQ.join('');
 '''
 
 import re
