@@ -290,10 +290,6 @@ s = r'''
     }
 
 
-
-
-
-
     function _$TM() {
         var _$fz = [];
         for (var _$xA = 0; _$xA < 256; ++_$xA) {
@@ -307,36 +303,6 @@ s = r'''
             _$fz[_$xA] = _$F1 & 0xff;
         }
         return _$fz;
-
-
-
-
-    function _$zj(_$hD, _$pZ) {
-        if (typeof _$hD === _$hB[8])
-            _$hD = _$KH(_$hD);
-        _$pZ = _$pZ || _$aG;
-        var _$OQ, _$uj = _$43 = 0, _$Mr = _$hD.length, _$IB, _$Ug;
-        _$OQ = new _$2T(_$0g[_$hB[91]](_$Mr * 4 / 3));
-        _$Mr = _$hD.length - 2;
-        while (_$uj < _$Mr) {
-            _$IB = _$hD[_$uj++];
-            _$OQ[_$43++] = _$pZ[_$IB >> 2];
-            _$Ug = _$hD[_$uj++];
-            _$OQ[_$43++] = _$pZ[((_$IB & 3) << 4) | (_$Ug >> 4)];
-            _$IB = _$hD[_$uj++];
-            _$OQ[_$43++] = _$pZ[((_$Ug & 15) << 2) | (_$IB >> 6)];
-            _$OQ[_$43++] = _$pZ[_$IB & 63];
-        }
-        if (_$uj < _$hD.length) {
-            _$IB = _$hD[_$uj];
-            _$OQ[_$43++] = _$pZ[_$IB >> 2];
-            _$Ug = _$hD[++_$uj];
-            _$OQ[_$43++] = _$pZ[((_$IB & 3) << 4) | (_$Ug >> 4)];
-            if (_$Ug !== _$iM) {
-                _$OQ[_$43++] = _$pZ[(_$Ug & 15) << 2];
-            }
-        }
-        return _$OQ.join('');
 '''
 
 import re
@@ -346,16 +312,75 @@ for _ in range(10): s = re.sub(r'(\n *\}\n)', r'\n', s)
 s = re.sub(r'(\n *\}\n)', r'\n', s)
 s = re.sub(r'(\n *)\} *([^\n]+\n)', r'\1\2', s)
 s = re.sub(r' *\{ *\n', r':\n', s)
-s = re.sub(r'(\n *)(if *\([^\(\)]+\)) *([^\n\{:]+\n)', r'\1\2:\1    \3' if RETURN else r'\1\2:\3', s)   
-s = re.sub(r'(\n *)else if', r'\1elif', s)
-s = re.sub(r'(\n *)var ', r'\1', s)
-# 这里考虑处理赋值的对齐,不过现在还是有点问题
-# s = re.sub(r'(\n *)([^\n=]+=[^\n=]+), *', r'\1\2', s)
+s = re.sub(r'(\n *)(if *\([^\(\)]+\)) *([^\n\{:]+\n)', r'\1\2:\1    \3', s)   
 
 # 这里考虑处理简单的for循环条件的置换处理,不过这里有很大的变数要处理，后续再搞
-# s = re.sub(r'(\n *)for *\( *([a-zA-Z_][a-zA-Z0-9_]*) *= *(\d+) *; *([a-zA-Z_][a-zA-Z0-9_]*) *< *(\d+) *; *([a-zA-Z_][a-zA-Z0-9_]*)\+\+ *\)', '', s)
+def deal_for(e):
+    g = e.group(1)
+    a,b,c = e.group(2),e.group(3),e.group(4)
+    v = g + a.strip() + g + 'while ({}):'.format(b.strip()) + '  [{}]'.format(c.strip())
+    return v
+s = re.sub(r'(\n *)for *\(([^;]*);([^;]*);([^;]*)\):', deal_for, s)
+def deal_while_1(s):
+    q = []
+    g = None
+    k = None
+    t = 0
+    for i in s.splitlines():
+        if t == 1:
+            v = re.findall(r'^( *)', i)[0]
+            if i.strip() != '':
+                if g is None:
+                    g = len(v)
+                else:
+                    if len(v) < g:
+                        q.append(' '*g + k)
+                        t = 2
+        else:
+            v = re.findall(r'^( *)(while[^\n]+)\[([^\n]+)\] *$', i)
+            if v:
+                i = (v[0][0] + v[0][1]).rstrip()
+                k = v[0][2].strip()
+                t = 1
+        q.append(i)
+    q = '\n'.join(q)
+    if re.findall(r'while[^\n]+\[([^\n]+)\]', q):
+        return deal_while_1(q)
+    else:
+        return q
+s = deal_while_1(s)
+# 处理自增应该在处理循环之后
+s = re.sub(r'(\n *)([^\n]*?)([a-zA-Z0-9_$]+)( *\+\+)([^\n]*)', r'\1\2\3\5; \3 += 1', s)
+s = re.sub(r'(\n *)([^\n]*?)(\+\+ *)([a-zA-Z0-9_$]+)([^\n]*)', r'\1\4 += 1;\2\4\5', s)
+
+def deal_if_1(e):
+    if e.group(2).strip().endswith(':'):
+        return e.group(0)
+    else:
+        return e.group(1) + e.group(2) + ':'
+
+s = re.sub(r'(\n *)(if *\([^\n]*\))', deal_if_1, s)   
+s = re.sub(r'(\n *)else if', r'\1elif', s)
+s = re.sub(r'(\n *)else *', r'\1else:', s)
+s = re.sub(r'(\n *)var ', r'\1', s)
+s = re.sub(r'; *;', r';', s)
+s = re.sub(r': *:', r':', s)
+s = re.sub(r'<<<', r'<<', s)
+s = re.sub(r'>>>', r'>>', s)
+s = re.sub(r'!==', r'!=', s)
+
+
+
+
+# 这里考虑处理赋值的对齐,不过现在还是有点问题
+# s = re.sub(r'(\n *)([^\n=]+=[^\n=]+), *', r'\1\2', s)
 
 
 s = re.sub(r'_\$([a-zA-Z0-9_]{2})', r'_\1', s)    # 文书相关的处理
 s = re.sub(r'; *\n', r'\n', s)                    # 去除尾部分号(非必要)
 print(s)
+
+
+
+
+
