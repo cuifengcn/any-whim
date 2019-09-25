@@ -1,127 +1,5 @@
 # pyinstaller 打包 scrapy 项目成一个 exe 文件的方式
 
-r'''
-# 通过 pyinstaller 将 scrapy 的项目打包成一个 exe 文件
-# 这里不考虑说明 scrapy 需要怎么通过脚本配置命令行那些简单就能实现的功能，
-# 就为了简单的说明怎么将项目和依赖库打包成一个 exe 的功能过程，下面的代码将只是简单执行一次爬虫，什么都不配置
-# 下面的这段就是需要打包的脚本，很像是一个很简单的执行 scrapy 的脚本
-# 不过需要注意的是下面关于工作空间的那三行，这里的理由我不会说得太清楚，
-# 简短的说就是 pyinstaller 打包的单个exe文件执行过程是将所有的依赖和数据先释放在 TEMP 空间
-#     然后再在 TEMP 临时文件空间里面执行，执行完毕然后删除 TEMP 空间缓存。
-#     所以要在生成项目文件的时候找到项目空间的地址，转移执行空间才能通过 get_project_settings 找到项目
-#     才能通过名字找到需要执行的爬虫
-
-import os
-import sys
-import redis # 如果需要使用 scrapy_redis 那么就需要引入 redis
-ocwd = os.getcwd()
-tcwd = os.path.join(sys._MEIPASS)
-os.chdir(tcwd)
-# 通过 os.chdir 将工作空间转到实际存放了项目文件地址的地方。
-# 这样 get_project_settings 才能找到项目，才能通过名字找到需要启动的爬虫
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
-settings = get_project_settings()
-sett = {'host': '47.99.126.229', 'port': 6379, 'password': 'vilame'}
-settings['REDIS_PARAMS'].update(sett) # 配置连接方式
-process = CrawlerProcess(settings)
-process.crawl('v')
-os.chdir(ocwd)
-process.start()
-
-# 上面的脚本注意：
-# 注意 $myproject 这个关键字就是项目包的名字
-# 也就是 startproject 这个参数不含路径的文件夹的名字
-
-打包步骤：
-0. 找到你的 startproject 的文件夹地址，就是里面有 scrapy.cfg 文件的文件夹地址改写该脚本的 startproject 参数
-    （因为该工具是将项目也打包进一个exe文件，所以需要项目的地址）
-    （地址还是怕搞错的话，这里多啰嗦一点）
-    （按照我的示例，我的 scrapy.cfg 地址在：C:\Users\Administrator\Desktop\mytest1\scrapy.cfg）
-    （所以我要将下面的代码改成 startproject = r'C:\Users\Administrator\Desktop\mytest1'）
-1. 在随便一个非scrapy项目地址创建一个任意名字python的脚本 scriptname.py，把上面的注释内的脚本内容拷贝进去
-    （注意 $myproject 的修改，修改成 startproject 不含路径的文件夹的名字）
-    （按照我的例子我就应该修改成 tcwd = os.path.join(sys._MEIPASS, 'mytest1') 即可）
-2. 先直接 pyinstaller -F scriptname.py 生成 scriptname.spec 文件
-3. 执行本脚本（注意要修改 startproject 的值后再实行），将打印出的所有可能几千行的内容直接复制，
-    以文本编辑器模式打开 scriptname.spec 文件，将复制到的内容全部粘贴到
-    binaries=[] 这的中括号里面，注意不要复制粘贴错了。注意不要删除中括号。
-4. 直接执行 pyinstaller -F scriptname.spec 这样就可以生成想要的exe文件了。
-    （注意这里的命令是对 spec 文件使用的。）
-
-*5. 需要注意的是，脚本实际执行的地址是TEMP空间，所以如果需要考虑生成文件或是其他的时候。
-    程序执行地址不是exe所在地址，所以，以上脚本有使用到生成文件功能时注意使用绝对地址。
-    或者直接拼接以上脚本内的 ocwd 这个参数生成在 exe 文件处即可。
-
-后续要进行更多的配置的话，通过修改 scriptname.py 来增加各种配置
-打包的话，还是要 pyinstaller -F scriptname.spec 来进行打包。
-以后我说不定会考虑一键打包的功能，不过现在感觉已经把该说的都说得很清楚了，感觉应该够用了。
-'''
-
-import os
-import sys
-import types
-import shutil
-
-spec_path = []
-def mk_contain_binaries(*files_paths):
-    for files_path in files_paths:
-        rfiles_path = os.path.split(files_path)[0]
-        for path,_,files in os.walk(files_path):
-            for file in files:
-                filepath = os.path.join(path,file)
-                if not path.endswith('__pycache__'):
-                    p1 = filepath
-                    p2 = path.replace(rfiles_path,'')
-                    fmt = r'({},{}),'.format(repr(p1),repr(p2))
-                    spec_path.append(fmt)
-
-def mk_contain_startproject(file_path):
-    rfiles_path,rname = os.path.split(file_path)
-    for path,_,files in os.walk(file_path):
-        for file in files:
-            filepath = os.path.join(path,file)
-            if not path.endswith('__pycache__'):
-                p1 = filepath
-                p2 = '.' + path.replace(rfiles_path,'').split(rname,1)[1]
-                fmt = r'({},{}),'.format(repr(p1),repr(p2))
-                spec_path.append(fmt)
-
-def mk_contain_dlls():
-    dlls = os.path.join(os.path.split(sys.executable)[0],'DLLs')
-    for path,_,files in os.walk(dlls):
-        for file in files:
-            p1 = os.path.join(path,file)
-            p2 = '.'
-            fmt = r'({},{}),'.format(repr(p1),repr(p2))
-            spec_path.append(fmt)
-
-def mk_comtain_modules(*modules):
-    pas = []
-    for md in modules:
-        import importlib
-        p = importlib.import_module(md)
-        s = os.path.dirname(p.__file__)
-        r = 'c:\\'+md
-        v = 'copyfile {} to {}'.format(s,r)
-        try:
-            shutil.copytree(s,r)
-        except:
-            pass
-
-        s = '''
-import {}
-if type({}) == types.ModuleType:
-    pa,fi = os.path.split({}.__file__)
-    pas.append(pa)
-'''.format(md,md,md)
-        exec(s)
-    mk_contain_binaries(*pas)
-
-# 需要直接包进去的 scrapy 项目包（注意修改）
-startproject = r'C:\Users\zhoulin08\Desktop\pj\vscrapy'
-
-# 需要包入函数库的函数包（对 scrapy 项目打包必须要下列几个函数库包）
 modules = (
     'scrapy',
     'email',
@@ -130,8 +8,161 @@ modules = (
     'sqlite3',
 )
 
-mk_comtain_modules(*modules)
-mk_contain_startproject(startproject)
-mk_contain_dlls()
-for i in spec_path:
-    print(i)
+import os
+import sys
+d = os.path.join(os.path.dirname(sys.executable), 'DLLs')
+w = os.path.join(os.path.dirname(sys.executable), 'Lib')
+e = os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages')
+
+q = []
+for i in modules:
+    ww = os.path.join(w, i)
+    ee = os.path.join(e, i)
+    if os.path.isdir(ww):
+        a, b = ww, i
+        q.append('--add-data "{}{}{}"'.format(a, os.pathsep, b))
+        if i == 'sqlite3':
+            dd1 = os.path.join(d, '_sqlite3.pyd')
+            dd2 = os.path.join(d, 'sqlite3.dll')
+            a, b = dd1, '.'
+            q.append('--add-binary "{}{}{}"'.format(a, os.pathsep, b))
+            a, b = dd2, '.'
+            q.append('--add-binary "{}{}{}"'.format(a, os.pathsep, b))
+    elif os.path.isdir(ee):
+        a, b = ee, i
+        q.append('--add-data "{}{}{}"'.format(a, os.pathsep, b))
+
+v = ' '.join(q)
+print(v)
+
+# 大概会生成这样的内容 --add-data "D:\Python\Python36\Lib\site-packages\scrapy;scrapy" --add-data "D:\Python\Python36\Lib\email;email" --add-data "D:\Python\Python36\Lib\site-packages\twisted;twisted" --add-data "D:\Python\Python36\Lib\site-packages\queuelib;queuelib" --add-data "D:\Python\Python36\Lib\sqlite3;sqlite3" --add-binary "D:\Python\Python36\DLLs\_sqlite3.pyd;." --add-binary "D:\Python\Python36\DLLs\sqlite3.dll;."
+# 在命令行输入 pyinstaller -F $你的脚本.py 并且将上面的内容抄下来拼接在后面就好了。
+# 如果是单脚本可以考虑用下面的方式实现单脚本处理，并用上面的方式轻松打包代码
+# 通常scrapy生成的大概会在 20M 左右，如果超过这个大小很多，可以去除 -F 生成代码包，看看多引入的哪些，然后增加 --exclude-module
+# 例如 --exclude-module numpy
+
+
+
+
+
+'''
+# -*- coding: utf-8 -*-
+import scrapy
+from scrapy import Request, Selector
+from lxml import etree
+
+import re
+import json
+from urllib.parse import quote,unquote
+
+class VSpider(scrapy.Spider):
+    # 这里忽略，指代任意scrapy脚本代码
+    ...
+
+if __name__ == '__main__':
+    import os, time
+    from scrapy.crawler import CrawlerProcess
+    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime()) # 年月日_时分秒
+    filename = 'v{}.json'.format(timestamp) # 这是输出文件名字（解开 'FEED_URI' 配置注释生效）
+    jobdir   = 'JOBDIR/bMXERwTjBD'          # 这是队列信息地址（解开 'JOBDIR'   配置注释生效）
+    p = CrawlerProcess({
+        'TELNETCONSOLE_ENABLED':    False,        # 几乎没人使用到这个功能，直接关闭提高爬虫启动时间
+        'LOG_LEVEL':                'INFO',       # DEBUG , INFO , WARNING , ERROR , CRITICAL
+        # 'JOBDIR':                   jobdir,     # 解开注释则增加断点续爬功能
+                                                  # 任务队列、任务去重指纹、任务状态存储空间(简单来说就是一个文件夹)
+        # 'FEED_URI':                 filename,   # 下载数据到文件
+        # 'FEED_FORMAT':              'json',     # 下载的文件格式，不配置默认以 jsonlines 方式写入文件，
+                                                  # 支持的格式 json, jsonlines, cvs, xml, pickle, marshal
+        # 'DOWNLOAD_DELAY':           1,          # 全局下载延迟，这个配置相较于其他的节流配置要直观很多
+    })
+    p.crawl(VSpider)
+    p.start()
+'''
+
+
+
+
+
+# 如果需要单个脚本使用中间件
+# 请详细看下面代码的处理方式，下面也展示了 scrapy 单脚本图片下载的处理方式，作为单脚本中间件加入的范例。
+# 同样用上面的方式打包即可。若有多余的引入库可能会导致打包成单个文件非常大，多检查。
+'''
+# -*- coding: utf-8 -*-
+import scrapy
+from scrapy import Request, Selector
+from lxml import etree
+
+import re
+import json
+from urllib.parse import quote,unquote
+
+class VSpider(scrapy.Spider):
+    # 这里忽略，指代任意scrapy脚本代码
+    ...
+    def parse(self, response):
+        ...
+        item = {}
+        item['src'] = 'http://...' # 图片的真实路径
+        yield item
+
+if __name__ == '__main__':
+    import os, time
+    from scrapy.crawler import CrawlerProcess
+    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime()) # 年月日_时分秒
+    filename = 'v{}.json'.format(timestamp) # 这是输出文件名字（解开 'FEED_URI' 配置注释生效）
+    jobdir   = 'JOBDIR/migSrTljNI'          # 这是队列信息地址（解开 'JOBDIR'   配置注释生效）
+
+    p = CrawlerProcess({
+        'TELNETCONSOLE_ENABLED':    False,        # 几乎没人使用到这个功能，直接关闭提高爬虫启动时间
+        'LOG_LEVEL':                'INFO',       # DEBUG , INFO , WARNING , ERROR , CRITICAL
+        # 'JOBDIR':                   jobdir,     # 解开注释则增加断点续爬功能
+                                                  # 任务队列、任务去重指纹、任务状态存储空间(简单来说就是一个文件夹)
+        # 'FEED_URI':                 filename,   # 下载数据到文件
+        # 'FEED_FORMAT':              'json',     # 下载的文件格式，不配置默认以 jsonlines 方式写入文件，
+                                                  # 支持的格式 json, jsonlines, cvs, xml, pickle, marshal
+        # 'DOWNLOAD_DELAY':           1,          # 全局下载延迟，这个配置相较于其他的节流配置要直观很多
+    })
+    p.crawl(VSpider)
+
+    # 动态中间件介绍
+    # 通过实例动态增加中间件（解耦了之前只能通过配置中间件字符串），方便单脚本实现增加中间件功能，例如数据库存储方面的内容。
+    # 便于单脚本利用别人的中间件。（将别人的中间件脚本粘贴进该脚本，实例化添加即可。示例如下，解开注释到 #(1) 即可测试。）
+    # class VPipeline(object):
+    #     def process_item(self, item, spider):
+    #         print('\n==== 这里是动态增加的“下载中间件”部分 ====\n')
+    #         return item
+    # for i in p.crawlers: i.engine.scraper.itemproc._add_middleware(VPipeline()) #(1)
+    # for i in p.crawlers: i.engine.scraper.spidermw._add_middleware(...)         #(2) 这里的...需要一个对应的中间件对象
+    # for i in p.crawlers: i.engine.downloader.middleware._add_middleware(...)    #(3) 这里的...需要一个对应的中间件对象
+    #1) 通过对象动态增加 itemmiddlewares，目前仅在数据管道部分这种处理方式比较常用（因默认item中间件为空，不会被默认配置影响）
+    #2) 通过对象动态增加 spidermiddlewares     # i.engine.scraper.spidermw.middlewares        # 当前全部“爬虫中间件”
+    #3) 通过对象动态增加 downloadermiddlewares # i.engine.downloader.middleware.middlewares   # 当前全部“下载中间件”
+    #*) 注意: 2,3两种中间件的动态增加不常用。因 p.crawl 函数执行后就已初始化默认中间件。新的中间件只能“后添加”，缺乏灵活。
+
+    # 图片下载中间件介绍
+    # 图片相关的文件下载中间件的添加，注意：图片相关的资源需要绑定 spider 以及 crawler。示例如下。
+    # 在一般的脚本 item['src'] 中添加字符串下载地址即可，一个 item 一个字符串下载地址，便于管理。不要按照默认方式添加下载列表
+    import logging, hashlib
+    from scrapy.pipelines.images import ImagesPipeline
+    from scrapy.exceptions import DropItem
+    class VImagePipeline(ImagesPipeline):
+        def get_media_requests(self, item, info):
+            yield Request(item['src']) 
+        def file_path(self, request, response=None, info=None):
+            url = request if not isinstance(request, Request) else request.url
+            filename = hashlib.md5(url.encode()).hexdigest() # 或将存放的分类或名字通过 meta 传递，用 request.meta 获取
+            return 'full/%s.jpg' % filename # 生成的图片文件名字，此处可增加多级分类路径（路径不存在则自动创建）
+        def item_completed(self, results, item, info): # 判断下载是否成功
+            k, v = results[0]
+            if not k: logging.info('download fail {}'.format(item))
+            else:     logging.info('download success {}'.format(item))
+            item['image_download_stat'] = 'success' if k else 'fail'
+            return item
+    for i in p.crawlers: 
+        vimage = VImagePipeline('./image') # 生成的文件地址，默认跟随脚本路径下生成的一个 image文件夹
+        vimage.spiderinfo = vimage.SpiderInfo(i.spider)
+        vimage.crawler = i
+        i.engine.scraper.itemproc._add_middleware(vimage)
+
+    p.start()
+'''
