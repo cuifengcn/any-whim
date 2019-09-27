@@ -36,7 +36,7 @@ v = ' '.join(q)
 print(v)
 
 # 大概会生成这样的内容 --add-data "D:\Python\Python36\Lib\site-packages\scrapy;scrapy" --add-data "D:\Python\Python36\Lib\email;email" --add-data "D:\Python\Python36\Lib\site-packages\twisted;twisted" --add-data "D:\Python\Python36\Lib\site-packages\queuelib;queuelib" --add-data "D:\Python\Python36\Lib\sqlite3;sqlite3" --add-binary "D:\Python\Python36\DLLs\_sqlite3.pyd;." --add-binary "D:\Python\Python36\DLLs\sqlite3.dll;."
-# 在命令行输入 pyinstaller -F $你的脚本.py 并且将上面的内容抄下来拼接在后面就好了。
+# 在命令行输入 pyinstaller -F $你的脚本.py 并且将上面生成的内容抄下来拼接在后面就好了。
 # 如果是单脚本可以考虑用下面的方式实现单脚本处理，并用上面的方式轻松打包代码
 # 通常scrapy生成的大概会在 20M 左右，如果超过这个大小很多，可以去除 -F 生成代码包，看看多引入的哪些，然后增加 --exclude-module
 # 例如 --exclude-module numpy
