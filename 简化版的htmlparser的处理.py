@@ -86,13 +86,13 @@ class Vnode:
         for i, (k, m, n) in enumerate(p, 1):
             r[i] = []; ps = _pc(m, n); depth = float('inf') if k.startswith('//') else 1
             attrs = ps if type(ps) == dict else {}; one = ps if type(ps) == int  else None
-            if (i != len(p) or i == 1) and type(ps) != list:
-                for s in ms: r[i].extend(self.find_by_maps(s, m, attrs=attrs, depth=depth, one=one))
-                ms = r[i]; r[i - 1] = None; continue
-            for s in ms:
-                if   ps and ps[0] =='attrs': s = s['info']['attrs'].get(ps[1])
-                elif ps and ps[0] =='data':  s = s['info']['data']
-                if s: r[i].append(s)
+            if (i != len(p) or i == 1): [r[i].extend(self.find_by_maps(s, m, attrs=attrs, depth=depth, one=one)) for s in ms]
+            elif type(ps) != list:      [r[i].extend(self.find_by_maps(s, m, attrs=attrs, depth=depth, one=one)) for s in ms]
+            else:
+                for s in ms:
+                    if   ps and ps[0] =='attrs': s = s['info']['attrs'].get(ps[1])
+                    elif ps and ps[0] =='data':  s = s['info']['data']
+                    if s: r[i].append(s)
             ms = r[i]; r[i - 1] = None
         return [Vnode(i) if type(i) == dict else i for i in ms]
 class VHTML:
@@ -197,11 +197,13 @@ if __name__ == '__main__':
         if k.lower() == 'accept-encoding': continue # urllib并不自动解压缩编码，所以忽略该headers字段
         r.add_header(k, v)
     s = request.urlopen(r)
+    print(url)
 
     content = s.read()
     parser = Vparser()
     print('start')
     v = VHTML(content.decode())
-    for i in v.xpath('//a/@href'):
-        print(i)
+    for i in v.xpath('//a/@href'): print(i)
+    print('---- split ----')
+    for i in v.xpath('//div/div/span[1][@class="wetSource"]/text()'): print(i)
     print('end')
