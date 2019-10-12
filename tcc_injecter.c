@@ -1,7 +1,7 @@
 // 用 gcc 直接编译
 // 用 tcc 编译需要注意引入 windows 的头文件地址
-// cmd> tcc -I"C:\Users\...\winapi-full-for-0.9.27\include\winapi" injecter.c
-// injecter.c
+// cmd> tcc -I"C:\Users\...\winapi-full-for-0.9.27\include\winapi" tcc_injecter.c
+// tcc_injecter.c
 
 #include <windows.h>
 #include <stdio.h>

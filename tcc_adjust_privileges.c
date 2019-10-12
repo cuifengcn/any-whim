@@ -1,6 +1,6 @@
 // 使用 tcc 编译时需要注意添加特定的 lib 链接库，因为 tcc 自动会链接库只有少数几个。
-// cmd> gcc ./adjust_privileges.c
-// cmd> tcc ./adjust_privileges.c -lAdvapi32
+// cmd> gcc ./tcc_adjust_privileges.c
+// cmd> tcc ./tcc_adjust_privileges.c -lAdvapi32
 
 #include <stdio.h>
 #include <windows.h>

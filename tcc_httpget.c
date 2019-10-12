@@ -1,6 +1,6 @@
 // c语言实现简单的get请求
-// cmd> gcc .\some.c -lws2_32
-// cmd> tcc .\some.c -I"C:\Users\...\winapi-full-for-0.9.27\include\winapi" -lws2_32
+// cmd> gcc .\tcc_httpget.c -lws2_32
+// cmd> tcc .\tcc_httpget.c -I"C:\Users\...\winapi-full-for-0.9.27\include\winapi" -lws2_32
 
 #include <stdio.h>
 #include <winsock2.h>
