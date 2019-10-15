@@ -41,10 +41,10 @@ int runcmd( char* lpCmd ) {
 }
 
 int main( int argc, char** argv ) {
-      char cmd[256];
-      printf( "input cmd:" );
-      gets( cmd );
-      runcmd( cmd );
-      system( "pause" );
-      return 0;
+    char cmd[256];
+    printf( "input cmd:" );
+    gets( cmd );
+    runcmd( cmd );
+    system( "pause" );
+    return 0;
 }
