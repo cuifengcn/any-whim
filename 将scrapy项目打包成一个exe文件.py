@@ -35,16 +35,19 @@ for i in modules:
 v = ' '.join(q)
 print(v)
 
-# 大概会生成这样的内容 --add-data "D:\Python\Python36\Lib\site-packages\scrapy;scrapy" --add-data "D:\Python\Python36\Lib\email;email" --add-data "D:\Python\Python36\Lib\site-packages\twisted;twisted" --add-data "D:\Python\Python36\Lib\site-packages\queuelib;queuelib" --add-data "D:\Python\Python36\Lib\sqlite3;sqlite3" --add-binary "D:\Python\Python36\DLLs\_sqlite3.pyd;." --add-binary "D:\Python\Python36\DLLs\sqlite3.dll;."
-# 在命令行输入 pyinstaller -F $你的脚本.py 并且将上面生成的内容抄下来拼接在后面就好了。
+# 上面的脚本根据你的 python 执行地址，大概会生成这样的内容 --add-data "D:\Python\Python36\Lib\site-packages\scrapy;scrapy" --add-data "D:\Python\Python36\Lib\email;email" --add-data "D:\Python\Python36\Lib\site-packages\twisted;twisted" --add-data "D:\Python\Python36\Lib\site-packages\queuelib;queuelib" --add-data "D:\Python\Python36\Lib\sqlite3;sqlite3" --add-binary "D:\Python\Python36\DLLs\_sqlite3.pyd;." --add-binary "D:\Python\Python36\DLLs\sqlite3.dll;."
+# 使用时：在命令行输入 pyinstaller -F $你的脚本.py 并且将上面代码生成的内容抄下来拼接在后面就好了。
 # 如果是单脚本可以考虑用下面的方式实现单脚本处理，并用上面的方式轻松打包代码
 # 通常scrapy生成的大概会在 20M 左右，如果超过这个大小很多，可以去除 -F 生成代码包，看看多引入的哪些，然后增加 --exclude-module
-# 例如 --exclude-module numpy
+# 例如 --exclude-module numpy --exclude-module scipy --exclude-module matplotlib
+# 除非你需要这些库，否则上面这三个库随便一个都能成倍增长打包的文件的大小。
+# scrapy 脚本编写以及中间件的插入使用请看下面的代码示例。
 
 
 
 
-
+# scrapy 是一个项目，有很多文件夹怎么包在一起呢？
+# 你需要使用单脚本来实现这个项目。所以脚本需要如下进行编写。
 '''
 # -*- coding: utf-8 -*-
 import scrapy
@@ -83,9 +86,9 @@ if __name__ == '__main__':
 
 
 
-# 如果需要单个脚本使用中间件
+# scrapy 有很多中间件怎么进行打包呢？
 # 请详细看下面代码的处理方式，下面也展示了 scrapy 单脚本图片下载的处理方式，作为单脚本中间件加入的范例。
-# 同样用上面的方式打包即可。若有多余的引入库可能会导致打包成单个文件非常大，多检查。
+# 若有多余的引入库可能会导致打包成单个文件非常大，多检查。
 '''
 # -*- coding: utf-8 -*-
 import scrapy
@@ -138,6 +141,7 @@ if __name__ == '__main__':
     #2) 通过对象动态增加 spidermiddlewares     # i.engine.scraper.spidermw.middlewares        # 当前全部“爬虫中间件”
     #3) 通过对象动态增加 downloadermiddlewares # i.engine.downloader.middleware.middlewares   # 当前全部“下载中间件”
     #*) 注意: 2,3两种中间件的动态增加不常用。因 p.crawl 函数执行后就已初始化默认中间件。新的中间件只能“后添加”，缺乏灵活。
+    #*）注意：1,2,3这三种中间件的添加方式只能在代码 p.crawl(VSpider) 与 p.start() 的中间，切记。
 
     # 图片下载中间件介绍
     # 图片相关的文件下载中间件的添加，注意：图片相关的资源需要绑定 spider 以及 crawler。示例如下。

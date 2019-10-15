@@ -39,6 +39,7 @@ print(info)
 # --add-data "e:\python\python36\Lib\site-packages\you_get;you_get" --add-data "e:\python\python36\Lib\xml;xml" --add-data "e:\python\python36\Lib\html;html" --add-binary "e:\python\python36\Lib\_markupbase.py;."
 # 其中上面的全部 e:\python\python36 改成 python.exe 所在的地址即可，
 # 如果不知道请使用 import os, sys; print(os.path.dirname(sys.executable)) 查看
+# *由于不同的扩展可能需要的库不太一样，暂时没有调整打包出现的问题，后续再调整好了。
 
 
 
