@@ -1,6 +1,55 @@
 #include <stdio.h>
 #include <windows.h>
 
+DWORD getKernel32();
+FARPROC _GetProcAddress(HMODULE hModuleBase);
+
+int main(){
+
+    // init fn_GetProcAddress and fn_LoadLibraryA.
+    typedef FARPROC (WINAPI* FN_GetProcAddress)(
+        HMODULE hModule,
+        LPCSTR lpProcName
+    );
+    typedef HMODULE (WINAPI* FN_LoadLibraryA)(
+        LPCSTR lpLibFileName
+    );
+    char szLoadLibraryA[] = {'L','o','a','d','L','i','b','r','a','r','y','A','\0'};
+    FN_GetProcAddress fn_GetProcAddress = (FN_GetProcAddress)_GetProcAddress((HMODULE)getKernel32());
+    FN_LoadLibraryA   fn_LoadLibraryA   = (FN_LoadLibraryA)fn_GetProcAddress((HMODULE)getKernel32(), szLoadLibraryA);
+
+    // dont forget typedef.
+    char szUser32[] = {'u','s','e','r','3','2','\0'};
+    typedef int (WINAPI* FN_MessageBoxA)(
+        HWND hWnd ,
+        LPCSTR lpText,
+        LPCSTR lpCaption,
+        UINT uType);
+    char szMessageBoxA[] = {'M','e','s','s','a','g','e','B','o','x','A','\0'};
+    FN_MessageBoxA fn_MessageBoxA = (FN_MessageBoxA)fn_GetProcAddress(fn_LoadLibraryA(szUser32), szMessageBoxA);
+    fn_MessageBoxA(NULL,NULL,NULL,NULL);
+
+    
+    typedef HANDLE (WINAPI* FN_CreateFileA)(
+        LPCSTR lpFileName,
+        DWORD dwDesiredAccess,
+        DWORD dwShareMode,
+        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+        DWORD dwCreationDisposition,
+        DWORD dwFlagsAndAttributes,
+        HANDLE hTemplateFile
+        );
+    char szKernel32[] = {'k','e','r','n','e','l','3','2','\0'};
+    char szCreateFileA[] = {'C','r','e','a','t','e','F','i','l','e','A','\0'};
+    char szFileName[] = {'.','/','1','.','t','x','t','\0'};
+    FN_CreateFileA fn_CreateFileA = (FN_CreateFileA)fn_GetProcAddress(fn_LoadLibraryA(szKernel32), szCreateFileA);
+    fn_CreateFileA(szFileName,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,0,NULL);
+    return 0;
+}
+
+
+
+
 __declspec(naked) DWORD getKernel32(){
     __asm{
         mov eax, fs:[30h]
@@ -57,48 +106,4 @@ FARPROC _GetProcAddress(HMODULE hModuleBase){
         }
     }
     return pRet;
-}
-
-int main(){
-    HMODULE hLoadLibraryA = (HMODULE)getKernel32();
-    typedef FARPROC (WINAPI* FN_GetProcAddress)(
-        HMODULE hModule,
-        LPCSTR lpProcName
-    );
-    FN_GetProcAddress fn_GetProcAddress;
-    fn_GetProcAddress = (FN_GetProcAddress)_GetProcAddress(hLoadLibraryA);
-
-    printf("0x%08x\n", fn_GetProcAddress);
-    printf("0x%08x\n", GetProcAddress);
-
-
-    /*
-    LPVOID lp = GetProcAddress(LoadLibraryA("user32"), "MessageBoxA");
-    char * s = "hello world.";
-    __asm{
-        push 0
-        push 0
-        push s
-        push 0
-        call lp
-    }
-    */  
-
-    /*
-    typedef HANDLE (WINAPI* FN_CreateFileA)(
-        LPCSTR lpFileName,
-        DWORD dwDesiredAccess,
-        DWORD dwShareMode,
-        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-        DWORD dwCreationDisposition,
-        DWORD dwFlagsAndAttributes,
-        HANDLE hTemplateFile
-        );
-    FN_CreateFileA fn_CreateFileA;
-    fn_CreateFileA = (FN_CreateFileA)GetProcAddress(LoadLibraryA("kernel32.dll"), "CreateFileA");
-    fn_CreateFileA("./hello123123.txt",GENERIC_WRITE,0,NULL,CREATE_ALWAYS,0,NULL);
-    */
-
-
-    return 0;
 }
