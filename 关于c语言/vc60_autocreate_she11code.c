@@ -66,8 +66,7 @@ typedef HANDLE (WINAPI* FN_CreateFileA)(
     DWORD dwFlagsAndAttributes,
     HANDLE hTemplateFile
     );
-typedef struct _FUNCTION
-{
+typedef struct _FUNCTION {
     FN_GetProcAddress   fn_GetProcAddress;
     FN_LoadLibraryA     fn_LoadLibraryA;
     FN_CreateFileA      fn_CreateFileA;
