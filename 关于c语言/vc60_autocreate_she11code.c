@@ -1,3 +1,10 @@
+// 编写 shellcode 的代码需要注意的是
+// 1) 不能直接使用函数获取函数的地址，需要通过一定的汇编获取 Kernel32 的地址
+// 2) 后续找到 GetProcAddress LoadLibraryA 这两个函数的地址后续基本就需要这两个函数进行处理必要函数的获取
+// 3) 使用那些函数的时候也需要注意，需要从函数声明的地方获取结构声明，所有“函数声明”不会影响生成的代码的顺序。
+// 4) 另外 shellcode 的编写中注意不能使用任何全局变量，并且函数内“字符串声明”的方式只能使用 char[] 来实现，
+//    这是为了避免字符串由于编译器优化被放到其他地方从而 shellcode 不完整。
+
 #include <stdio.h>
 #include <windows.h>
 
@@ -13,13 +20,12 @@ void CreateShellcode();
 int main(){
     CreateShellcode();
 }
-
 void CreateShellcode(){
     HANDLE hBin = CreateFileA("sh.bin", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
     DWORD dwSize;
     DWORD dwWrite;
     if (hBin == INVALID_HANDLE_VALUE){
-        printf("%s %d\n", "create sh.bin fail.", GetLastError());
+        printf("%s error:%d\n", "create sh.bin fail.", GetLastError());
         return;
     }
     dwSize = (DWORD)ShellcodeEnd - (DWORD)ShellcodeStart;
@@ -97,7 +103,6 @@ void ShellcodeEntry(){
 __declspec(naked) DWORD getKernel32(){
     __asm{
         mov eax, fs:[30h]
-        test eax, eax
         mov eax, [eax+0ch]
         mov eax, [eax+14h]
         mov eax, [eax]
