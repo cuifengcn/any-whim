@@ -1,4 +1,4 @@
-// 32位与64位 通用的 windows she11code 生成工具。 语法依 at&t 语法，
+// 32位与64位 通用的 windows she11code 生成工具。 汇编语法依 at&t 语法，
 // 目前只能 tcc 编译，gcc 生成的exe文件执行生成的 sh.bin 文件(she11code)无法使用。
 // 编写 she11code 的代码需要注意的是
 // 1) 不能直接使用函数获取函数的地址，需要通过一定的汇编获取 Kernel32 的地址
@@ -61,7 +61,8 @@ typedef int (WINAPI* FN_MessageBoxA)(
     HWND hWnd ,
     LPCSTR lpText,
     LPCSTR lpCaption,
-    UINT uType);
+    UINT uType
+);
 typedef HANDLE (WINAPI* FN_CreateFileA)(
     LPCSTR lpFileName,
     DWORD dwDesiredAccess,
@@ -70,7 +71,7 @@ typedef HANDLE (WINAPI* FN_CreateFileA)(
     DWORD dwCreationDisposition,
     DWORD dwFlagsAndAttributes,
     HANDLE hTemplateFile
-    );
+);
 typedef struct _FUNCTION {
     FN_GetProcAddress   fn_GetProcAddress;
     FN_LoadLibraryA     fn_LoadLibraryA;
