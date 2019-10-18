@@ -1,4 +1,4 @@
-// 32位与64位 通用的 windows she11code 生成工具。 汇编语法依 at&t 语法，
+// 32位与64位 通用的 windows she11code 生成工具。 语法依 at&t 语法，
 // 目前只能 tcc 编译，gcc 生成的exe文件执行生成的 sh.bin 文件(she11code)无法使用。
 // 编写 she11code 的代码需要注意的是
 // 1) 不能直接使用函数获取函数的地址，需要通过一定的汇编获取 Kernel32 的地址
@@ -21,11 +21,19 @@ void CreateShellcode();
 
 // create shellcode bin.
 // int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
+#ifdef _WIN64
 int main(int argc, char const *argv[]) {
     printf("kernel32:       %016llx\n", getKernel32());
     printf("GetProcAddress: %016llx\n", getProcAddress((HMODULE)getKernel32()));
     CreateShellcode();
 }
+#else
+int main(int argc, char const *argv[]) {
+    printf("kernel32:       %016lx\n", getKernel32());
+    printf("GetProcAddress: %016lx\n", getProcAddress((HMODULE)getKernel32()));
+    CreateShellcode();
+}
+#endif
 void CreateShellcode(){
     HANDLE hBin = CreateFileA("sh.bin", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
     DWORD dwSize;
@@ -36,7 +44,7 @@ void CreateShellcode(){
     }
     dwSize = ShellcodeEnd - ShellcodeStart;
     WriteFile(hBin, ShellcodeStart, dwSize, &dwWrite, NULL);
-    printf("ShellcodeSize:  %16lld\n", dwWrite);
+    printf("ShellcodeSize:  %16d\n", dwWrite);
 }
 
 
