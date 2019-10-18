@@ -1,9 +1,12 @@
-// 编写 shellcode 的代码需要注意的是
+// 该脚本生成 32位 的 windows she11code 。
+// 编写 she11code 的代码需要注意的是
 // 1) 不能直接使用函数获取函数的地址，需要通过一定的汇编获取 Kernel32 的地址
 // 2) 后续找到 GetProcAddress LoadLibraryA 这两个函数的地址后续基本就需要这两个函数进行处理必要函数的获取
-// 3) 使用那些函数的时候也需要注意，需要从函数声明的地方获取结构声明，所有“函数声明”不会影响生成的代码的顺序。
-// 4) 另外 shellcode 的编写中注意不能使用任何全局变量，并且函数内“字符串声明”的方式只能使用 char[] 来实现，
-//    这是为了避免字符串由于编译器优化被放到其他地方从而 shellcode 不完整。
+// 3) 使用那些函数的时候也需要注意，需要从函数声明的地方获取结构声明，所有“函数声明”不会影响生成的代码的顺序和she11code体积。
+// 4) 另外 she11code 的编写中注意不能使用任何全局变量，并且函数内“字符串声明”的方式只能使用 char[] 来实现，
+//    这是为了避免字符串由于编译器优化被放到其他地方从而 she11code 不完整。
+// cmd> tcc tcc_autocreate_she11code.c -m32
+// 生成的工具 tcc_autocreate_she11code.exe 执行后会生成一个 sh.bin 的 she11code 二进制文件。
 
 #include <stdio.h>
 #include <windows.h>
@@ -15,9 +18,8 @@ void ShellcodeEntry();
 void ShellcodeEnd();
 void CreateShellcode();
 
-
 // create shellcode bin.
-int main(){
+int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
     CreateShellcode();
 }
 void CreateShellcode(){
@@ -40,9 +42,7 @@ void CreateShellcode(){
 
 // shellcode
 __declspec(naked) void ShellcodeStart(){
-    __asm{
-        call ShellcodeEntry
-    }
+    asm("call ShellcodeEntry");
 }
 // init function struct.
 typedef FARPROC (WINAPI* FN_GetProcAddress)(
@@ -89,7 +89,7 @@ void WKCreateFile(PFUNCTION pFn){
     pFn->fn_CreateFileA(szFileName,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,0,NULL);
 }
 void WKMessageBox(PFUNCTION pFn){
-    pFn->fn_MessageBoxA(NULL,NULL,NULL,NULL);
+    pFn->fn_MessageBoxA(NULL,NULL,NULL,0);
 }
 // shellcode main
 void ShellcodeEntry(){
@@ -100,14 +100,12 @@ void ShellcodeEntry(){
 }
 // get kernel32 and get GetProcAddress.
 __declspec(naked) DWORD getKernel32(){
-    __asm{
-        mov eax, fs:[30h]
-        mov eax, [eax+0ch]
-        mov eax, [eax+14h]
-        mov eax, [eax]
-        mov eax, [eax]
-        mov eax, [eax+10h]
-    }
+    asm("mov %fs:(0x30), %eax");
+    asm("mov 0x0c(%eax), %eax");
+    asm("mov 0x14(%eax), %eax");
+    asm("mov (%eax), %eax");
+    asm("mov (%eax), %eax");
+    asm("mov 0x10(%eax), %eax");
 }
 FARPROC _GetProcAddress(HMODULE hModuleBase){
     PIMAGE_DOS_HEADER lpDosHeader = (PIMAGE_DOS_HEADER)hModuleBase;
