@@ -36,6 +36,7 @@ void CreateShellcode(){
     }
     dwSize = ShellcodeEnd - ShellcodeStart;
     WriteFile(hBin, ShellcodeStart, dwSize, &dwWrite, NULL);
+    printf("ShellcodeSize:  %16lld\n", dwWrite);
 }
 
 
