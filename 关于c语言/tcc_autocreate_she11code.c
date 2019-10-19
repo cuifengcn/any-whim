@@ -7,7 +7,7 @@
 // 4) 另外 she11code 的编写中注意不能使用任何全局变量，并且函数内“字符串声明”的方式只能使用 char[] 来实现，
 //    这是为了避免字符串由于编译器优化被放到其他地方从而 she11code 不完整。
 // cmd> tcc tcc_autocreate_she11code.c
-// 需要生成32位则在 tcc 命令行加上 -m 。 生成的工具 tcc_autocreate_she11code.exe 执行后会生成 sh.bin 的文件(she11code)。
+// 需要生成32位则在 tcc 命令行加上 -m32 。 生成的工具 tcc_autocreate_she11code.exe 执行后会生成 sh.bin 的文件(she11code)。
 
 #include <stdio.h>
 #include <windows.h>

