@@ -1,5 +1,5 @@
 // 该代码目前在 gcc 编译后能够做到 dll 的反射注入
-// gcc 32位编译时会被很快查杀，
+// gcc 32位编译时会被很快查杀，很大可能在于32位程序在win64上使用 CreateRemoteThread 函数的原因。
 // tcc 能编译，但是执行注入时并没有正常执行程序。
 // cmd /K cd /d $(CURRENT_DIRECTORY) & gcc -o $(NAME_PART).exe $(FULL_CURRENT_PATH) & .\$(NAME_PART).exe .\inject64.dll & cd $(CURRENT_DIRECTORY)
 
