@@ -1,7 +1,7 @@
 // 该代码目前在 gcc 编译后能够做到 dll 的反射注入
 // gcc 32位编译时会被很快查杀，很大可能在于32位程序在win64上使用 CreateRemoteThread 函数的原因。
-// tcc 能编译，但是执行注入时并没有正常执行程序。
-// cmd /K cd /d $(CURRENT_DIRECTORY) & gcc -o $(NAME_PART).exe $(FULL_CURRENT_PATH) & .\$(NAME_PART).exe .\inject64.dll & cd $(CURRENT_DIRECTORY)
+// tcc 已经能够正常编译并且能够实现功能。经过不断的 debug 也发现了一些 gcc 与 tcc 在 win程序上编译时的不一样。
+// 详细直接看代码中间的注释部分，由于这种程序的特殊性，花了很长的时间来思考怎么调试，所以坑了我一整天。
 
 #include<stdio.h>
 #include<windows.h>
@@ -50,10 +50,10 @@ HANDLE Find_Process(char * process_name) {
         return NULL;
     }
     do {
-		if(!strcmp(process_name,ps.szExeFile)) {
-			found = 1;
-			break;
-		}
+        if(!strcmp(process_name,ps.szExeFile)) {
+            found = 1;
+            break;
+        }
     }while(Process32Next(snap,&ps));
     CloseHandle(snap);
     if(!found)
@@ -85,56 +85,56 @@ void AdjustPE(LPE_INFO pe) {
     DLL_Entry  = base+nt->OptionalHeader.AddressOfEntryPoint;
     if(pe->reloc){
         if(nt->OptionalHeader.DataDirectory[5].VirtualAddress != 0){
-			delta = (ULONGLONG)base-nt->OptionalHeader.ImageBase;
-			reloc = (PIMAGE_BASE_RELOCATION)(base+nt->OptionalHeader.DataDirectory[5].VirtualAddress);
-			while(reloc->VirtualAddress) {
-				LPVOID  dest    = base+reloc->VirtualAddress;
-				int     nEntry  = (reloc->SizeOfBlock-sizeof(IMAGE_BASE_RELOCATION))/2;
-				PWORD   data    = (PWORD)((LPVOID)reloc+sizeof(IMAGE_BASE_RELOCATION));
-				int i;
-				for(i = 0; i<nEntry; i++,data++) {
-					if(((*data) >> 12) == 10) {
-						p = (PULONGLONG)(dest+((*data)&0xfff));
-						*p += delta;
-					}
-				}
-				reloc = (PIMAGE_BASE_RELOCATION)((LPVOID)reloc+reloc->SizeOfBlock);
-			}
+            delta = (ULONGLONG)base-nt->OptionalHeader.ImageBase;
+            reloc = (PIMAGE_BASE_RELOCATION)(base+nt->OptionalHeader.DataDirectory[5].VirtualAddress);
+            while(reloc->VirtualAddress) {
+                LPVOID  dest    = base+reloc->VirtualAddress;
+                int     nEntry  = (reloc->SizeOfBlock-sizeof(IMAGE_BASE_RELOCATION))/2;
+                PWORD   data    = (PWORD)((LPVOID)reloc+sizeof(IMAGE_BASE_RELOCATION));
+                int i;
+                for(i = 0; i<nEntry; i++,data++) {
+                    if(((*data) >> 12) == 10) {
+                        p = (PULONGLONG)(dest+((*data)&0xfff));
+                        *p += delta;
+                    }
+                }
+                reloc = (PIMAGE_BASE_RELOCATION)((LPVOID)reloc+reloc->SizeOfBlock);
+            }
         }
     }
-	if(nt->OptionalHeader.DataDirectory[1].VirtualAddress != 0){
-		import = (PIMAGE_IMPORT_DESCRIPTOR)(base+nt->OptionalHeader.DataDirectory[1].VirtualAddress);
-		while(import->Name) {
-			LPVOID dll = (*Load_DLL)(base+import->Name);
-			Othunk = (PIMAGE_THUNK_DATA)(base+import->OriginalFirstThunk);
-			Fthunk = (PIMAGE_THUNK_DATA)(base+import->FirstThunk);
-			if(!import->OriginalFirstThunk){
-				Othunk = Fthunk;
-			}
-			while(Othunk->u1.AddressOfData) {
-				if(Othunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
-					*(ULONGLONG *)Fthunk = (ULONGLONG)(*Get_Proc)(dll,(LPSTR)IMAGE_ORDINAL(Othunk->u1.Ordinal));
-				}
-				else {
-					PIMAGE_IMPORT_BY_NAME fnm = (PIMAGE_IMPORT_BY_NAME)(base+Othunk->u1.AddressOfData);
-					*(PULONGLONG)Fthunk = (ULONGLONG)(*Get_Proc)(dll,fnm->Name);
-				}
-				Othunk++;
-				Fthunk++;
-			}
-			import++;
-		}
-	}
-	if(nt->OptionalHeader.DataDirectory[9].VirtualAddress != 0){
-		tls = (PIMAGE_TLS_DIRECTORY)(base+nt->OptionalHeader.DataDirectory[9].VirtualAddress);
-		if(tls->AddressOfCallBacks != 0){
-			CallBack = (PIMAGE_TLS_CALLBACK *)(tls->AddressOfCallBacks);
-			while(*CallBack) {
-				(*CallBack)(base,DLL_PROCESS_ATTACH,NULL);
-				CallBack++;
-			}
-		}
-	}
+    if(nt->OptionalHeader.DataDirectory[1].VirtualAddress != 0){
+        import = (PIMAGE_IMPORT_DESCRIPTOR)(base+nt->OptionalHeader.DataDirectory[1].VirtualAddress);
+        while(import->Name) {
+            LPVOID dll = (*Load_DLL)(base+import->Name);
+            Othunk = (PIMAGE_THUNK_DATA)(base+import->OriginalFirstThunk);
+            Fthunk = (PIMAGE_THUNK_DATA)(base+import->FirstThunk);
+            if(!import->OriginalFirstThunk){
+                Othunk = Fthunk;
+            }
+            while(Othunk->u1.AddressOfData) {
+                if(Othunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
+                    *(ULONGLONG *)Fthunk = (ULONGLONG)(*Get_Proc)(dll,(LPSTR)IMAGE_ORDINAL(Othunk->u1.Ordinal));
+                }
+                else {
+                    PIMAGE_IMPORT_BY_NAME fnm = (PIMAGE_IMPORT_BY_NAME)(base+Othunk->u1.AddressOfData);
+                    *(PULONGLONG)Fthunk = (ULONGLONG)(*Get_Proc)(dll,fnm->Name);
+                }
+                Othunk++;
+                Fthunk++;
+            }
+            import++;
+        }
+    }
+    if(nt->OptionalHeader.DataDirectory[9].VirtualAddress != 0){
+        tls = (PIMAGE_TLS_DIRECTORY)(base+nt->OptionalHeader.DataDirectory[9].VirtualAddress);
+        if(tls->AddressOfCallBacks != 0){
+            CallBack = (PIMAGE_TLS_CALLBACK *)(tls->AddressOfCallBacks);
+            while(*CallBack) {
+                (*CallBack)(base,DLL_PROCESS_ATTACH,NULL);
+                CallBack++;
+            }
+        }
+    }
     (*DLL_Entry)(base,DLL_PROCESS_ATTACH,NULL);
 }
 int main(int i,char **arg) {
@@ -173,7 +173,7 @@ int main(int i,char **arg) {
     }
 #endif
     printf("[+]Open Process.....\n");
-    if((proc = Find_Process("testvc.exe")) == NULL) {
+    if((proc = Find_Process("64.exe")) == NULL) {
         printf("[-]Failed To Open Process");
         return 0;
     }
@@ -196,9 +196,11 @@ int main(int i,char **arg) {
     }
     Func_Size = (DWORD)((ULONGLONG)main-(ULONGLONG)AdjustPE);
     pe.base = Rbase;
-    pe.Get_Proc = GetProcAddress;
-    pe.Load_DLL = LoadLibraryA;
-	Adj = VirtualAllocEx(proc,NULL,Func_Size+sizeof(pe),MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);
+    // 记住，一定要用这种方式获取 windows 自带的这两个函数的地址才能兼容 tcc
+    // 如果你用 pe.Get_Proc = GetProcAddress; 这样的方式会失败，因为 tcc 编译的过程和 gcc 不太一样。
+    pe.Get_Proc = GetProcAddress(LoadLibraryA("kernel32"), "GetProcAddress");
+    pe.Load_DLL = GetProcAddress(LoadLibraryA("kernel32"), "LoadLibraryA");
+    Adj = VirtualAllocEx(proc,NULL,Func_Size+sizeof(pe),MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);
     if(Adj == NULL) {
         printf("[-]Failed To Allocate Memory for PE adjusting\n");
         VirtualFreeEx(proc,Rbase,0,MEM_RELEASE);
