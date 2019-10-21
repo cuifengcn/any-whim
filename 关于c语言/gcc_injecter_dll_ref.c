@@ -19,27 +19,27 @@ typedef struct _PE_INFO {
     BOOL    reloc;
     LPVOID  Get_Proc;
     LPVOID  Load_DLL;
-}PE_INFO , * LPE_INFO;
+}PE_INFO , *LPE_INFO;
 LPVOID Read_in_Memory(char * FileName) {
     HANDLE f,h;
     LPVOID m;
     if ((f = CreateFileA(
                 FileName,GENERIC_READ,FILE_SHARE_READ,0,
                 OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL)
-            )==INVALID_HANDLE_VALUE){
+            ) == INVALID_HANDLE_VALUE){
         return NULL;
     }
-    if ((h = CreateFileMappingA(f,NULL,PAGE_READONLY,0,0,NULL))==NULL){
+    if ((h = CreateFileMappingA(f,NULL,PAGE_READONLY,0,0,NULL)) == NULL){
         return NULL;
     }
-    if ((m = MapViewOfFile(h,FILE_MAP_READ,0,0,0))==NULL){
+    if ((m = MapViewOfFile(h,FILE_MAP_READ,0,0,0)) == NULL){
         return NULL;
     }else {
         return m;
     }
 }
 HANDLE Find_Process(char * process_name) {
-    HANDLE snap,proc;
+    HANDLE snap, proc;
     PROCESSENTRY32 ps;
     BOOL found = 0;
     ps.dwSize = sizeof(ps);
@@ -75,75 +75,67 @@ void AdjustPE(LPE_INFO pe) {
     PIMAGE_TLS_CALLBACK*        CallBack;
     ULONGLONG*                  p,delta;
     BOOL        (*DLL_Entry)    (LPVOID, DWORD, LPVOID);
-    LPVOID      (*Load_DLL)     (LPSTR );
-    LPVOID      (*Get_Proc)     (LPVOID , LPSTR );
+    LPVOID      (*Load_DLL)     (LPSTR);
+    LPVOID      (*Get_Proc)     (LPVOID, LPSTR);
     base       = pe->base;
     Load_DLL   = pe->Load_DLL;
     Get_Proc   = pe->Get_Proc;
     dos        = (PIMAGE_DOS_HEADER)base;
     nt         = (PIMAGE_NT_HEADERS)(base + dos->e_lfanew);
     DLL_Entry  = base+nt->OptionalHeader.AddressOfEntryPoint;
-    if(!pe->reloc){
-        goto Load_Import;
+    if(pe->reloc){
+        if(nt->OptionalHeader.DataDirectory[5].VirtualAddress != 0){
+			delta = (ULONGLONG)base-nt->OptionalHeader.ImageBase;
+			reloc = (PIMAGE_BASE_RELOCATION)(base+nt->OptionalHeader.DataDirectory[5].VirtualAddress);
+			while(reloc->VirtualAddress) {
+				LPVOID  dest    = base+reloc->VirtualAddress;
+				int     nEntry  = (reloc->SizeOfBlock-sizeof(IMAGE_BASE_RELOCATION))/2;
+				PWORD   data    = (PWORD)((LPVOID)reloc+sizeof(IMAGE_BASE_RELOCATION));
+				int i;
+				for(i = 0; i<nEntry; i++,data++) {
+					if(((*data) >> 12) == 10) {
+						p = (PULONGLONG)(dest+((*data)&0xfff));
+						*p += delta;
+					}
+				}
+				reloc = (PIMAGE_BASE_RELOCATION)((LPVOID)reloc+reloc->SizeOfBlock);
+			}
+        }
     }
-    Base_Relocation:
-        if(nt->OptionalHeader.DataDirectory[5].VirtualAddress==0){
-            goto Load_Import;
-        }
-        delta = (ULONGLONG)base-nt->OptionalHeader.ImageBase;
-        reloc = (PIMAGE_BASE_RELOCATION)(base+nt->OptionalHeader.DataDirectory[5].VirtualAddress);
-        while(reloc->VirtualAddress) {
-            LPVOID  dest    = base+reloc->VirtualAddress;
-            int     nEntry  = (reloc->SizeOfBlock-sizeof(IMAGE_BASE_RELOCATION))/2;
-            PWORD   data    = (PWORD)((LPVOID)reloc+sizeof(IMAGE_BASE_RELOCATION));
-            int i;
-            for(i = 0; i<nEntry; i++,data++) {
-                if(((*data) >> 12) == 10) {
-                    p = (PULONGLONG)(dest+((*data)&0xfff));
-                    *p += delta;
-                }
-            }
-            reloc = (PIMAGE_BASE_RELOCATION)((LPVOID)reloc+reloc->SizeOfBlock);
-        }
-    Load_Import:
-        if(nt->OptionalHeader.DataDirectory[1].VirtualAddress==0){
-            goto TLS_CallBack;
-        }
-        import = (PIMAGE_IMPORT_DESCRIPTOR)(base+nt->OptionalHeader.DataDirectory[1].VirtualAddress);
-        while(import->Name) {
-            LPVOID dll = (*Load_DLL)(base+import->Name);
-            Othunk = (PIMAGE_THUNK_DATA)(base+import->OriginalFirstThunk);
-            Fthunk = (PIMAGE_THUNK_DATA)(base+import->FirstThunk);
-            if(!import->OriginalFirstThunk){
-                Othunk = Fthunk;
-            }
-            while(Othunk->u1.AddressOfData) {
-                if(Othunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
-                    *(ULONGLONG *)Fthunk = (ULONGLONG)(*Get_Proc)(dll,(LPSTR)IMAGE_ORDINAL(Othunk->u1.Ordinal));
-                }else {
-                    PIMAGE_IMPORT_BY_NAME fnm = (PIMAGE_IMPORT_BY_NAME)(base+Othunk->u1.AddressOfData);
-                    *(PULONGLONG)Fthunk = (ULONGLONG)(*Get_Proc)(dll,fnm->Name);
-                }
-                Othunk++;
-                Fthunk++;
-            }
-            import++;
-        }
-    TLS_CallBack:
-        if(nt->OptionalHeader.DataDirectory[9].VirtualAddress==0){
-            goto Execute_Entry;
-        }
-        tls = (PIMAGE_TLS_DIRECTORY)(base+nt->OptionalHeader.DataDirectory[9].VirtualAddress);
-        if(tls->AddressOfCallBacks==0){
-            goto Execute_Entry;
-        }
-        CallBack = (PIMAGE_TLS_CALLBACK *)(tls->AddressOfCallBacks);
-        while(*CallBack) {
-            (*CallBack)(base,DLL_PROCESS_ATTACH,NULL);
-            CallBack++;
-        }
-    Execute_Entry: 
-        (*DLL_Entry)(base,DLL_PROCESS_ATTACH,NULL);
+	if(nt->OptionalHeader.DataDirectory[1].VirtualAddress != 0){
+		import = (PIMAGE_IMPORT_DESCRIPTOR)(base+nt->OptionalHeader.DataDirectory[1].VirtualAddress);
+		while(import->Name) {
+			LPVOID dll = (*Load_DLL)(base+import->Name);
+			Othunk = (PIMAGE_THUNK_DATA)(base+import->OriginalFirstThunk);
+			Fthunk = (PIMAGE_THUNK_DATA)(base+import->FirstThunk);
+			if(!import->OriginalFirstThunk){
+				Othunk = Fthunk;
+			}
+			while(Othunk->u1.AddressOfData) {
+				if(Othunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
+					*(ULONGLONG *)Fthunk = (ULONGLONG)(*Get_Proc)(dll,(LPSTR)IMAGE_ORDINAL(Othunk->u1.Ordinal));
+				}
+				else {
+					PIMAGE_IMPORT_BY_NAME fnm = (PIMAGE_IMPORT_BY_NAME)(base+Othunk->u1.AddressOfData);
+					*(PULONGLONG)Fthunk = (ULONGLONG)(*Get_Proc)(dll,fnm->Name);
+				}
+				Othunk++;
+				Fthunk++;
+			}
+			import++;
+		}
+	}
+	if(nt->OptionalHeader.DataDirectory[9].VirtualAddress != 0){
+		tls = (PIMAGE_TLS_DIRECTORY)(base+nt->OptionalHeader.DataDirectory[9].VirtualAddress);
+		if(tls->AddressOfCallBacks != 0){
+			CallBack = (PIMAGE_TLS_CALLBACK *)(tls->AddressOfCallBacks);
+			while(*CallBack) {
+				(*CallBack)(base,DLL_PROCESS_ATTACH,NULL);
+				CallBack++;
+			}
+		}
+	}
+    (*DLL_Entry)(base,DLL_PROCESS_ATTACH,NULL);
 }
 int main(int i,char **arg) {
     if(i!=2) {
@@ -158,7 +150,7 @@ int main(int i,char **arg) {
     PIMAGE_SECTION_HEADER   sec;
     PIMAGE_NT_HEADERS       nt;
     printf("[+]Opening File...\n");
-    if((base = Read_in_Memory(*(arg+1)))==NULL) {
+    if((base = Read_in_Memory(*(arg+1))) == NULL) {
         printf("[-]File I/O Error");
         return 0;
     }
@@ -181,8 +173,7 @@ int main(int i,char **arg) {
     }
 #endif
     printf("[+]Open Process.....\n");
-	// 这里写入需要被注入的程序名字，暂时硬编码作测试
-    if((proc = Find_Process("testvc.exe"))==NULL) {
+    if((proc = Find_Process("testvc.exe")) == NULL) {
         printf("[-]Failed To Open Process");
         return 0;
     }
@@ -191,7 +182,7 @@ int main(int i,char **arg) {
     if((Rbase = VirtualAllocEx(proc,(LPVOID)nt->OptionalHeader.ImageBase,nt->OptionalHeader.SizeOfImage,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE)) == NULL) {
         printf(" [!]Failed To Allocate Memory AT %#p\n [!]Trying Alternative\n", nt->OptionalHeader.ImageBase);
         pe.reloc = 1;
-        if((Rbase = VirtualAllocEx(proc,NULL,nt->OptionalHeader.SizeOfImage,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE))==NULL) {
+        if((Rbase = VirtualAllocEx(proc,NULL,nt->OptionalHeader.SizeOfImage,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE)) == NULL) {
             printf("[-]Failed To Allocate Memory Into Remote Process\n");
             return 0;
         }
@@ -207,7 +198,8 @@ int main(int i,char **arg) {
     pe.base = Rbase;
     pe.Get_Proc = GetProcAddress;
     pe.Load_DLL = LoadLibraryA;
-    if((Adj = VirtualAllocEx(proc,NULL,Func_Size+sizeof(pe),MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE)) == NULL) {
+	Adj = VirtualAllocEx(proc,NULL,Func_Size+sizeof(pe),MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);
+    if(Adj == NULL) {
         printf("[-]Failed To Allocate Memory for PE adjusting\n");
         VirtualFreeEx(proc,Rbase,0,MEM_RELEASE);
         return 0;
