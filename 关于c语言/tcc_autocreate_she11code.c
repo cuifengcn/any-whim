@@ -1,5 +1,5 @@
 // 32位与64位 通用的 windows she11code 生成工具。 语法依 at&t 语法，
-// 目前只能 tcc 编译，gcc 生成的exe文件执行生成的 sh.bin 文件(she11code)无法使用。
+// tcc 与 gcc 均能编译并且成功执行，值得注意的是，tcc 与 gcc 编译函数的方式稍微有点不太一样。所以下面有部分使用了宏定义处理
 // 编写 she11code 的代码需要注意的是
 // 1) 不能直接使用函数获取函数的地址，需要通过一定的汇编获取 Kernel32 的地址
 // 2) 后续找到 GetProcAddress LoadLibraryA 这两个函数的地址后续基本就需要这两个函数进行处理必要函数的获取
@@ -55,7 +55,11 @@ void CreateShellcode(){
 
 // shellcode
 __declspec(naked) void ShellcodeStart(){
-    asm("call ShellcodeEntry");
+	#ifdef __MINGW32__
+	asm("jmp ShellcodeEntry");
+	#else
+	ShellcodeEntry(); // TINYC use this
+	#endif
 }
 // init function struct.
 typedef FARPROC (WINAPI* FN_GetProcAddress)(
@@ -121,6 +125,9 @@ __declspec(naked) HMODULE getKernel32(){
     asm("mov (%rax), %rax");
     asm("mov (%rax), %rax");
     asm("mov 0x20(%rax), %rax");
+	#ifdef __MINGW32__
+	asm("ret"); // TINYC dnot need this
+	#endif
 }
 #else
 __declspec(naked) HMODULE getKernel32(){
@@ -130,6 +137,9 @@ __declspec(naked) HMODULE getKernel32(){
     asm("mov (%eax), %eax");
     asm("mov (%eax), %eax");
     asm("mov 0x10(%eax), %eax");
+	#ifdef __MINGW32__
+	asm("ret"); // TINYC dnot need this
+	#endif
 }
 #endif
 FARPROC getProcAddress(HMODULE hModuleBase){
