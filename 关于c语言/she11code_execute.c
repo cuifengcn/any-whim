@@ -20,5 +20,7 @@ int main(int argc, char const *argv[]) {
     DWORD dwRead;
     ReadFile(hFile, lpAddress, dwSize, &dwRead, 0);
     ((void(*)(void))lpAddress)();
+
+    MessageBoxA(NULL,"this box is show means that shellcode dnot kill this execute.", "test", 0);
     return 0;
 }
