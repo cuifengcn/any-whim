@@ -98,10 +98,10 @@ def get_hide_funcstring(s):
         r.extend([a,b,c,d])
     return bytes(r).decode(errors='ignore')
 
-def get_sign(point_id, fixed_value, timestamp, hide_funcstring):
+def get_sign(point_id, ltime, fixed_value, timestamp, hide_funcstring):
     k2 = list(map(lambda x:int(x, 16), re.findall(r'var k2=\[((?:0x[0-9a-z]+,)*(?:0x[0-9a-z]+))\]', hide_funcstring)[0].split(',')))
     flist = re.findall(r're\[(\d+)\]([+-\^]?)=([^;]+);', hide_funcstring)
-    cb = str(point_id) + str(fixed_value) + str(timestamp) + "220320191104"
+    cb = str(point_id) + str(fixed_value) + str(timestamp) + ltime
     rb = hashlib.md5(cb.encode()).hexdigest()
     _re = [None] * 4
     for i in range(4):
@@ -160,7 +160,7 @@ def get_m3u8_pbody(script):
     ltime       = re.findall(r'var vdwdae325w_64we = "(\d+)";', script)[0]
     timestamp   = int(time.time())
     vid         = re.findall(r'"vid":"([^"]+)"', script)[0]
-    sign        = get_sign(point_id, 'a9e8e1b84915288bad2dc11700081501', timestamp, get_hide_funcstring(script))
+    sign        = get_sign(point_id, ltime, 'a9e8e1b84915288bad2dc11700081501', timestamp, get_hide_funcstring(script))
     d = {}
     d['v']    = ltime
     d['did']  = 'a9e8e1b84915288bad2dc11700081501'
@@ -235,7 +235,7 @@ def get_m3u8_url(url):
 
 
 if __name__ == '__main__':
-    requrl = 'https://v.douyu.com/show/qJgOWx22yky7kVzL'
+    requrl = 'https://v.douyu.com/show/a4Jj7l23PrBWDk01'
     jsondata = get_m3u8_url(requrl)
 
     import pprint
