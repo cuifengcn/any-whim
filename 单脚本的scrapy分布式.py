@@ -4,14 +4,12 @@ from scrapy.http import Request
 from scrapy.utils.python import to_unicode, to_native_str
 from scrapy.utils.misc import load_object
 def request_to_dict(request, spider=None):
-    cb = request.callback
-    if callable(cb): cb = _find_method(spider, cb)
-    eb = request.errback
-    if callable(eb): eb = _find_method(spider, eb)
+    if callable(request.callback): request.callback = _find_method(spider, request.callback)
+    if callable(request.errback):  request.errback  = _find_method(spider, request.errback)
     d = {
         'url': to_unicode(request.url),  # urls should be safe (safe_string_url)
-        'callback': 'parse',
-        'errback': eb,
+        'callback': request.callback,
+        'errback': request.errback,
         'method': request.method,
         'headers': dict(request.headers),
         'body': request.body,
@@ -26,15 +24,13 @@ def request_to_dict(request, spider=None):
         d['_class'] = request.__module__ + '.' + request.__class__.__name__
     return d
 def request_from_dict(d, spider=None):
-    cb = d['callback']
-    if cb and spider: cb = _get_method(spider, cb)
-    eb = d['errback']
-    if eb and spider: eb = _get_method(spider, eb)
+    if d['callback'] and spider: d['callback'] = _get_method(spider, d['callback'])
+    if d['errback']  and spider: d['errback']  = _get_method(spider, d['errback'])
     request_cls = load_object(d['_class']) if '_class' in d else Request
     _cls = request_cls(
         url=to_native_str(d['url']),
-        callback=cb,
-        errback=eb,
+        callback=d['callback'],
+        errback=d['errback'],
         method=d['method'],
         headers=d['headers'],
         body=d['body'],
@@ -184,7 +180,6 @@ class Scheduler(object):
         return request
     def has_pending_requests(self): return len(self) > 0
 from scrapy import signals
-from scrapy.exceptions import DontCloseSpider
 from scrapy.core.scraper import Scraper
 from scrapy.core.engine import ExecutionEngine
 from scrapy.utils.misc import load_object
@@ -202,27 +197,9 @@ def __hook_init__(self, crawler, spider_closed_callback):
     self.downloader = downloader_cls(crawler)
     self.scraper = Scraper(crawler)
     self._spider_closed_callback = spider_closed_callback
+ExecutionEngine.__init__ = __hook_init__
 _bak_next_request = ExecutionEngine._next_request
-# START_TOGGLE_HOOK = True
-# def __hook_next_requests(self, spider):
-#     fetch_one = self.crawler.stats.server.brpop
-#     found = 0
-#     while found < 16:
-#         data = fetch_one(QUEUE_KEY, EXTRA_SETTING['idle_before_close'])
-#         if not data: break
-#         if isinstance(data, tuple): data = data[1]
-#         req = request_from_dict(_serializer.loads(data), spider)
-#         if req:
-#             yield req
-#             found += 1
-#         else:
-#             self.logger.debug("Request not made from data: %r", data)
-#     if found:
-#         self.logger.debug("Read %s requests from '%s'", found, self.redis_key)
-# def __hook_spider_idle(self, spider):
-#     for req in __hook_next_requests(self, spider): spider.crawler.engine.crawl(req, spider=spider)
-#     raise DontCloseSpider
-# 暂时还有一些BUG，后续稍微修改一下。
+START_TOGGLE_HOOK = True
 def __hook_next_request(self, spider):
     global START_TOGGLE_HOOK
     if START_TOGGLE_HOOK:
@@ -230,8 +207,52 @@ def __hook_next_request(self, spider):
         if r != 1: self.slot.start_requests = None # 让其他非首次启动的 start_requests 不执行
         START_TOGGLE_HOOK = False
     _bak_next_request(self, spider)
-ExecutionEngine.__init__ = __hook_init__
 ExecutionEngine._next_request = __hook_next_request
+import scrapy.spiders
+from scrapy import signals
+from scrapy.exceptions import DontCloseSpider
+from scrapy.spiders import Spider
+class RedisMixin(object):
+    redis_key = None
+    redis_batch_size = None
+    redis_encoding = None
+    server = None
+    def start_requests(self): return self.next_requests()
+    def setup_redis(self, crawler=None):
+        if self.server is not None: return
+        settings = crawler.settings
+        self.redis_key = QUEUE_KEY
+        self.redis_batch_size = settings.getint('CONCURRENT_REQUESTS')
+        self.server = redis.StrictRedis(**REDIS_PARAMS)
+        crawler.signals.connect(self.spider_idle, signal=signals.spider_idle)
+    def next_requests(self):
+        fetch_one = self.server.lpop
+        found = 0
+        while found < self.redis_batch_size:
+            data = fetch_one(self.redis_key)
+            if not data: break
+            req = self.make_request_from_data(data)
+            if req:
+                yield req
+                found += 1
+            else:
+                self.logger.debug("Request not made from data: %r", data)
+        if found:
+            self.logger.debug("Read %s requests from '%s'", found, self.redis_key)
+    def make_request_from_data(self, data): return self.make_requests_from_url(data.decode(self.redis_encoding))
+    def schedule_next_requests(self):
+        for req in self.next_requests(): self.crawler.engine.crawl(req, spider=self)
+    def spider_idle(self):
+        self.schedule_next_requests()
+        raise DontCloseSpider
+class RedisSpider(RedisMixin, Spider):
+    @classmethod
+    def from_crawler(self, crawler, *args, **kwargs):
+        obj = super(RedisSpider, self).from_crawler(crawler, *args, **kwargs)
+        obj.setup_redis(crawler)
+        return obj
+scrapy.Spider = RedisSpider
+import scrapy.spiders
 import scrapy.extensions.telnet
 import scrapy.extensions.memusage
 import scrapy.extensions.logstats
@@ -257,6 +278,12 @@ REDIS_PARAMS = {
 QUEUE_KEY       = 'TASK_QUEUE'  # 任务队列(当任务正常执行完，必然是空)
 DUPEFILTER_KEY  = 'DUPEFILTER'  # 过滤池(用于放置每个请求的指纹)
 TASK_STATS      = 'TASK_STATS'  # 任务状态日志
+
+
+
+
+
+
 
 
 
@@ -289,7 +316,7 @@ class VSpider(scrapy.Spider):
             headers = {}
             return url,headers
 
-        for i in range(3):
+        for i in range(1):
             url,headers = mk_url_headers()
             meta = {}
             meta['proxy'] = self.proxy
@@ -315,7 +342,7 @@ class VSpider(scrapy.Spider):
         def mk_url_headers():
             def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
             url = (
-                'https://www.baidu.com/search/error.html'
+                'https://www.baidu.com/s?ie=UTF-8&wd=123'
             )
             url = quote_val(url)
             headers = {}
@@ -325,7 +352,6 @@ class VSpider(scrapy.Spider):
             url,headers = mk_url_headers()
             meta = {}
             meta['proxy'] = self.proxy
-            print(111111111111111)
             r = Request(
                     url,
                     headers  = headers,
