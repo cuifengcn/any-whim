@@ -365,10 +365,31 @@ class VSpider(scrapy.Spider):
             d = {}
             d['2222222'] = 1111
             d['33334444444333'] = 1111
-            if i == 1:
-                raise
             yield d
 
+        def mk_url_headers():
+            def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
+            url = (
+                'https://www.baidu.com/s?ie=UTF-8&wd=1233'
+            )
+            url = quote_val(url)
+            headers = {}
+            return url,headers
+
+        for i in range(3):
+            url,headers = mk_url_headers()
+            meta = {}
+            meta['proxy'] = self.proxy
+            r = Request(
+                    url,
+                    headers  = headers,
+                    callback = self.parse_info_info,
+                    meta     = meta,
+                )
+            yield r
+
+    def parse_info_info(self, response):
+        yield {"你好":"i兄弟"}
 
 # 配置在单脚本情况也能爬取的脚本的备选方案，使用项目启动则下面的代码无效
 if __name__ == '__main__':
