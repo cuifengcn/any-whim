@@ -280,7 +280,7 @@ def hook_to_scrapy_redis(namespace='default'):
     DUPEFILTER_KEY  = 'scrapy_redis:{}:DUPEFILTER'.format(namespace)  # 过滤池(用于放置每个请求的指纹)
     TASK_STATS      = 'scrapy_redis:{}:TASK_STATS'.format(namespace)  # 任务状态日志
 
-hook_to_scrapy_redis(namespace=1) # 用函数包住，防止全局参数的污染。
+hook_to_scrapy_redis(namespace=12311) # 用函数将各类钩子处理包住，防止污染全局变量
 
 
 
