@@ -19,8 +19,8 @@ contextfactory.DEFAULT_CIPHERS = AcceptableCiphers.fromOpenSSLCipherString('DEFA
 # requests.exceptions.SSLError: HTTPSConnectionPool(host='www.ispl.cn', port=443): Max retries exceeded with url: /ispl/servlet/ProductList_Public?tmp=1&valid=1&pageIndex=1 (Caused by SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_ske_dhe', 'dh key too small')],)",),))
 # 解决方法：增加以下代码即可
 try:
-    requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
-    requests.packages.urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST += 'HIGH:!DH:!aNULL'
+    requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
+    requests.packages.urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST += ':HIGH:!DH:!aNULL'
 except AttributeError:
     pass
 
