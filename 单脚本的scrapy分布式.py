@@ -262,6 +262,31 @@ def hook_to_scrapy_redis(namespace='default'):
     scrapy.extensions.memusage.MemoryUsage.__init__  = lambda self,_:None   # 同样的理由，我不用
     scrapy.extensions.logstats.LogStats.from_crawler = lambda self:None     # 同样的理由，我不用
     scrapy.statscollectors.MemoryStatsCollector = RedisStatsCollector       # 挂钩默认日志，让其自动支持redis日志(这种抽象的钩子技术小孩子可不要学哦~)
+    import json
+    import scrapy.pipelines
+    from scrapy.core.spidermw import SpiderMiddlewareManager
+    TASK_COLLECTION = None
+    class VRedisPipeline(object):
+        def __init__(self):
+            self.key = TASK_COLLECTION
+            self.server = redis.StrictRedis(**REDIS_PARAMS)
+            self.server.ping()
+        def process_item(self, item, spider):
+            if self.key:
+                self.server.lpush(self.key, json.dumps(item))
+            return item
+    def __hook_scraper_init__(self, crawler):
+        self.slot = None
+        self.spidermw = SpiderMiddlewareManager.from_crawler(crawler)
+        itemproc_cls = scrapy.pipelines.ItemPipelineManager()
+        self.itemproc = itemproc_cls.from_crawler(crawler)
+        self.itemproc._add_middleware(VRedisPipeline()) # 挂钩scraper的初始化，在此刻增加redis写入中间件
+        self.concurrent_items = crawler.settings.getint('CONCURRENT_ITEMS')
+        self.crawler = crawler
+        self.signals = crawler.signals
+        self.logformatter = crawler.logformatter
+    import scrapy.core.scraper
+    scrapy.core.scraper.Scraper.__init__ = __hook_scraper_init__
     EXTRA_SETTING = {
         'persist': True,            # 任务(意外或正常)结束是否保留过滤池或任务队列
         'flush_on_start': False,    # 任务开始时是否需要进行队列和过滤池的清空处理(测试时使用)
@@ -279,8 +304,9 @@ def hook_to_scrapy_redis(namespace='default'):
     QUEUE_KEY       = 'scrapy_redis:{}:TASK_QUEUE'.format(namespace)  # 任务队列(当任务正常执行完，必然是空)
     DUPEFILTER_KEY  = 'scrapy_redis:{}:DUPEFILTER'.format(namespace)  # 过滤池(用于放置每个请求的指纹)
     TASK_STATS      = 'scrapy_redis:{}:TASK_STATS'.format(namespace)  # 任务状态日志
+    TASK_COLLECTION = 'scrapy_redis:{}:COLLECTION'.format(namespace)  # 数据收集的地方(默认使用redis收集json.dumps的数据)，注释这行数据就不收集到redis
 
-hook_to_scrapy_redis(namespace=12311) # 用函数将各类钩子处理包住，防止污染全局变量
+hook_to_scrapy_redis(namespace='vilame') # 用函数将各类钩子处理包住，防止污染全局变量
 
 
 
