@@ -204,12 +204,13 @@ def create_code(code):
     code = re.sub(r', *\n', '\n', code)
     ls, fn = [], []
     for i in code.splitlines():
-        if re.findall(r'^ *\w{5}: ', i):
-            ls.append(re.sub(r'^(\w{5})', r'D["\1"]', i.lstrip()))
+        if re.findall(r'\w{5}: ', i):
+            ls.append(re.sub(r'.*(\w{5}): ', r'D["\1"]: ', i.lstrip(), count=1))
             if 'function' in i: 
                 fn.append(i.lstrip()[7:].replace('function', 'def'))
     for idx, i in enumerate(ls): 
         ls[idx] = re.sub(r': function (\w+)\([^\(\)]+\).*', r' = \1', i)
+        ls[idx] = re.sub(r': (.*)', r' = \1', ls[idx])
     for i in fn: print(i)
     print('D = {}')
     for i in ls: print(i)
@@ -294,13 +295,84 @@ D["ztbCf"] = k
 
 
 
-# 后续的处理就是将 switch 部分的寻参函数全部都解码成可用的字符串，后续再进一步处理
-# 增强语义，后续的处理就会干净很多很多。看情况多次解码也可以高强度增强语义，大幅节约解码时间。
-print(_0x53a5("0x3d", "@l$z"))
-print(_0x53a5("0x3e", "l(8Z"))
-print(_0x53a5("0x3f", "H!NY"))
-print(_0x53a5("0x40", "[I(U"))
-print(_0x53a5("0x41", "[I(U"))
-print(_0x53a5("0x42", "R%HY"))
-print(_0x53a5("0x43", "!tw2"))
-print(_0x53a5("0x44", "$WyH"))
+
+
+s = r'''
+        while (!![]) {
+            switch (H[i++]) {
+            case "0":
+                for (G = "",
+                r = 0,
+                K = 0,
+                R = 0; D[_0x53a5("0x6", "Zipd")](O, R); R++) {
+                    r = D[_0x53a5("0x7", "HdYa")](D[_0x53a5("0x8", "aJF)")](r, 1), 256),
+                    K = D[_0x53a5("0x9", "ArEd")](D[_0x53a5("0xa", "$WyH")](K, Q[r]), 256),
+                    n = Q[r],
+                    Q[r] = Q[K],
+                    Q[K] = n,
+                    G += String[_0x53a5("0xb", "ArEd")](D[_0x53a5("0xc", "[I(U")](ae[R][_0x53a5("0xd", "#7C5")](), Q[D[_0x53a5("0xe", "I*O3")](D[_0x53a5("0xf", "d12c")](Q[r], Q[K]), 256)]))
+                }
+                continue;
+            case "1":
+                for (O = ae[_0x53a5("0x10", "I*O3")],
+                aa = [],
+                R = 0; D[_0x53a5("0x11", "8H#C")](255, R); R++) {
+                    aa[R] = d[D[_0x53a5("0x12", "UU0z")](R, v)][_0x53a5("0x13", "@l$z")]()
+                }
+                continue;
+            case "2":
+                for (c = D[_0x53a5("0x14", "Afds")],
+                y = 0,
+                p = c,
+                z = ""; G[_0x53a5("0x15", "tqAr")](D[_0x53a5("0x16", "FFp1")](0, y)) || (p = "=",
+                D[_0x53a5("0x17", "1VKJ")](y, 1)); z += p[_0x53a5("0x18", "2)Vk")](D[_0x53a5("0x19", "tMcV")](63, D[_0x53a5("0x1a", "8H#C")](J, D[_0x53a5("0x1b", "QWU)")](8, D[_0x53a5("0x1c", "ArEd")](8, D[_0x53a5("0x1d", "[I(U")](y, 1))))))) {
+                    q = G[_0x53a5("0x1e", "%GFP")](y += 0.75),
+                    J = D[_0x53a5("0x1f", "$QKE")](D[_0x53a5("0x20", "aJF)")](J, 8), q)
+                }
+                continue;
+            case "3":
+                for (j = 0; D[_0x53a5("0x21", "v4z2")](j, t[_0x53a5("0x22", "$WyH")]); j++) {
+                    ac = t[_0x53a5("0x23", "T%I]")](j),
+                    D[_0x53a5("0x24", "H!NY")](128, ac) ? ae += String[_0x53a5("0x25", "Zipd")](ac) : D[_0x53a5("0x26", "UU0z")](ac, 127) && D[_0x53a5("0x26", "UU0z")](2048, ac) ? (ae += String[_0x53a5("0x27", "eQ8K")](D[_0x53a5("0x28", "@l$z")](192, D[_0x53a5("0x29", "NJBx")](ac, 6))),
+                    ae += String[_0x53a5("0x25", "Zipd")](D[_0x53a5("0x2a", "FFp1")](128, D[_0x53a5("0x2b", "vkS%")](63, ac)))) : (ae += String[_0x53a5("0x2c", "s^8S")](D[_0x53a5("0x2d", "2)Vk")](224, D[_0x53a5("0x2e", "kjv)")](ac, 12))),
+                    ae += String[_0x53a5("0x2f", "$WyH")](D[_0x53a5("0x30", "!tw2")](128, D[_0x53a5("0x31", "8XxX")](63, D[_0x53a5("0x32", "spiQ")](ac, 6)))),
+                    ae += String[_0x53a5("0x33", "RF]N")](D[_0x53a5("0x34", "I*O3")](128, D[_0x53a5("0x35", "l(8Z")](63, ac))))
+                }
+                continue;
+            case "4":
+                for (Q = [],
+                R = 0; D[_0x53a5("0x36", "spiQ")](256, R); R++) {
+                    Q[_0x53a5("0x37", "vrDG")](R)
+                }
+                continue;
+            case "5":
+                return G = D[_0x53a5("0x38", "aJF)")](S, z[_0x53a5("0x39", "$J^e")](/=/g, ""))[_0x53a5("0x3a", "H!NY")](/\+/g, "-")[_0x53a5("0x3b", "mwuw")](/\//g, "_")[_0x53a5("0x3c", "vrDG")](/=/g, ".");
+            case "6":
+                var j, ac, O, aa, R, Q, K, n, G, r, c, J, q, y, p, z, ab = 4, f = D[_0x53a5("0x3d", "@l$z")](md5, D[_0x53a5("0x3e", "l(8Z")])[_0x53a5("0x3f", "H!NY")](0, 30), U = D[_0x53a5("0x40", "[I(U")](md5, D[_0x53a5("0x41", "[I(U")](f, "9b")[_0x53a5("0x42", "R%HY")](0, 16)), w = D[_0x53a5("0x43", "!tw2")](md5, D[_0x53a5("0x44", "$WyH")](f, "9b")[_0x53a5("0x45", "[I(U")](16, 32))[_0x53a5("0x46", "ArEd")](0, 16), S = D[_0x53a5("0x47", "$QKE")](md5, new Date()[_0x53a5("0x48", "Ec8P")]())[_0x53a5("0x49", "8H#C")](-ab), d = D[_0x53a5("0x4a", "8XxX")](U, D[_0x53a5("0x4b", "Ec8P")](md5, D[_0x53a5("0x4c", "kjv)")](U, S))), v = d[_0x53a5("0x4d", "RF]N")], t = D[_0x53a5("0x4e", "I*O3")](D[_0x53a5("0x4f", "vkS%")](D[_0x53a5("0x50", "%GFP")](D[_0x53a5("0x51", "$QKE")](D[_0x53a5("0x52", "aJF)")](new Date()[_0x53a5("0x53", "spiQ")](), 1000), 86400), 0), D[_0x53a5("0x54", "#7C5")](md5, D[_0x53a5("0x55", "[I(U")](ag, D[_0x53a5("0x56", ")dGK")](D[_0x53a5("0x57", "$QKE")](D[_0x53a5("0x58", "HdYa")](w, 5), D[_0x53a5("0x59", "1VKJ")]), 3)))[_0x53a5("0x5a", "DW9@")](0, 16)), ag), ae = "";
+                continue;
+            case "7":
+                for (K = 0,
+                R = 0; D[_0x53a5("0x5b", "vkS%")](256, R); R++) {
+                    K = D[_0x53a5("0x5c", "2)Vk")](D[_0x53a5("0x5d", "mwuw")](D[_0x53a5("0x5e", "R%HY")](K, Q[R]), aa[R]), 256),
+                    n = Q[R],
+                    Q[R] = Q[K],
+                    Q[K] = n
+                }
+                continue
+            }
+            break
+        }
+    }
+'''
+
+
+
+import re
+def replace_rc4(e):
+    try:
+        return repr(eval(e.group(0)))
+    except:
+        print('error:', e.group(0))
+        return e.group(0)
+v = re.sub(r'_0x53a5\([^\(\)]+, *".{4}"\)', replace_rc4, s)
+print(v)
