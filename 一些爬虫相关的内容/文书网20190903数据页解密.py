@@ -1,15 +1,8 @@
+import json, time, random, base64
 
-import re
-import json
-import time
-import random
-import base64
-from urllib.parse import unquote, quote
-
+# pip install requests lxml cryptography
 import requests
 from lxml import etree
-
-# pip install cryptography
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
@@ -30,8 +23,7 @@ def get_encryptor(key, iv=None):
         ddata     = unpadder.update(ddata) + unpadder.finalize()
         return ddata
     class f:pass
-    f.encrypt = enc
-    f.decrypt = dec
+    f.encrypt, f.decrypt = enc, dec
     return f
 
 def rdn(length):
@@ -65,7 +57,7 @@ def post_info(docId):
     key       = _data['secretKey'].encode()
     iv        = ('%04d%02d%02d' % time.localtime()[:3]).encode()
     _encdata  = base64.b64decode(_data['result'].encode())
-    encryptor = get_encryptor(key, iv)
+    encryptor = get_encryptor(key, iv) # 3des, cbc
     return json.loads(encryptor.decrypt(_encdata))
 
 if __name__ == '__main__':
