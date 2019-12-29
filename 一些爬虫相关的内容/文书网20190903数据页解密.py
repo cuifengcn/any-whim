@@ -49,7 +49,7 @@ def create_ciphertext():
 def post_info(docId):
     # 生成请求参数函数
     def mk_url_headers_body():
-        url = 'http://wenshu.court.gov.cn/website/parse/rest.q4w'
+        url = 'https://wenshu.court.gov.cn/website/parse/rest.q4w'
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36"
         }
