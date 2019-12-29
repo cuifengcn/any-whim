@@ -43,7 +43,7 @@ def get_info_by_docid(docId):
         headers = { "User-Agent": "Chrome/76.0.3809.132 Safari/537.36" }
         body = {
             "docId": docId,
-            "ciphertext": create_ciphertext(), # 该参数传递了时间信息(加密)，所以需要该函数进行动态生成
+            "ciphertext": create_ciphertext(), # 该参数传递了时间信息(加密)被用于判断是否超时，所以需要该函数进行动态生成
             "cfg": "com.lawyee.judge.dc.parse.dto.SearchDataDsoDTO@docInfoSearch",
             "__RequestVerificationToken": rdn(24)
         }
