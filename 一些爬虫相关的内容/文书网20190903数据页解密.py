@@ -29,7 +29,6 @@ def rdn(length):
     temp = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
     return ''.join([random.choice(temp) for i in range(length)]).encode()
 
-# 这个函数包含了加密后的时间信息，可以让服务器检查请求的时间是否超时，所以需要该函数进行动态生成
 def create_ciphertext():
     key  = rdn(24)
     iv   = ('%04d%02d%02d' % time.localtime()[:3]).encode()
@@ -47,7 +46,7 @@ def post_info(docId):
         }
         body = {
             "docId": docId,
-            "ciphertext": create_ciphertext(),
+            "ciphertext": create_ciphertext(), # 该参数传递了时间信息(加密)，所以需要该函数进行动态生成
             "cfg": "com.lawyee.judge.dc.parse.dto.SearchDataDsoDTO@docInfoSearch",
             "__RequestVerificationToken": rdn(24)
         }
