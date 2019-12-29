@@ -53,7 +53,7 @@ def get_info_by_docid(docId):
     key       = _data['secretKey'].encode()
     iv        = ('%04d%02d%02d' % time.localtime()[:3]).encode()
     _encdata  = base64.b64decode(_data['result'].encode())
-    encryptor = get_encryptor(key, iv) # 3des, cbc
+    encryptor = get_encryptor(key, iv)
     return json.loads(encryptor.decrypt(_encdata))
 
 if __name__ == '__main__':
