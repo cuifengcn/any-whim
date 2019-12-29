@@ -37,13 +37,10 @@ def create_ciphertext():
     data =  (key + iv + base64.b64encode(encryptor.encrypt(data))).decode()
     return ' '.join([bin(ord(i))[2:] for i in data])
 
-def post_info(docId):
-    # 生成请求参数函数
+def get_info_by_docid(docId):
     def mk_url_headers_body():
         url = 'https://wenshu.court.gov.cn/website/parse/rest.q4w'
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36"
-        }
+        headers = { "User-Agent": "Chrome/76.0.3809.132 Safari/537.36" }
         body = {
             "docId": docId,
             "ciphertext": create_ciphertext(), # 该参数传递了时间信息(加密)，所以需要该函数进行动态生成
@@ -60,5 +57,5 @@ def post_info(docId):
     return json.loads(encryptor.decrypt(_encdata))
 
 if __name__ == '__main__':
-    s = post_info("adb77f453fa84556a8afaaba00c0fa28")
+    s = get_info_by_docid("adb77f453fa84556a8afaaba00c0fa28")
     print(s)
