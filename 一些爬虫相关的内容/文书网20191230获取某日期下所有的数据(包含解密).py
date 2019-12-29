@@ -1,3 +1,8 @@
+# 直接运行该脚本即可测试
+# 开发环境 python3
+# 依赖： pip install requests cryptography
+
+
 import json, time, random, base64
 import requests
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -147,8 +152,6 @@ def get_all_docid_by_oneday(day):
 
 
 if __name__ == '__main__':
-    # 依赖库
-    # pip install requests cryptography
 
     # 测试获取某天全部的 docid
     day = "2019-12-02"
