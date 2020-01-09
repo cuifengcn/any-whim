@@ -35,7 +35,7 @@ def get_font_dict(url):
     return mk_font_dict(url)
 
 def get_css_font_dict(url):
-    def mk_css_dict(url):
+    def mk_css_font_dict(url):
         def mk_url_headers(url):
             headers = {
                 "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
@@ -56,7 +56,7 @@ def get_css_font_dict(url):
         for a,b,c in css_items:
             css_dict[a] = (int(b), int(c))
         return css_dict, font_dict
-    return mk_css_dict(url)
+    return mk_css_font_dict(url)
 
 def get_html_content():
     # 请配置头信息中的的 cookie 内容让正常的加密 HTML 文本结果返回，后再进行解密！！！！！！！！！
