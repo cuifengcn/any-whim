@@ -93,8 +93,7 @@ def decrypt_dazhong(content):
     if css not in css_font_dicts: css_font_dicts[css] = get_css_font_dict(css)
     css_dict, font_dict = css_font_dicts[css]
     def replace_func(e): return font_dict.get(css_dict.get(e.group(1)))
-    content = re.sub(r'<svgmtsi class="(.*?)"></svgmtsi>', replace_func, content)
-    return content
+    return re.sub(r'<svgmtsi class="(.*?)"></svgmtsi>', replace_func, content)
 
 if __name__ == '__main__':
     content = get_html_content()
