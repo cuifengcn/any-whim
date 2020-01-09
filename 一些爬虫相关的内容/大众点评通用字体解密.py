@@ -1,3 +1,6 @@
+# 直接执行代码即可测试
+# python3
+
 import re
 import requests
 
