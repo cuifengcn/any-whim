@@ -111,7 +111,7 @@ def get_list_info(data_filter, filter_info):
 
 # 通过 docid 直接获取到文书的内容
 def get_info_by_docid(docId):
-    def mk_url_headers_body():
+    def mk_url_headers_body(docId):
         url = 'https://wenshu.court.gov.cn/website/parse/rest.q4w'
         headers = { "User-Agent": "Chrome/76.0.3809.132 Safari/537.36" }
         body = {
@@ -121,7 +121,7 @@ def get_info_by_docid(docId):
             "__RequestVerificationToken": rdn(24)
         }
         return url,headers,body
-    url,headers,body = mk_url_headers_body()
+    url,headers,body = mk_url_headers_body(docId)
     _data     = json.loads(requests.post(url,headers=headers,data=body).content)
     key       = _data['secretKey'].encode()
     iv        = ('%04d%02d%02d' % time.localtime()[:3]).encode()

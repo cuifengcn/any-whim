@@ -38,17 +38,17 @@ def create_ciphertext():
     return ' '.join([bin(ord(i))[2:] for i in data])
 
 def get_info_by_docid(docId):
-    def mk_url_headers_body():
+    def mk_url_headers_body(docId):
         url = 'https://wenshu.court.gov.cn/website/parse/rest.q4w'
         headers = { "User-Agent": "Chrome/76.0.3809.132 Safari/537.36" }
         body = {
             "docId": docId,
-            "ciphertext": create_ciphertext(), # 该参数传递了时间信息(加密)被用于判断是否超时，所以需要该函数进行动态生成
+            "ciphertext": create_ciphertext(), # 该参数传递了时间信息(加密)被用于服务器判断请求是否过期，所以需要该函数进行动态生成
             "cfg": "com.lawyee.judge.dc.parse.dto.SearchDataDsoDTO@docInfoSearch",
             "__RequestVerificationToken": rdn(24)
         }
         return url,headers,body
-    url,headers,body = mk_url_headers_body()
+    url,headers,body = mk_url_headers_body(docId)
     _data     = json.loads(requests.post(url,headers=headers,data=body).content)
     key       = _data['secretKey'].encode()
     iv        = ('%04d%02d%02d' % time.localtime()[:3]).encode()
