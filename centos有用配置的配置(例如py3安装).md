@@ -70,3 +70,21 @@ systemctl enable squid
 # 后续请注意例如阿里云之类的端口需要在账户的防火墙策略内打开。
 # 请求时候需要使用 http://uname:pword@xxx.xxx.xxx.xxx:1234 这样的结构来请求
 ```
+
+centos7安装chrome以及chromedriver环境使用selenium
+
+```bash
+yum -y install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+yum -y install unzip
+wget http://chromedriver.storage.googleapis.com/70.0.3538.16/chromedriver_linux64.zip
+unzip chromedriver_linux64.zip
+mv chromedriver /usr/local/bin/
+chmod +x /usr/local/bin/chromedriver
+rm -f chromedriver_linux64.zip
+
+# 注意，当你使用 selenium 的时候记得添加一些参数，网上说是下面三个
+# 但是经过测试至少需要添加前两个参数才能正常运行，chromedriver 的测试版本为 70.0.3538.16。
+# chrome_options.add_argument('--headless')
+# chrome_options.add_argument('--no-sandbox')
+# chrome_options.add_argument('--disable-dev-shm-usage')
+```
