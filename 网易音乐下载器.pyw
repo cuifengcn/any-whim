@@ -1,8 +1,9 @@
-# 开发环境 python3，开发日期 20200127
-# 依赖环境 pip3 install requests cryptography youtube-dl
+# 开发环境 python3，开发日期 20200128
+# 依赖环境 pip3 install cryptography youtube-dl
 # 直接执行即可使用，一个带有搜索和下载功能的图形化下载工具。
 
-import requests
+from urllib import request
+from urllib.parse import urlencode
 import os,sys,re,json,random,base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
@@ -22,8 +23,7 @@ def get_encryptor(key, iv=None):
         unpadder  = padding.PKCS7(algoer.block_size).unpadder()
         return unpadder.update(ddata) + unpadder.finalize()
     class f:pass
-    f.encrypt = enc
-    f.decrypt = dec
+    f.encrypt, f.decrypt = enc, dec
     return f
 def get_postbody(realparams):
     def mk_rdkey():
@@ -64,14 +64,20 @@ def mk_search_url_headers_body(searchkey):
     params,encSecKey = get_postbody(json.dumps(realparams))
     body = { "params": params, "encSecKey": encSecKey }
     return url,headers,body
+def mypost(url, headers, body):
+    r = request.Request(url, method='POST')
+    for k, v in headers.items():
+        if k.lower() == 'accept-encoding': continue
+        r.add_header(k, v)
+    proxies = None # {'http':'http://127.0.0.1:8888', 'https':'http://127.0.0.1:8888'}
+    opener = request.build_opener(request.ProxyHandler(proxies))
+    return opener.open(r, data=urlencode(body).encode('utf-8')).read()
 def get_mp3_attr_by_songid(songid):
     url,headers,body = mk_mp3_url_headers_body(songid)
-    r = requests.post(url,headers=headers,data=body)
-    return json.loads(r.text)['data'][0]['url']
+    return json.loads(mypost(url, headers, body))['data'][0]['url']
 def get_infos_by_searchkey(searchkey):
     url,headers,body = mk_search_url_headers_body(searchkey)
-    content = requests.post(url,headers=headers,data=body).text
-    jsondata = json.loads(content[content.find('{'):content.rfind('}')+1])
+    jsondata = json.loads(mypost(url, headers, body))
     infos = []
     for i in jsondata['result']['songs']:
         d = {}
@@ -87,7 +93,9 @@ def dosomething(func, *a, times=0, **kw):
         assert info is not None
         return info
     except:
+        import traceback
         print('retry:{}'.format(times))
+        print(traceback.format_exc())
         if times < 5: dosomething(func, *a, times=times+1, **kw)
         else: print('error retry times:{}'.format(times))
 import tkinter
