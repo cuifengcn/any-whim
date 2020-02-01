@@ -148,7 +148,7 @@ def get_all_docid_by_oneday(day):
         data_filter = [{"key": "cprq","value": day+' TO '+day}] # 这里是处理之前搜索不到新内容的BUG。
         docids = get_list_info(data_filter, filter_info) # 通过过滤器获条件下，所有的 docid
         all_docids.extend(docids)
-        # 下面这块代码仅作为测试用，这样可以只测试一条最细过滤条件过滤后的某一天的所有 docid，如果有需要请删除下面这块代码！
+        # 下面这块代码仅作为测试用，这样可以只测试三条最细过滤条件过滤后的某一天的所有 docid，如果有需要请删除下面这块代码！
         print('使用时请注释掉该处 break 代码！！！！')
         if idx == 2: break
     return all_docids
