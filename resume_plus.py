@@ -11,7 +11,7 @@
 ##|%%%| name:  | 24          |b51k{VX/(j|   \ _ /   |
 ##|%%%| age:   | male        |9M;`().#sZ|  /\ _ /\  |
 ##\---| gender:| guiyang     |5m*%U1T9Xm\-----------/
-##|///| from:  | 18685446225 |Nccfz\)-)o11np}:|////|
+##|///| from:  | 186-------- |Nccfz\)-)o11np}:|////|
 ##|///| phone: \-------------/IBiWBoT/----------------\
 ##|///\-----------////|FO7ey+![vH\2=)| <prosperous>   |
 ##/--------------\////|+/----------\)| <democratic>   |
@@ -63,13 +63,13 @@ class frame:
         if self.ignore_lenth:pass
         else:
             if lenth+x > self.lenth:
-                print 'some fram lenth must be overflow'
+                print('some fram lenth must be overflow')
                 return False
         if width+y > self.width:
-            print 'some fram width must be overflow'
+            print('some fram width must be overflow')
             return False
         if type(strs)==str:strs_in = self.box_inner_deal(strs,[x,y,lenth,width])
-        if type(strs)==list:strs_in = [i[:lenth] for i in strs]
+        if isinstance(strs, (list, map)):strs_in = [i[:lenth] for i in strs]
         self.__in_fram.append([[x,y,lenth,width],strs_in])
     def make_fram_original(self,fram):
         self.__real_fram.append('/'+'-'*(fram[0]-2)+'\\')
@@ -106,12 +106,12 @@ class frame:
     def box_inner_deal(self,strs,size):
         str_list = re.findall('.{'+str(size[2])+'}|.+',strs)
         if len(str_list)>size[3]:
-            print 'some string must be too long'
+            print('some string must be too long')
             return []
         return str_list
     def show_fram(self):
         for i in self.__real_fram:
-            print i
+            print(i)
 #--------------------------------
 def random_len(lens):
     strs = ''
@@ -119,7 +119,7 @@ def random_len(lens):
     return strs
 #--------------------------------
 label = ['name:','age:','gender:','from:','phone:']
-info = ['zhoulin','24','male','guiyang','18685446225']
+info = ['zhoulin','24','male','guiyang','186--------']
 face = ['-----','/ _ _ \\','(| @ @ |)','|  .  |','\\  _  /','\\ _ /','/\\ _ /\\']
 sign = ['/\\', '/--\\', '/|/\\|\\', '\\|\\/|/', '\\--/', '\\/']
 resume = ['   ___   ___   ___ _ __ _   __ ___','  / o | / _/ ,\' _//// // \,\' // _/',
@@ -133,8 +133,8 @@ ew = ['','[0],Copy editor','[1],Video review','[2],The Writer','[3],Seller']
 #--------------------------------
 if __name__ == "__main__":
     for i in resume[:-1]:
-        print i
-    print resume[-1]+' '*(50-len(resume[-1])-len('<zhoulin>'))+'<zhoulin>'
+        print(i)
+    print(resume[-1]+' '*(50-len(resume[-1])-len('<zhoulin>'))+'<zhoulin>')
     x = frame(50,40)
     x.ignore_lenth=True
     x.over_mod=True
