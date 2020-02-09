@@ -905,13 +905,15 @@ rsa_sk_t load_sk_from_base64(char* s){
     return sk;
 }
 // 通过对 char* 数据切割，生成目标长度生成固定分段，然后返回 char* 的加密数据
-unsigned char* rsa_encrypt(char* edata, int datalen, rsa_pk_t *pk, int keylen, int* edatalen){
+unsigned char* rsa_encrypt(char* edata, int datalen, rsa_pk_t *pk, int* edatalen){
     int splitnum, onepeace, allength, onesplit;
     int ret;
+    int keylen;
     unsigned char *res;
     uint8_t output[256];
     uint8_t input[256];
     unsigned int outputLen;
+    keylen = pk->bits;
     onesplit = keylen/8-11;
     onepeace = keylen/8;
     splitnum = (datalen+(onesplit-1))/onesplit;
@@ -932,16 +934,19 @@ unsigned char* rsa_encrypt(char* edata, int datalen, rsa_pk_t *pk, int keylen, i
         for (int j = left; j < right; ++j) {
             res[j] = output[j-left];
         }
+        printf("enc: %d/%d\n", i+1, splitnum); // 显示进度
     }
     return res;
 }
-unsigned char* rsa_decrypt(char* ddata, int datalen, rsa_sk_t *sk, int keylen, int* ddatalen){
+unsigned char* rsa_decrypt(char* ddata, int datalen, rsa_sk_t *sk, int* ddatalen){
     int splitnum, onepeace, tplength, onesplit;
     int allength = 0;
+    int keylen;
     unsigned int outputLen;
     unsigned char *res;
     uint8_t output[256];
     uint8_t input[256];
+    keylen = sk->bits;
     onesplit = keylen/8-11;
     onepeace = keylen/8;
     splitnum = datalen/onepeace;
@@ -962,33 +967,43 @@ unsigned char* rsa_decrypt(char* ddata, int datalen, rsa_sk_t *sk, int keylen, i
         for (int j = left; j < right; ++j) {
             res[j] = output[j-left];
         }
+        printf("dec: %d/%d\n", i+1, splitnum); // 显示进度
     }
     return res;
 }
+int get_file_size(FILE * file_handle){
+    unsigned int current_read_position = ftell(file_handle);
+    int file_size;
+    fseek(file_handle, 0, SEEK_END);
+    file_size = ftell(file_handle);
+    fseek(file_handle, current_read_position, SEEK_SET);
+    return file_size;
+}
+
+
+
 static int test_enc_dec_long_char_list(void){
+    // 长的 char* 的加解密基本上也同等于对文件的加解密了，因为本质上读取文件后的数据就可以用 char* 和一个长度来表示。
     int edatalen = 0;
     int ddatalen = 0;
     char *encdata, *decdata, *temp;
     char *b64_pk = "AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMm9HZKm2be/sZKiepYFEVBuoKRtIlv5r61q3vv/ftuUyR1iLYLgHNh+DUJ1ey2aqZqtoQt9tkOoAR35IM7oq0kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAB";
     char *b64_sk = "AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMm9HZKm2be/sZKiepYFEVBuoKRtIlv5r61q3vv/ftuUyR1iLYLgHNh+DUJ1ey2aqZqtoQt9tkOoAR35IM7oq0kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfhNXMPhfJeuB0Q8Dp0/Bc0+/yyJ9D5fqR2l7s2cH47dpMsUmw314Q/t1ECPpA0J3pWxqHzIQr9EtDsdUd+a6AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/K8tIavNY1Bfhm9qiaHzXz4g1ZA4rVAUVW+Tzd7FkJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyeb0yEEm+LLiafqJDB99Twl7uu1vxqAmR/gZym6JkEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABz9X8q/HAK87KnL5Y2TNhFTzB1OJtAftu6oXkPvNN+cQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMaki4sGxvADF84LJ5Ec3i3H98sW1lVGtcMzLzTCgmfBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApNCySAGU65NiL6dTOKv9UHXBy0h7oYhUrnfglRvP2Dz=";
-    char *endata = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
+    char *endata = "1234567890123456789012345612345678901234567890123456123456789012345678901234561234567890123456789012345612345678901234567890123456";
+    // rsa_pk_t 和 rsa_sk_t 对象内都包含了 keylen 的秘钥长度信息，所以加载的时候
     rsa_pk_t pk = load_pk_from_base64(b64_pk);
     rsa_sk_t sk = load_sk_from_base64(b64_sk);
-    printf("endata len: %d\n", strlen(endata));
-    encdata = rsa_encrypt(endata, strlen(endata), &sk, 512, &edatalen);
-    decdata = rsa_decrypt(encdata, edatalen, &sk, 512, &ddatalen);
-    printf("%d\n", ddatalen);
+    encdata = rsa_encrypt(endata, strlen(endata), &pk, &edatalen);
+    decdata = rsa_decrypt(encdata, edatalen, &sk, &ddatalen);
+    print_array("ORI DATA(HEX):", endata, strlen(endata));
+    print_array("ENC DATA(HEX):", encdata, edatalen);
+    print_array("DEC DATA(HEX):", decdata, ddatalen);
     temp = malloc(ddatalen+1);
     memset(temp, 0, ddatalen+1);
     memcpy(temp, decdata, ddatalen);
-    printf("%s\n", temp);
+    printf("ORI: %s\n", endata);
+    printf("DEC: %s\n", temp);
 }
-
-
-
-
-
-
 static int test_save_struct_in_base64(void){
     int keylen = 512;
     rsa_pk_t pk;
@@ -998,10 +1013,8 @@ static int test_save_struct_in_base64(void){
     char *b64_sk;
     b64_pk = save_pk_base64(pk);
     b64_sk = save_sk_base64(sk);
-    printf("%s\n", b64_pk);
-    printf("%s\n", "");
-    printf("%s\n", b64_sk);
-    printf("%s\n", "");
+    printf("pk_base64: %s\n\n", b64_pk);
+    printf("sk_base64: %s\n\n", b64_sk);
     return 0;
 }
 static int test_load_struct_from_base64(void){
@@ -1028,33 +1041,75 @@ static int test_load_struct_from_base64(void){
     printf("DECLEN: %d; DEC: %s\n", dedataLen, temp);
     return 0;
 }
-static int test_enc_dec(void){
+static int test_enc_dec_in_onepeace(void){
     int ret;
     int keylen = 1024; // 512/1024/2048
     rsa_pk_t pk;
     rsa_sk_t sk;
-    uint8_t output[256];
     // 由于使用了 pksc1 ，padding 占用了 11 个位置，所以，加密数据的长度只能为 (keylen/8)-11。
     // 例如秘钥长度为 512 的就只能加密的字符长度为 (512/8)-11=53 。1024->117。2048->245。
-    uint8_t input[256] = "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890==";
-    uint8_t msg[256];
-    unsigned int outputLen, inputLen, msg_len;
+    uint8_t endata[256] = "==12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890==";
+    uint8_t output[256];
+    uint8_t dedata[256];
+    unsigned int outputLen, endataLen, dedataLen;
+    // 生成公钥和私钥，建议使用时将公私钥保存成 base64 字符串，这样非常方便复制粘贴使用
+    // 上面也提供了保存秘钥到 base64 字符串的函数，也有将 秘钥base64 字符串读取成数据结构使用的方式，使用起来也比较方便
     ret = rsa_generate_keys(&pk, &sk, keylen);
-    if(ret == 0) {
-        print_sk(&sk);
-    } else {
-        printf("rsa_generate_keys, ret: %04X\n", ret);
-        return -1;
-    }
-    inputLen = strlen((const char *)input);
- // rsa_public_encrypt(output, &outputLen, input, inputLen, &sk); // 使用 sk 也能加密因为 sk 包含了公钥
-    rsa_public_encrypt(output, &outputLen, input, inputLen, &pk);
-    rsa_private_decrypt(msg, &msg_len, output, outputLen, &sk);
+    print_sk(&sk);
+    endataLen = strlen((const char *)endata);
+ // rsa_public_encrypt (output, &outputLen, endata, endataLen, &sk); // 使用 sk 也能加密因为 sk 包含了公钥
+    rsa_public_encrypt (output, &outputLen, endata, endataLen, &pk);
+    rsa_private_decrypt(dedata, &dedataLen, output, outputLen, &sk);
     print_array("=== PK  ENC", output, outputLen);
-    print_array("=== src MSG", input, inputLen);
-    print_array("=== SK  DEC", msg, msg_len);
-    printf("DEC: %s\n", msg);
+    print_array("=== src MSG", endata, endataLen);
+    print_array("=== SK  DEC", dedata, dedataLen);
+    char *temp;
+    temp = malloc(dedataLen+1);
+    memset(temp, 0, dedataLen+1);
+    memcpy(temp, dedata, dedataLen);
+    printf("DECLEN: %d; DEC: %s\n", dedataLen, temp);
     return 0;
+}
+static int test_all_enc_dec_a_file(void){
+    int keylen = 1024;
+    rsa_pk_t pk;
+    rsa_sk_t sk;
+    char *b64_pk;
+    char *b64_sk;
+
+    // // 初始化秘钥
+    // rsa_generate_keys(&pk, &sk, keylen);
+    // b64_pk = save_pk_base64(pk);
+    // b64_sk = save_sk_base64(sk);
+    // // 将秘钥结构体保存成base64字符串
+    // printf("pk_base64: %s\n\n", b64_pk);
+    // printf("sk_base64: %s\n\n", b64_sk);
+
+    // 直接从保存的base64字符串加载秘钥，节省初始化时间
+    b64_pk = "AAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAuaW1hyWp0UL9NLFzcxXBEVGrT42hNqb9m57wbztxz7vdNnS0o50qBdcZ62dHFJN/VMYacpFBw1/tmBeXNvJD+2+593rJ+Zy/XV5hYRgSU7X5PuVkXBZ/bxOoagRa9VOcgxY3gsOQELvLylnrESNxdDt7aOVNa6l80lFkAweYU50AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAB";
+    b64_sk = "AAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAuaW1hyWp0UL9NLFzcxXBEVGrT42hNqb9m57wbztxz7vdNnS0o50qBdcZ62dHFJN/VMYacpFBw1/tmBeXNvJD+2+593rJ+Zy/XV5hYRgSU7X5PuVkXBZ/bxOoagRa9VOcgxY3gsOQELvLylnrESNxdDt7aOVNa6l80lFkAweYU50AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC3RJAsp5C6JXCDaT54eRxMdZwxf7aLllS8IS5oEH3tPh9GV/XPoyJN+6f5zM3N0UIdNSf8u8r5DaUmxPshYg6a5IVHC5/R2trJmB+twh31eNITvD2ql9rXI1ggl5h2WQQFWWkYkwZthKBwgmbYlN5BgzWnzoicodSytZpn/ks8XQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADqZFdL9pFX8U3tZqHrUMcgyt3jwUWSkZN9HZTZ/PFlupiaNDqaTSlpIMTv2sBJc1duEOnToMkRoLB2uOOBeoN/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMrC/gyOOg+xWecam7a+D4+pvsOYWoA4RHYQHw/T+5sgU6lIMwrtfNej283Z/9rTACD6L/pGh8uXV95kNYR/RuMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsJTpg2v9cXB0Ud6ZK6uOaPEMm1H2tQYBRCfuBQ/fWNFrt/iTEb4B7ZZnZ3+4j11ax6vsTKf78tDJQJfnpZsDxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnIyA6eDGI2ejKjP5FdcY3KsKhqoS9fx7n0xDL01Ubik/buw3vLAwO65f/0fZq3JOHygL8wiRwDdRuHtWdr5uVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwHTInkycwUT1h8Iso4UVpiJzk0vpR8So+VTdEYELzxcaBiqVpzDrGD2a6PZvp0zdh7XBe2VTIRdkrkw0zpuf=";
+    pk = load_pk_from_base64(b64_pk);
+    sk = load_sk_from_base64(b64_sk);
+
+    // 下面是将文件 filename 加密后保存成 savename 文件，名字自行调整进行测试
+    int filesize, edatalen, ddatalen;
+    char *filename = "./test.rar";
+    char *fildata, *encdata, *decdata;
+    FILE *fp;
+    fp = fopen(filename, "rb");
+    filesize = get_file_size(fp);
+    fildata = (char *)malloc(filesize);
+    fread(fildata, 1, filesize, fp);
+    fclose(fp);
+
+    encdata = rsa_encrypt(fildata, filesize, &pk, &edatalen);
+ // decdata = rsa_decrypt(encdata, edatalen, &sk, &ddatalen); // 解密
+
+    FILE *tp;
+    char *savename = "./asdfasdf";
+    tp = fopen(savename, "wb");
+    fwrite(encdata, edatalen, 1, tp);
+    fclose(tp);
 }
 
 
@@ -1067,7 +1122,8 @@ static int test_enc_dec(void){
 int main(int argc, char const *argv[]){
     // test_save_struct_in_base64();
     // test_load_struct_from_base64();
-    test_enc_dec();
-    // test_enc_dec_long_char_list();
+    test_enc_dec_long_char_list();
+    // test_enc_dec_in_onepeace();
+    // test_all_enc_dec_a_file(); // 使用时请关注这个函数里面的实现
     return 0;
 }
