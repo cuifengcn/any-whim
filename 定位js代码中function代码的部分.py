@@ -24,9 +24,10 @@ class PyJsHooker:
         if self.lookahead['value'] == '}':
             PyJsHooker.func_count[index] -= 1
         if index in PyJsHooker.func_count and PyJsHooker.func_count[index] == 0 and self.lookahead['value'] == '}':
-            (name, start), end = PyJsHooker.func_stack.pop(), self.lookahead
-            name = name['value'] if name['type'] == PyJsHooker.Identifier else '[Anonymous function]'
-            PyJsHooker.func_local.append((name, start['start'], end['end']))
+            if PyJsHooker.func_stack:
+                (name, start), end = PyJsHooker.func_stack.pop(), self.lookahead
+                name = name['value'] if name['type'] == PyJsHooker.Identifier else '[Anonymous function]'
+                PyJsHooker.func_local.append((name, start['start'], end['end']))
         return PyJsHooker._bak_expect(self, value)
     def _expectKeyword_hook(self, w):
         orFunc = self.lookahead
