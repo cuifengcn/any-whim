@@ -50,7 +50,7 @@ init_str = init_str[init_num%len(init_str):] + init_str[:init_num%len(init_str)]
 
 import base64
 def rc4(data, key):
-    data = bytes(ord(i) for i in base64.b64decode(data).decode())
+    data = [ord(i) if ord(i) < 256 else int(i.encode('unicode_escape')[2:], 16) for i in base64.b64decode(data).decode()]
     S, j, key = list(range(256)), 0, key.encode()
     for i in range(256):
         j = (j + S[i] + key[i%len(key)]) % 256
@@ -63,7 +63,7 @@ def rc4(data, key):
         S[i], S[j] = S[j], S[i]
         t = c ^ (S[(S[i] + S[j]) % 256])
         R.append(t)
-    return bytes(R).decode()
+    return ''.join([chr(i) if i < 256 else (b'\\u' + hex(i)[2:].encode()).decode('unicode_escape') for i in R])
 def sojsonrc4(idxstr, key):
     return rc4(init_str[int(idxstr, 16)], key)
 
