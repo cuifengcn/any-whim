@@ -43,7 +43,4 @@ import js2py.py_node_modules.escodegen as escodegen
 escodegen = escodegen.var.get('escodegen')
 v = escodegen.get('generate')(s) # 用树重新生成js代码
 print('========================================')
-try:
-    print(json.loads(str(v)))
-except:
-    print(str(v))
+print(v.to_python())
