@@ -376,3 +376,61 @@ def replace_rc4(e):
         return e.group(0)
 v = re.sub(r'_0x53a5\([^\(\)]+, *".{4}"\)', replace_rc4, s)
 print(v)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# import re
+# import base64
+# import traceback
+# class SojsonRc4:
+#     def __init__(self, str_list, num):
+#         self.init_str = str_list
+#         self.init_num = num
+#         self.init_str = init_str[init_num%len(init_str):] + init_str[:init_num%len(init_str)]
+#     def _rc4(self, data, key):
+#         S, j, key = list(range(256)), 0, key.encode()
+#         for i in range(256):
+#             j = (j + S[i] + key[i%len(key)]) % 256
+#             S[i], S[j] = S[j], S[i]
+#         i, j = 0, 0
+#         R = []
+#         for c in data:
+#             i = (i + 1) % 256
+#             j = (j + S[i]) % 256
+#             S[i], S[j] = S[j], S[i]
+#             t = c ^ (S[(S[i] + S[j]) % 256])
+#             R.append(t)
+#         return R
+#     def rc4(self, data, key):
+#         data = [ord(i) if ord(i) < 256 else int(i.encode('unicode_escape')[2:], 16) for i in base64.b64decode(data).decode()]
+#         R = self._rc4(data, key)
+#         return ''.join([chr(i) if i < 256 else (b'\\u' + hex(i)[2:].encode()).decode('unicode_escape') for i in R])
+#     def sojsonrc4(self, idxstr, key):
+#         ret = self.rc4(self.init_str[int(idxstr, 16)], key)
+#         return ret
+
+# find_rc4_string = re.findall(r'sojson.v5[^\[]+(__0x[^ ]+) *= *(\[[^\]]+\])', s)[0]
+# find_replace_name = re.findall(r'\(__0x[^ ,]+, *(0x[^ ]+)\)\);[^a-zA-Z0-9]*var (__?0x[^ ]+) *= *function', s)[0]
+# init_str_name = find_rc4_string[0]
+# init_str = eval(find_rc4_string[1])
+# init_num = int(find_replace_name[0], 16)
+# init_nam = find_replace_name[1]
+# ss = SojsonRc4(init_str, init_num)
+
+# regexp = init_nam+r'''\(['"]([^'"]{3,5})['"], *['"]([^'"]{3,5})['"]\)'''
+# v = re.findall(regexp, s)
+# for i in v:
+#     print(ss.sojsonrc4(*i))
