@@ -68,7 +68,7 @@ def read_list_float(handle, addr, num):
 
 def read_addr(handle, addr):
     bt = read_buffer(handle, addr, 4)
-    return int(''.join([hex(i)[2:] for i in bt][::-1]), 16)
+    return int(''.join(['{:02x}'.format(i) for i in bt][::-1]), 16)
 
 # 在窗口画一个矩形
 windc = None
@@ -119,7 +119,7 @@ def read_addr_list(handle, start_addr, offset_list=None):
 def get_enemies_addr_float(handle):
     # 获取其他玩家的坐标地址，需要从CE中调试出来
     ret = []
-    for i in range(1,16):
+    for i in range(1,32):
         try:
             v = read_addr_list(handle, 0x0050F4F8, offset_list=[4*i])
             r = read_list_float(handle, v+0x34, 3)
@@ -150,12 +150,55 @@ def draw_enemies_rect(handle, whandle):
             wid = abs(By - By2)*.23
             x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
             x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
-            draw_rect(x1, y1, x2, y2)
+            draw_rect(x1, y1, x2, y2) # GDI
+            # drect.draw_rect((x1, y1, x2, y2)) # GDI+
+
+class BITMAPINFOHEADER(Structure):
+    _fields_ = [('biSize', DWORD), ('biWidth', LONG), ('biHeight', LONG),
+                ('biPlanes', WORD), ('biBitCount', WORD),
+                ('biCompression', DWORD), ('biSizeImage', DWORD),
+                ('biXPelsPerMeter', LONG), ('biYPelsPerMeter', LONG),
+                ('biClrUsed', DWORD), ('biClrImportant', DWORD)]
+class BITMAPINFO(Structure):
+    _fields_ = [('bmiHeader', BITMAPINFOHEADER), ('bmiColors', DWORD * 3)]
+class BLENDFUNCTION(Structure):
+    _fields_ = [('BlendOp', BYTE),
+                ('BlendFlags', BYTE),
+                ('SourceConstantAlpha', BYTE),
+                ('AlphaFormat', BYTE)]
+class draw_transparent_rect:
+    bf = BLENDFUNCTION()
+    bf.BlendOp = 0
+    bf.BlendFlags = 0
+    bf.SourceConstantAlpha = 100 #//透明程度//值越大越不透明
+    bf.AlphaFormat = 0
+    srcdc = windll.user32.GetDC(0)
+    rects = {}
+    def __init__(self):
+        super().__init__()
+    def draw_rect(self, rect):
+        x1,y1,x2,y2 = rect
+        width = x2 - x1
+        height = y2 - y1
+        if rect not in self.rects:
+            bflen = height * width * 3
+            image = create_string_buffer(bflen)
+            srcdc = windll.user32.GetDC(0)
+            memdc = windll.gdi32.CreateCompatibleDC(srcdc)
+            bmp = windll.gdi32.CreateCompatibleBitmap(memdc, width, height)
+            windll.gdi32.SelectObject(memdc, bmp)
+            self.rects[rect] = {}
+            self.rects[rect]['memdc'] = memdc
+        memdc = self.rects[rect]['memdc']
+        rect = byref(RECT(1,1,width-1,height-1))
+        windll.user32.FrameRect(memdc, rect, windll.gdi32.GetStockObject(0))
+        windll.msimg32.AlphaBlend(self.srcdc, x1,y1,width,height, memdc, 0, 0, width, height, self.bf)
 
 process_name = 'ac_client.exe' # 注意这里是进程名字，不是窗口名字
 handle  = get_process_handle(process_name)
 whandle = get_window_handle(process_name)
 
+drect = draw_transparent_rect()
 def run():
     while 1:
         draw_enemies_rect(handle, whandle)
@@ -163,3 +206,36 @@ def run():
         # time.sleep(.01)
 
 run()
+
+
+
+
+# 原始的绘制透明
+# height = 200
+# width = 100
+# bmi = BITMAPINFO()
+# bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER)
+# bmi.bmiHeader.biWidth = width
+# bmi.bmiHeader.biHeight = -height  # Why minus? See [1]
+# bmi.bmiHeader.biPlanes = 1
+# bmi.bmiHeader.biBitCount = 24
+# bmi.bmiHeader.biCompression = BI_RGB
+# class BLENDFUNCTION(Structure):
+#     _fields_ = [('BlendOp', BYTE),
+#                 ('BlendFlags', BYTE),
+#                 ('SourceConstantAlpha', BYTE),
+#                 ('AlphaFormat', BYTE)]
+# bf = BLENDFUNCTION()
+# bf.BlendOp = 0
+# bf.BlendFlags = 0
+# bf.SourceConstantAlpha = 0x3f #//透明程度//值越大越不透明
+# bf.AlphaFormat = 0
+# bflen = height * width * 3
+# image = create_string_buffer(bflen)
+# srcdc = windll.user32.GetDC(0)
+# memdc = windll.gdi32.CreateCompatibleDC(srcdc)
+# bmp = windll.gdi32.CreateCompatibleBitmap(memdc, width, height)
+# windll.gdi32.SelectObject(memdc, bmp)
+# rect = byref(RECT(1,1,width-1,height-1))
+# windll.user32.FrameRect(memdc, rect, windll.gdi32.GetStockObject(0))
+# windll.msimg32.AlphaBlend(srcdc, 0, 0, width, height, memdc, 0, 0, width, height, bf)
