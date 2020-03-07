@@ -40,8 +40,8 @@ def get_pid_from_name(name):
             return pid
 
 # 通过进程名获取进程的句柄
-def get_process_handle(name):
-    return windll.kernel32.OpenProcess(0x1f0fff, False, get_pid_from_name(name))
+def get_process_handle(pid):
+    return windll.kernel32.OpenProcess(0x1f0fff, False, pid)
 
 def read_buffer(hProcess, lpBaseAddress, nSize):
     lpBuffer = create_string_buffer(nSize)
@@ -66,6 +66,16 @@ def read_list_float(handle, addr, num):
     for g in range(num):
         bt = read_buffer(handle, addr+(g*4), 4)
         ret.append(byte_to_float(bt))
+    return ret
+
+def byte_to_int(bytes):
+    return struct.unpack('<i', struct.pack('4B', *bytes))[0]
+
+def read_list_int(handle, addr, num):
+    ret = []
+    for g in range(num):
+        bt = read_buffer(handle, addr+(g*4), 4)
+        ret.append(byte_to_int(bt))
     return ret
 
 def read_addr(handle, addr):
@@ -97,8 +107,7 @@ def get_window_size(handle):
     return rect.left, rect.top, rect.right, rect.bottom
 
 # 通过进程名获取进程的窗口句柄
-def get_window_handle(name):
-    pid = get_pid_from_name(name)
+def get_window_handle(pid):
     top = ctypes.windll.user32.GetTopWindow(None)
     handle = HWND()
     while top:
@@ -122,14 +131,16 @@ def read_addr_byplist(handle, start_addr, offset_list=None):
             v = read_addr(handle, v + offset)
     return v
 
-def get_enemies_addr_float(handle, num=16):
+def get_enemies_infos(handle, num=16):
     # 获取其他玩家的坐标地址，需要从CE中调试出来
     ret = []
     for i in range(1,num+1):
         try:
             v = read_addr_byplist(handle, 0x0050F4F8, offset_list=[4*i])
             r = read_list_float(handle, v+0x34, 3)
-            ret.append(r)
+            hp = read_list_int(handle, v+0xF8, 1)[0]
+            isEnemy = read_list_int(handle, v+0x32C, 1)[0]
+            ret.append([r, hp, isEnemy])
         except:
             pass
     return ret
@@ -209,47 +220,37 @@ def draw_enemies_rect(handle, whandle, num=16):
     M = read_matrix(handle, 0x00501AE8) # 自己矩阵信息，即摄像机信息，需要从CE中调试出来
     # Px, Py, Pz = [73.10000610351562, 118.89999389648438, -4] # 目标的世界坐标
     myaddr = get_myaddr()
-    length = 0
-    for Px, Py, Pz in get_enemies_addr_float(handle, num):
-        head = 4 
-        feet = -.5
-        G = windll.user32.GetSystemMetrics
-        if windll.user32.IsZoomed(whandle):
-            L, T, R, B, H = 0, 0, G(0), G(1), 0
-        else:
-            (L, T, R, B), H = get_window_size(whandle), 0#G(4)
-        Gx = int((R-L)/2)
-        Gy = int((B-T)/2)
-        VieW = Px * M[0][3] + Py * M[1][3] + Pz * M[2][3] + M[3][3]
-        if VieW > 0:
-            VieW = 1 / VieW
-            Bx  = Gx + (Px * M[0][0] + Py * M[1][0] + Pz * M[2][0] + M[3][0]) * VieW * Gx
-            By  = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+head) * M[2][1] + M[3][1]) * VieW * Gy
-            By2 = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+feet) * M[2][1] + M[3][1]) * VieW * Gy
-            wid = abs(By - By2)*.23
-            x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
-            x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
-            draw_rect(x1, y1, x2, y2) # GDI
-            # drect.draw_rect((x1, y1, x2, y2)) # GDI+
-        if not nearest_enemy:
-            nearest_enemy = Px, Py, Pz
-        _length = get_dis(myaddr, (Px, Py))
-        if _length > length:
-            length = _length
-            nearest_enemy = Px, Py, Pz
+    length = float('inf')
+    head = 4 
+    feet = -.5
+    for (Px, Py, Pz), hp, isEnemy in get_enemies_infos(handle, num):
+        if isEnemy and hp > 0 and hp <= 100:
+            G = windll.user32.GetSystemMetrics
+            if windll.user32.IsZoomed(whandle):
+                L, T, R, B, H = 0, 0, G(0), G(1), 0
+            else:
+                (L, T, R, B), H = get_window_size(whandle), 0#G(4)
+            Gx = int((R-L)/2)
+            Gy = int((B-T)/2)
+            VieW = Px * M[0][3] + Py * M[1][3] + Pz * M[2][3] + M[3][3]
+            if VieW > 0:
+                VieW = 1 / VieW
+                Bx  = Gx + (Px * M[0][0] + Py * M[1][0] + Pz * M[2][0] + M[3][0]) * VieW * Gx
+                By  = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+head) * M[2][1] + M[3][1]) * VieW * Gy
+                By2 = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+feet) * M[2][1] + M[3][1]) * VieW * Gy
+                wid = abs(By - By2)*.23
+                x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
+                x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
+                draw_rect(x1, y1, x2, y2) # GDI
+                # drect.draw_rect((x1, y1, x2, y2)) # GDI+
+            if not nearest_enemy:
+                nearest_enemy = Px, Py, Pz
+            _length = get_dis(myaddr, (Px, Py))
+            if _length < length:
+                length = _length
+                nearest_enemy = Px, Py, Pz
     if focus_toggle:
         focus_nearest_enemy()
-
-process_name = 'ac_client.exe' # 注意这里是进程名字，不是窗口名字
-handle  = get_process_handle(process_name)
-whandle = get_window_handle(process_name)
-
-drect = draw_transparent_rect()
-def run(num=16):
-    while 1:
-        draw_enemies_rect(handle, whandle, num)
-        # import time
-        # time.sleep(.01)
 
 def on_click(x,y,button,key):
     global focus_toggle
@@ -265,12 +266,22 @@ def hook_mouse_right_key():
         print('无法加载鼠标右键挂钩')
         print(e)
 
-print('启动外挂')
-hook_mouse_right_key()
-run(4)
+process_name = 'ac_client.exe' # 注意这里是进程名字，不是窗口名字
+pid = get_pid_from_name(process_name)
+print('process id:{}'.format(pid))
+handle  = get_process_handle(pid)
+whandle = get_window_handle(pid)
+drect = draw_transparent_rect()
 
+def run(num=16):
+    print('启动外挂')
+    hook_mouse_right_key()
+    while 1:
+        draw_enemies_rect(handle, whandle, num)
+        # import time
+        # time.sleep(.01)
 
-
+run(2) # python 性能不行，尽量不要扫描太多人。
 
 
 
