@@ -1,10 +1,12 @@
 # 学习透视相关的内容
-# 尝试写一个 AssaultCube 游戏的透视外挂以便测试结果
+# 尝试写一个 AssaultCube 游戏的透视、自瞄外挂以便测试结果
 
 # 开发环境 win10 python3.6
 # 只能在局域网透视别人，目前没调试出 bot 的追踪。
 # 由于用的画框的函数性能问题，追个一两个人还行，追踪太多人的轨迹可能还是有点卡。
+# 自瞄需要依赖 pip install pynput
 
+import math
 import struct
 from ctypes import *
 from ctypes.wintypes import *
@@ -70,6 +72,10 @@ def read_addr(handle, addr):
     bt = read_buffer(handle, addr, 4)
     return int(''.join(['{:02x}'.format(i) for i in bt][::-1]), 16)
 
+def write_float(handle, addr, num):
+    fnum = c_float(num)
+    windll.kernel32.WriteProcessMemory(handle, addr, byref(fnum), sizeof(c_float), 0)
+
 # 在窗口画一个矩形
 windc = None
 def draw_rect(x1,y1,x2,y2):
@@ -109,49 +115,24 @@ def read_value(hProcess, lpBaseAddress, nSize):
         raise Exception('Error: %s' % GetLastError())
     return lpBuffer
 
-def read_addr_list(handle, start_addr, offset_list=None):
+def read_addr_byplist(handle, start_addr, offset_list=None):
     v = read_addr(handle, start_addr)
     if offset_list:
         for offset in offset_list:
             v = read_addr(handle, v + offset)
     return v
 
-def get_enemies_addr_float(handle):
+def get_enemies_addr_float(handle, num=16):
     # 获取其他玩家的坐标地址，需要从CE中调试出来
     ret = []
-    for i in range(1,32):
+    for i in range(1,num+1):
         try:
-            v = read_addr_list(handle, 0x0050F4F8, offset_list=[4*i])
+            v = read_addr_byplist(handle, 0x0050F4F8, offset_list=[4*i])
             r = read_list_float(handle, v+0x34, 3)
             ret.append(r)
         except:
             pass
     return ret
-
-def draw_enemies_rect(handle, whandle):
-    M = read_matrix(handle, 0x00501AE8) # 自己矩阵信息，即摄像机信息，需要从CE中调试出来
-    # Px, Py, Pz = [73.10000610351562, 118.89999389648438, -4] # 目标的世界坐标
-    for Px, Py, Pz in get_enemies_addr_float(handle):
-        head = 4 
-        feet = -.5
-        G = windll.user32.GetSystemMetrics
-        if windll.user32.IsZoomed(whandle):
-            L, T, R, B, H = 0, 0, G(0), G(1), 0
-        else:
-            (L, T, R, B), H = get_window_size(whandle), 0#G(4)
-        Gx = int((R-L)/2)
-        Gy = int((B-T)/2)
-        VieW = Px * M[0][3] + Py * M[1][3] + Pz * M[2][3] + M[3][3]
-        if VieW > 0:
-            VieW = 1 / VieW
-            Bx  = Gx + (Px * M[0][0] + Py * M[1][0] + Pz * M[2][0] + M[3][0]) * VieW * Gx
-            By  = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+head) * M[2][1] + M[3][1]) * VieW * Gy
-            By2 = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+feet) * M[2][1] + M[3][1]) * VieW * Gy
-            wid = abs(By - By2)*.23
-            x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
-            x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
-            draw_rect(x1, y1, x2, y2) # GDI
-            # drect.draw_rect((x1, y1, x2, y2)) # GDI+
 
 class BITMAPINFOHEADER(Structure):
     _fields_ = [('biSize', DWORD), ('biWidth', LONG), ('biHeight', LONG),
@@ -194,6 +175,71 @@ class draw_transparent_rect:
         windll.user32.FrameRect(memdc, rect, windll.gdi32.GetStockObject(0))
         windll.msimg32.AlphaBlend(self.srcdc, x1,y1,width,height, memdc, 0, 0, width, height, self.bf)
 
+def get_myaddr():
+    myangle_addr_x = read_addr_byplist(handle, 0x00509B74) + 0x40
+    myangle_addr_y = read_addr_byplist(handle, 0x00509B74) + 0x44
+    return myangle_addr_x, myangle_addr_y
+
+def get_dis(myaddr, enemyaddr):
+    return ((enemyaddr[1] - myaddr[1])**2 + (enemyaddr[0] - myaddr[0])**2)**.5
+
+def get_newangle(enemy_addr):
+    my_addr = read_addr_byplist(handle, 0x00509B74) + 0x34
+    my_addr = read_list_float(handle, my_addr, 3)
+    xangle = math.atan2((enemy_addr[1] - my_addr[1]), (enemy_addr[0] - my_addr[0])) * (180/math.pi)
+    yangle = math.atan2((enemy_addr[2] - my_addr[2]), get_dis(my_addr, enemy_addr)) * (180/math.pi)
+    return 90 + xangle, yangle
+
+def focus_enemy(enemy_addr):
+    if enemy_addr:
+        myangle_addr_x, myangle_addr_y = get_myaddr()
+        newangle_x, newangle_y = get_newangle(enemy_addr)
+        write_float(handle, myangle_addr_x, newangle_x)
+        write_float(handle, myangle_addr_y, newangle_y)
+
+nearest_enemy = None
+focus_toggle = False
+
+def focus_nearest_enemy():
+    global nearest_enemy
+    focus_enemy(nearest_enemy)
+
+def draw_enemies_rect(handle, whandle, num=16):
+    global nearest_enemy, focus_toggle
+    M = read_matrix(handle, 0x00501AE8) # 自己矩阵信息，即摄像机信息，需要从CE中调试出来
+    # Px, Py, Pz = [73.10000610351562, 118.89999389648438, -4] # 目标的世界坐标
+    myaddr = get_myaddr()
+    length = 0
+    for Px, Py, Pz in get_enemies_addr_float(handle, num):
+        head = 4 
+        feet = -.5
+        G = windll.user32.GetSystemMetrics
+        if windll.user32.IsZoomed(whandle):
+            L, T, R, B, H = 0, 0, G(0), G(1), 0
+        else:
+            (L, T, R, B), H = get_window_size(whandle), 0#G(4)
+        Gx = int((R-L)/2)
+        Gy = int((B-T)/2)
+        VieW = Px * M[0][3] + Py * M[1][3] + Pz * M[2][3] + M[3][3]
+        if VieW > 0:
+            VieW = 1 / VieW
+            Bx  = Gx + (Px * M[0][0] + Py * M[1][0] + Pz * M[2][0] + M[3][0]) * VieW * Gx
+            By  = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+head) * M[2][1] + M[3][1]) * VieW * Gy
+            By2 = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+feet) * M[2][1] + M[3][1]) * VieW * Gy
+            wid = abs(By - By2)*.23
+            x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
+            x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
+            draw_rect(x1, y1, x2, y2) # GDI
+            # drect.draw_rect((x1, y1, x2, y2)) # GDI+
+        if not nearest_enemy:
+            nearest_enemy = Px, Py, Pz
+        _length = get_dis(myaddr, (Px, Py))
+        if _length > length:
+            length = _length
+            nearest_enemy = Px, Py, Pz
+    if focus_toggle:
+        focus_nearest_enemy()
+
 process_name = 'ac_client.exe' # 注意这里是进程名字，不是窗口名字
 handle  = get_process_handle(process_name)
 whandle = get_window_handle(process_name)
@@ -201,11 +247,33 @@ whandle = get_window_handle(process_name)
 drect = draw_transparent_rect()
 def run():
     while 1:
-        draw_enemies_rect(handle, whandle)
+        draw_enemies_rect(handle, whandle, 2)
         # import time
         # time.sleep(.01)
 
+def on_click(x,y,button,key):
+    global focus_toggle
+    if button.name == 'right':
+        focus_toggle = key
+
+def hook_mouse_right_key():
+    try:
+        from pynput import mouse
+        mlisten = mouse.Listener(on_click=on_click)
+        mlisten.start()
+    except Exception as e:
+        print('无法加载鼠标右键挂钩')
+        print(e)
+
+print('启动外挂')
+hook_mouse_right_key()
 run()
+
+
+
+
+
+
 
 
 
