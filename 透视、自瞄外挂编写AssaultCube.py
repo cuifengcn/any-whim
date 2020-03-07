@@ -245,9 +245,9 @@ handle  = get_process_handle(process_name)
 whandle = get_window_handle(process_name)
 
 drect = draw_transparent_rect()
-def run():
+def run(num=16):
     while 1:
-        draw_enemies_rect(handle, whandle, 2)
+        draw_enemies_rect(handle, whandle, num)
         # import time
         # time.sleep(.01)
 
@@ -267,7 +267,7 @@ def hook_mouse_right_key():
 
 print('启动外挂')
 hook_mouse_right_key()
-run()
+run(4)
 
 
 
