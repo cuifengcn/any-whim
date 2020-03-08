@@ -92,13 +92,7 @@ class VSpider(scrapy.Spider):
             }
             return url,headers,body
 
-        # 中文关键词在google里面搜索的数量比较低
-        # 这边稍微翻译了一下关键词用 google 来搜
-        keys_a = ['青天白日旗','中国国旗','美国国旗','英国国旗','法国国旗', '日本国旗','俄罗斯国旗','西班牙国旗','五环旗','联合国国旗', 'ISIS旗','港英旗','星月旗','纳粹旗',]
-        keys_b = ['taiwan flag', 'Chinese flag', 'American flag', 'English flag', 'French flag', 'Japanese flag', 'Russian flag', 'Spanish flag', 'Olympic flag', 'United Nations flag' , 'ISIS flag', 'old Hong Kong flag', 'islam green flag', 'islam green symbol flag', 'Nazi flag',]
-
-        keys = keys_b
-
+        keys = ['123']
         for key in keys:
             for page in range(1, 80):
                 url,headers,body = mk_url_headers_body(page, key)
@@ -153,7 +147,7 @@ if __name__ == '__main__':
 
         # 【中间件/管道配置】
         # 这里使用中间件的方式和项目启动很相似，我在头部打了补丁函数，现在管道配置的第一个值可以同时用字符串或类配置，突破了原版只能用字符串的限制。
-        'IMAGES_STORE':             '旗帜(谷歌)',      # 默认在该脚本路径下创建文件夹、下载图片(不解开 VImagePipeline 管道注释则该配置无效)
+        'IMAGES_STORE':             'image',      # 默认在该脚本路径下创建文件夹、下载图片(不解开 VImagePipeline 管道注释则该配置无效)
         'ITEM_PIPELINES': {
             VImagePipeline:         102,
         },
