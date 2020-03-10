@@ -186,10 +186,12 @@ class draw_transparent_rect:
         windll.user32.FrameRect(memdc, rect, windll.gdi32.GetStockObject(0))
         windll.msimg32.AlphaBlend(self.srcdc, x1,y1,width,height, memdc, 0, 0, width, height, self.bf)
 
-def get_myaddr():
+def get_myinfo():
     myangle_addr_x = read_addr_byplist(handle, 0x00509B74) + 0x40
     myangle_addr_y = read_addr_byplist(handle, 0x00509B74) + 0x44
-    return myangle_addr_x, myangle_addr_y
+    myhp = read_list_int(handle, myangle_addr_x+0xB8, 1)[0]
+    myside = read_list_int(handle, myangle_addr_x+0x2ec, 1)[0]
+    return (myangle_addr_x, myangle_addr_y), myhp, myside
 
 def get_dis(myaddr, enemyaddr):
     return ((enemyaddr[1] - myaddr[1])**2 + (enemyaddr[0] - myaddr[0])**2)**.5
@@ -203,7 +205,7 @@ def get_newangle(enemy_addr):
 
 def focus_enemy(enemy_addr):
     if enemy_addr:
-        myangle_addr_x, myangle_addr_y = get_myaddr()
+        (myangle_addr_x, myangle_addr_y), myhp, myside = get_myinfo()
         newangle_x, newangle_y = get_newangle(enemy_addr)
         write_float(handle, myangle_addr_x, newangle_x)
         write_float(handle, myangle_addr_y, newangle_y)
@@ -219,12 +221,14 @@ def draw_enemies_rect(handle, whandle, num=16):
     global nearest_enemy, focus_toggle
     M = read_matrix(handle, 0x00501AE8) # 自己矩阵信息，即摄像机信息，需要从CE中调试出来
     # Px, Py, Pz = [73.10000610351562, 118.89999389648438, -4] # 目标的世界坐标
-    myaddr = get_myaddr()
+    myaddr, myhp, myside = get_myinfo()
     length = float('inf')
+    count = 0
     head = 4 
     feet = -.5
     for (Px, Py, Pz), hp, isEnemy in get_enemies_infos(handle, num):
-        if isEnemy and hp > 0 and hp <= 100:
+        if myside != isEnemy and myhp > 0 and myhp <= 100 and hp > 0 and hp <= 100:
+            count += 1
             G = windll.user32.GetSystemMetrics
             if windll.user32.IsZoomed(whandle):
                 L, T, R, B, H = 0, 0, G(0), G(1), 0
@@ -249,7 +253,7 @@ def draw_enemies_rect(handle, whandle, num=16):
             if _length < length:
                 length = _length
                 nearest_enemy = Px, Py, Pz
-    if focus_toggle:
+    if focus_toggle and count:
         focus_nearest_enemy()
 
 def on_click(x,y,button,key):
@@ -282,6 +286,7 @@ def run(num=16):
         # time.sleep(.01)
 
 run(2) # python 性能不行，尽量不要扫描太多人。
+
 
 
 
