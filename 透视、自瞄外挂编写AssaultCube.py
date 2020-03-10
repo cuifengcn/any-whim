@@ -193,15 +193,19 @@ def get_myinfo():
     myside = read_list_int(handle, myangle_addr_x+0x2ec, 1)[0]
     return (myangle_addr_x, myangle_addr_y), myhp, myside
 
+def get_myaddr_xy():
+    my_addr = read_addr_byplist(handle, 0x00509B74) + 0x34
+    my_addr = read_list_float(handle, my_addr, 3)
+    return my_addr
+
 def get_dis(myaddr, enemyaddr):
     return ((enemyaddr[1] - myaddr[1])**2 + (enemyaddr[0] - myaddr[0])**2)**.5
 
 def get_newangle(enemy_addr):
-    my_addr = read_addr_byplist(handle, 0x00509B74) + 0x34
-    my_addr = read_list_float(handle, my_addr, 3)
+    my_addr = get_myaddr_xy()
     xangle = math.atan2((enemy_addr[1] - my_addr[1]), (enemy_addr[0] - my_addr[0])) * (180/math.pi)
     yangle = math.atan2((enemy_addr[2] - my_addr[2]), get_dis(my_addr, enemy_addr)) * (180/math.pi)
-    return 90 + xangle, yangle
+    return 90 + xangle, yangle-.5
 
 def focus_enemy(enemy_addr):
     if enemy_addr:
@@ -210,22 +214,21 @@ def focus_enemy(enemy_addr):
         write_float(handle, myangle_addr_x, newangle_x)
         write_float(handle, myangle_addr_y, newangle_y)
 
-nearest_enemy = None
 focus_toggle = False
-
-def focus_nearest_enemy():
-    global nearest_enemy
+def focus_nearest_enemy(nearest_enemy):
     focus_enemy(nearest_enemy)
 
 def draw_enemies_rect(handle, whandle, num=16):
-    global nearest_enemy, focus_toggle
+    global focus_toggle
     M = read_matrix(handle, 0x00501AE8) # 自己矩阵信息，即摄像机信息，需要从CE中调试出来
     # Px, Py, Pz = [73.10000610351562, 118.89999389648438, -4] # 目标的世界坐标
     myaddr, myhp, myside = get_myinfo()
+    my_addr_xy = get_myaddr_xy()
     length = float('inf')
     count = 0
     head = 4 
     feet = -.5
+    dlist = {}
     for (Px, Py, Pz), hp, isEnemy in get_enemies_infos(handle, num):
         if myside != isEnemy and myhp > 0 and myhp <= 100 and hp > 0 and hp <= 100:
             count += 1
@@ -237,24 +240,24 @@ def draw_enemies_rect(handle, whandle, num=16):
             Gx = int((R-L)/2)
             Gy = int((B-T)/2)
             VieW = Px * M[0][3] + Py * M[1][3] + Pz * M[2][3] + M[3][3]
-            if VieW > 0:
-                VieW = 1 / VieW
-                Bx  = Gx + (Px * M[0][0] + Py * M[1][0] + Pz * M[2][0] + M[3][0]) * VieW * Gx
-                By  = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+head) * M[2][1] + M[3][1]) * VieW * Gy
-                By2 = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+feet) * M[2][1] + M[3][1]) * VieW * Gy
-                wid = abs(By - By2)*.23
-                x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
-                x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
-                draw_rect(x1, y1, x2, y2) # GDI
-                # drect.draw_rect((x1, y1, x2, y2)) # GDI+
-            if not nearest_enemy:
-                nearest_enemy = Px, Py, Pz
-            _length = get_dis(myaddr, (Px, Py))
-            if _length < length:
-                length = _length
-                nearest_enemy = Px, Py, Pz
-    if focus_toggle and count:
-        focus_nearest_enemy()
+            VieW = 1 / VieW
+            Bx  = Gx + (Px * M[0][0] + Py * M[1][0] + Pz * M[2][0] + M[3][0]) * VieW * Gx
+            By  = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+head) * M[2][1] + M[3][1]) * VieW * Gy
+            By2 = Gy - (Px * M[0][1] + Py * M[1][1] + (Pz+feet) * M[2][1] + M[3][1]) * VieW * Gy
+            wid = abs(By - By2)*.23
+            x1, y1, x2, y2 = int(Bx-wid), int(By), int(Bx+wid), int(By2)
+            x1, y1, x2, y2 = x1+int(L), y1+int(T)+H, x2+int(L), y2+int(T)+H
+            _length = get_dis(my_addr_xy, (Px, Py))
+            dlist[_length] = (x1, y1, x2, y2), (Px, Py, Pz)
+    if count:
+        if dlist:
+            (x1, y1, x2, y2), (Px, Py, Pz) = dlist[min(dlist)] 
+            # 只显示最近的一个人的框，效果实际上不太好，如果能选择距离鼠标最近的一个，那估计会好很多
+            # (x1, y1, x2, y2) 为屏幕的坐标，那么也就是说，获取当前坐标位置来处理判断也会很方便
+            # 后续再考虑改改看。
+            draw_rect(x1, y1, x2, y2)
+            if focus_toggle and count:
+                focus_nearest_enemy((Px, Py, Pz))
 
 def on_click(x,y,button,key):
     global focus_toggle
@@ -285,7 +288,7 @@ def run(num=16):
         # import time
         # time.sleep(.01)
 
-run(2) # python 性能不行，尽量不要扫描太多人。
+run(16) # python 性能不行，尽量不要画太多的框。
 
 
 
