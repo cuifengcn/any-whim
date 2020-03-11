@@ -804,6 +804,51 @@ def remake_binary_exp():
                 else:
                     parent_body[curr_key][curr_idx] = catchnode
 
+# 下面四个函数功能总和为“名字长度的压缩”，主要是 convenience_names 函数，请谨慎使用
+def cover_name(node):
+    name = node.get('name')
+    if name:
+        aname.append(name)
+        matchname = re.findall('_0x[0-9a-zA-Z]{6}', name)
+        if matchname:
+            nmaps[matchname[0]] = None
+
+def distribute_name(node):
+    global nmaps, aname, name_index, name_chains
+    name = node.get('name')
+    if name:
+        if name in nmaps:
+            cname = nmaps.get(name)
+            if not cname:
+                # _name = 'vv{}'.format(name_index)
+                _name = next(name_chains)
+                while _name in aname:
+                    name_index += 1
+                    # _name = 'vv{}'.format(name_index)
+                    _name = next(name_chains)
+                aname.append(_name)
+                nmaps[name] = cname = _name
+            node['name'] = cname
+
+def _convenience_names(tree, cover_func):
+    if isinstance(tree, dict):
+        cover_func(tree)
+        for key in tree:
+            if isinstance(tree[key], dict):
+                _convenience_names(tree[key], cover_func)
+            elif isinstance(tree[key], list):
+                for idx, _tree in enumerate(tree[key]):
+                    _convenience_names(_tree, cover_func)
+
+def convenience_names(tree):
+    from itertools import chain, product
+    global nmaps, aname, name_index, name_chains
+    s = 'abcdefghijklmnopqrstuvwxyz'
+    nmaps, aname, name_index, name_chains = {}, [], 0, chain(product(s), product(s,s), product(s,s,s))
+    _convenience_names(tree, cover_name)
+    _convenience_names(tree, distribute_name)
+    return tree
+
 
 
 # 通过脚本对js代码切分，将rc4算法切出来单独封装，后续先将代码中的 rc4 加密全部解析
@@ -826,6 +871,8 @@ def sojson_decode(script):
     handle_key_values_delete()
     remake_switch()
     remake_binary_exp()
+    convenience_names(tree) # 函数以及参数名字压缩，只处理固定正则的名字防止销毁某些原始参数，慎用
+    print("注意，自动将匹配 _0x[0-9a-zA-Z]{6} 正则的参数或函数名字压缩，如无需要请一定将该函数注释！！！！")
     return get_script_from_tree(tree)
 
 def normal_decode(script):
@@ -838,6 +885,8 @@ def normal_decode(script):
     handle_key_values_delete()
     remake_switch()
     remake_binary_exp()
+    convenience_names(tree) # 函数以及参数名字压缩，只处理固定正则的名字防止销毁某些原始参数，慎用
+    print("注意，自动将匹配 _0x[0-9a-zA-Z]{6} 正则的参数或函数名字压缩，如无需要请一定将该函数注释！！！！")
     return get_script_from_tree(tree)
 
 v = sojson_decode(script)
@@ -846,15 +895,15 @@ print(v)
 
 
 
-# script = r'''
-# var ttt2 = function(a){
-#     return a+10;
-# }
-# var some2 = function (a, b, c) {
-#     return a(b)
-# }(ttt2, 123, 33);
-# '''
 
-# print(pyjsparser.parse(script))
+script = r'''
+var ttt2 = function(a){
+    return a+10;
+}
+var some2 = function (_0xasdfa, b, c) {
+    return _0xasdfa(b)
+}(ttt2, 123, 33);
+'''
+
 # v = normal_decode(script)
 # print(v)
