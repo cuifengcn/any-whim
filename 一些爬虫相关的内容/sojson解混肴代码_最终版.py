@@ -871,8 +871,8 @@ def sojson_decode(script):
     handle_key_values_delete()
     remake_switch()
     remake_binary_exp()
-    convenience_names(tree) # 函数以及参数名字压缩，只处理固定正则的名字防止销毁某些原始参数，慎用
-    print("注意，自动将匹配 _0x[0-9a-zA-Z]{6} 正则的参数或函数名字压缩，如无需要请一定将该函数注释！！！！")
+    # convenience_names(tree) # 函数以及参数名字压缩，只处理固定正则的名字防止销毁某些原始参数，慎用
+    # print("注意，自动将匹配 _0x[0-9a-zA-Z]{6} 正则的参数或函数名字压缩，请谨慎使用！！！！")
     return get_script_from_tree(tree)
 
 def normal_decode(script):
@@ -885,8 +885,8 @@ def normal_decode(script):
     handle_key_values_delete()
     remake_switch()
     remake_binary_exp()
-    convenience_names(tree) # 函数以及参数名字压缩，只处理固定正则的名字防止销毁某些原始参数，慎用
-    print("注意，自动将匹配 _0x[0-9a-zA-Z]{6} 正则的参数或函数名字压缩，如无需要请一定将该函数注释！！！！")
+    # convenience_names(tree) # 函数以及参数名字压缩，只处理固定正则的名字防止销毁某些原始参数，慎用
+    # print("注意，自动将匹配 _0x[0-9a-zA-Z]{6} 正则的参数或函数名字压缩，请谨慎使用！！！！")
     return get_script_from_tree(tree)
 
 v = sojson_decode(script)
