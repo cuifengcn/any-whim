@@ -1,0 +1,44 @@
+// 这样的配置可以让人在 sublime 里面直接用 g++ 来进行 llvm 相关的开发。
+//
+// 这也是我在 windows 下的配置安装方式。
+// 下载部分：
+//      1 下载 llvm 的源代码（我下载的是 llvm-9.0.1.src.tar.xz）
+//      2 下载安装 cmake 这个 cmake 需要是在 windows 上能够正常运行的版本（我下载的是 cmake-3.17.0-rc3-win64-x64.msi）
+//          注意 cmake 安装的时候最好选择附带安装 gui，因为用 gui 操作起来会很方便
+//      3 下载安装 TDM-GCC 注意，这里的 g++ 的版本一定需要是 >= 5.1 的，不然 cmake 编译 9.0.1 时会出错
+//          之所以选 TDM-GCC 因为下载比较快，而且下载好后不需要联网安装，（我下载的是 tdm64-gcc-5.1.0-2.exe）
+//          （网页下载巨慢，后来我改用迅雷后十几秒内就能下好）
+// 安装部分：
+//      4 将 llvm-9.0.1.src.tar.xz 解压到某个文件夹内，例如 D:/llvm/llvm-9.0.1.src
+//      5 在对应的文件夹内创建一个空的文件夹，例如该创建的文件夹地址 D:/llvm/llvm-9.0.1.build
+//          注意名字一定要对应得上，是 src 换成 build 创建的文件夹名
+//      6 打开 cmake gui 然后指定好 source code 为源码地址，指定 build 的地址为刚才创建的文件夹地址
+//          此时点击 generate 按钮静静等待一会儿就可以了
+// 使用部分：
+//      7 将 g++ 添加到环境变量
+//      8 在 sublime 里面点击 Tools -> Build System -> New Build System 创建新的编译方式，打开一个文件窗口
+//          将该文件下面的 json 内容完整的复制到新的编译方式的窗口里面保存，文件名字建议改成 g++，其实名字也随意，容易辨识即可。
+//          注意下面的 json 文件里面两个引入库地址的修改
+//      9 按下 Ctrl+Shift+B 选择编译方式即可
+// 
+// 写该注释文是因为在一次编译中我 include llvm 相关的库时候会报错，后续花了不少时间才查询到的编译方式
+// 只是简简单单的 include 就报几十几百行错误，特别是网上找不到一个稍微详细点内容的时候确实有点失望的。
+// 于是写下该注释，方便以后查看，主要是想要在 windows 上面也能轻松的使用 sublime 轻量级的开发一些 llvm 相关的项目。
+
+{
+    "cmd": ["g++", "${file}", "-o", "${file_path}/${file_base_name}.exe", "-std=c++11", 
+                "-ID:\\llvm\\llvm-9.0.1.build\\include", "-ID:\\llvm\\llvm-9.0.1.src\\include", ],
+    "file_regex": "^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$",
+    "working_dir": "${file_path}",
+    "encoding":"cp936",
+    "shell":true,
+    "variants":
+    [
+        {
+            "name": "Run BUILD_LLVM",
+            "cmd": ["cmd", "/c", "g++", "${file}", "-o", "${file_path}/${file_base_name}.exe", 
+                    "-std=c++11", "-ID:\\llvm\\llvm-9.0.1.build\\include", "-ID:\\llvm\\llvm-9.0.1.src\\include", 
+                    "&&","${file_path}/${file_base_name}.exe"]
+        },
+    ]
+}
