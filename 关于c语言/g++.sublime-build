@@ -21,9 +21,30 @@
 //          注意下面的 json 文件里面两个引入库地址的修改
 //      9 按下 Ctrl+Shift+B 选择编译方式即可
 // 
-// 写该注释文是因为在一次编译中我 include llvm 相关的库时候会报错，后续花了不少时间才查询到的编译方式
-// 只是简简单单的 include 就报几十几百行错误，特别是网上找不到一个稍微详细点内容的时候确实有点失望的。
-// 于是写下该注释，方便以后查看，主要是想要在 windows 上面也能轻松的使用 sublime 轻量级的开发一些 llvm 相关的项目。
+// 这样至少下面的代码不会报错了，但是还是存在部分异常的情况，我可能还是不太了解是为什么。
+// #include "llvm/IR/Value.h"
+// #include "llvm-c/Types.h"
+// #include "llvm/ADT/ArrayRef.h"
+// #include "llvm/ADT/FoldingSet.h"
+// #include "llvm/ADT/Optional.h"
+// #include "llvm/ADT/StringRef.h"
+// #include "llvm/ADT/iterator_range.h"
+// #include "llvm/Config/llvm-config.h"
+// int main(int argc, char const *argv[]) {
+//     return 0;
+// }
+// 
+// 如果是下面这样的代码则会报错。感觉 llvm 还是非常的抽象啊，光是安装这样一个步骤就能过滤掉一大半的人了，
+// 这样很难吸引到中低阶段刚刚开始对 llvm 有点兴趣的人吧。
+// #include "llvm\IR\Function.h"
+// int main(int argc, char const *argv[]) {
+//     return 0;
+// }
+// 错误信息如下：
+// In file included from D:\llvm\llvm-9.0.1.src\include/llvm/IR/Argument.h:18:0,
+//                  from D:\llvm\llvm-9.0.1.src\include/llvm\IR\Function.h:25,
+//                  from C:\Users\Administrator\Desktop\test.cpp:1:
+// D:\llvm\llvm-9.0.1.src\include/llvm/IR/Attributes.h:73:38: fatal error: llvm/IR/Attributes.inc: No such file or directory
 
 {
     "cmd": ["g++", "${file}", "-o", "${file_path}/${file_base_name}.exe", "-std=c++11", 
