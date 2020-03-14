@@ -186,20 +186,19 @@ def pipinstall_all(*a):
     import os, sys
     pip3_exe = os.path.join(os.path.split(sys.executable)[0], r'Scripts', r'pip3.exe')
     libs = 'cryptography youtube-dl'
-    try:    cmd = 'start powershell -NoExit "{}" install {} -i https://pypi.douban.com/simple/'.format(pip3_exe, libs)
-    except: cmd = 'start cmd /k "{}" install {} -i https://pypi.douban.com/simple/'.format(pip3_exe, libs)
-    os.system(cmd)
+    try:    cmd = 'start powershell -NoExit "{}" install {} -i https://pypi.douban.com/simple/'.format(pip3_exe, libs); os.system(cmd)
+    except: cmd = 'start cmd /k "{}" install {} -i https://pypi.douban.com/simple/'.format(pip3_exe, libs); os.system(cmd)
 lb = tkinter.Label(f1,text='输入关键词点击搜索(回车)，双击需要的歌曲即可下载'); lb.pack(side=tkinter.LEFT)
 e1 = tkinter.Entry(f1); e1.pack(side=tkinter.LEFT); e1.bind("<Return>", search_btn)
 bt = tkinter.Button(f1,text='搜索歌曲', command=search_btn); bt.pack(side=tkinter.RIGHT)
-lb = tkinter.Label(f2,text='输入用户id点击搜索(回车)以获取用户所有收藏的音乐'); lb.pack(side=tkinter.LEFT)
+lb = tkinter.Label(f2,text='输入歌单id点击搜索(回车)以获取歌单里面收藏的音乐'); lb.pack(side=tkinter.LEFT)
 e2 = tkinter.Entry(f2); e2.pack(side=tkinter.LEFT); e2.bind("<Return>", get_playlist_btn)
 bt = tkinter.Button(f2,text='歌曲列表', command=get_playlist_btn); bt.pack(side=tkinter.RIGHT)
 lbd = tkinter.Label(f3,text='当前搜索到歌曲的数量:0'); lbd.pack(side=tkinter.LEFT)
 __ = tkinter.Label(f3,text='保存文件夹:'); __.pack(side=tkinter.LEFT)
 lbs = tkinter.Label(f3,text='./music/default'); lbs.pack(side=tkinter.LEFT)
 try:
-    # 检查依赖安装情况，如果已经安装则不会显示安装库的提示
+    # 检查依赖安装情况，如果已经安装则不会显示安装库的按钮
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
     from cryptography.hazmat.primitives import padding
     from cryptography.hazmat.backends import default_backend
