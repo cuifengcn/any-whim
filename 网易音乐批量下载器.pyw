@@ -193,7 +193,7 @@ e1 = tkinter.Entry(f1); e1.pack(side=tkinter.LEFT); e1.bind("<Return>", search_b
 bt = tkinter.Button(f1,text='搜索歌曲', command=search_btn); bt.pack(side=tkinter.RIGHT)
 lb = tkinter.Label(f2,text='输入歌单id点击搜索(回车)以获取歌单里面收藏的音乐'); lb.pack(side=tkinter.LEFT)
 e2 = tkinter.Entry(f2); e2.pack(side=tkinter.LEFT); e2.bind("<Return>", get_playlist_btn)
-bt = tkinter.Button(f2,text='歌曲列表', command=get_playlist_btn); bt.pack(side=tkinter.RIGHT)
+bt = tkinter.Button(f2,text='搜索歌单', command=get_playlist_btn); bt.pack(side=tkinter.RIGHT)
 lbd = tkinter.Label(f3,text='当前搜索到歌曲的数量:0'); lbd.pack(side=tkinter.LEFT)
 __ = tkinter.Label(f3,text='保存文件夹:'); __.pack(side=tkinter.LEFT)
 lbs = tkinter.Label(f3,text='./music/default'); lbs.pack(side=tkinter.LEFT)
@@ -215,4 +215,6 @@ class mystdout:
         try:tx.see(tkinter.END); tx.update()
         except:pass
 sys.stdout = mystdout
+t.title('网易音乐批量下载器【若下载失败多重试几次，实在下载不到的估计因为版权抹掉了】')
+t.bind('<Escape>',lambda *a: t.quit())
 t.mainloop()
