@@ -78,7 +78,7 @@ def mypost(url, headers, body):
     proxies = None # {'http':'http://127.0.0.1:8888', 'https':'http://127.0.0.1:8888'}
     opener = request.build_opener(request.ProxyHandler(proxies))
     return opener.open(r, data=urlencode(body).encode('utf-8')).read()
-def get_user_list_by_uid(uid):
+def get_playlist_by_playlistid(uid):
     url,headers,body = mk_user_playlist_url_headers_body(uid)
     jsondata = json.loads(mypost(url, headers, body))
     infos = []
@@ -138,8 +138,8 @@ def _update_listbox(func, entry):
     else:
         print('请输入正确的内容')
 config = {'curr': None}
-def search_btn(*a):       _update_listbox(get_infos_by_searchkey, e1); lbs['text'] = './music/default'
-def get_playlist_btn(*a): _update_listbox(get_user_list_by_uid, e2);   lbs['text'] = './music/playlistID_'+e2.get().strip()
+def search_btn(*a):       _update_listbox(get_infos_by_searchkey, e1);     lbs['text'] = './music/default'
+def get_playlist_btn(*a): _update_listbox(get_playlist_by_playlistid, e2); lbs['text'] = './music/playlistID_'+e2.get().strip()
 def download_by_lbx_content(lbx_content):
     from youtube_dl import YoutubeDL
     playlist_id = lbs['text'].replace('./music/','')
@@ -198,7 +198,14 @@ bt = tkinter.Button(f2,text='歌曲列表', command=get_playlist_btn); bt.pack(s
 lbd = tkinter.Label(f3,text='当前搜索到歌曲的数量:0'); lbd.pack(side=tkinter.LEFT)
 __ = tkinter.Label(f3,text='保存文件夹:'); __.pack(side=tkinter.LEFT)
 lbs = tkinter.Label(f3,text='./music/default'); lbs.pack(side=tkinter.LEFT)
-bt = tkinter.Button(f3,text='安装依赖库(豆瓣源)', command=pipinstall_all); bt.pack(side=tkinter.RIGHT)
+try:
+    # 检查依赖安装情况，如果已经安装则不会显示安装库的提示
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.backends import default_backend
+    from youtube_dl import YoutubeDL
+except:
+    bt = tkinter.Button(f3,text='安装依赖库(豆瓣源)', command=pipinstall_all); bt.pack(side=tkinter.RIGHT)
 bt = tkinter.Button(f3,text='下载列表中的全部歌曲', command=download_all); bt.pack(side=tkinter.RIGHT)
 lbx = tkinter.Listbox(f4,width=100,height=25,font=ft); lbx.pack(expand=True,fill=tkinter.X); lbx.bind('<Double-Button-1>', double_click)
 lb = tkinter.Label(f5,text='日志'); lb.pack()
