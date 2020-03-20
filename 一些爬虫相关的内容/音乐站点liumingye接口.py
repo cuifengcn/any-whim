@@ -47,7 +47,7 @@ def get_param_data(k):
 
 def mk_url_headers_body(songid):
     url = (
-        'http://lab.liumingye.cn/api/ajax/search'
+        'http://tool.liumingye.cn/music/ajax/search'
     )
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
