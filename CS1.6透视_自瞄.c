@@ -1,7 +1,9 @@
 #ifndef UNICODE
 #define UNICODE
 #endif
+#define _USE_MATH_DEFINES
 #include "time.h"
+#include "math.h"
 #include <windows.h>
 #include <stdio.h>
 #include <tlhelp32.h>
@@ -172,6 +174,11 @@ float getByteByPoint(HANDLE handle, LPCVOID addr){
     return i;
 }
 
+BOOL WriteFloat(HANDLE handle, LPCVOID addr, LPCVOID f){
+    return WriteProcessMemory(handle, addr, f, sizeof(f), NULL);;
+}
+
+
 int initMatrixByPoint_4x4(HANDLE handle, LPCVOID addr, float* M){
     return ReadProcessMemory(handle, addr, M, sizeof(float)*4*4, NULL);
 }
@@ -200,14 +207,34 @@ HDC windc;
 RECT rect;
 RECT drawrect;
 float L, T, R, B, Gx, Gy, Bx, By, By2, Px, Py, Pz, H, head, feet, wid, VieW;
-int x1, y1, x2, y2;
 struct Player {
     float x;
     float y;
     float z;
     float hp;
+    float dis;
+    float dis_arrow;
+    int x1;
+    int y1;
+    int x2;
+    int y2;
     int side;
 } ;
+int PLAYER_NUMBER = 16;
+
+void focusEnemy(HANDLE handle, int idx, struct Player* P, LPCVOID point_xangle, LPCVOID point_yangle){    
+    float xangle, yangle;
+    xangle = atan2((P[0].y - P[idx].y), (P[0].x - P[idx].x)) * (180/M_PI) + 180;
+    yangle = atan2((P[0].z - P[idx].z), sqrt(pow((P[0].y - P[idx].y), 2) + pow((P[0].x - P[idx].x), 2))) * (180/M_PI);
+    WriteProcessMemory(handle, (LPCVOID)((int)point_xangle), &xangle, 4, NULL);
+    WriteProcessMemory(handle, (LPCVOID)((int)point_yangle), &yangle, 4, NULL);
+}
+
+
+
+
+
+
 
 int main(int argc, char const *argv[]) {
     if(enable_debug_priv() != YSUCCESS) {
@@ -215,9 +242,10 @@ int main(int argc, char const *argv[]) {
         return 0;
     }
     int *pid;
-    HANDLE camera,handle,basead,whandle;
+    HANDLE handle,basead,whandle;
     basead = (HANDLE)enum_process(L"cstrike.exe", L"cstrike.exe", &pid);
-    camera = (HANDLE)enum_process(L"cstrike.exe", L"particleman.dll", NULL);
+    // 使用 enum_process 比一般的处理的好处是能够获取其内部的函数 dll。
+    // camera = (HANDLE)enum_process(L"cstrike.exe", L"particleman.dll", NULL);
     whandle = getWindowHandleByPid(pid);
     handle = OpenProcess(PROCESS_ALL_ACCESS,FALSE,pid);
     windc = GetDC(NULL);
@@ -225,7 +253,6 @@ int main(int argc, char const *argv[]) {
     printf("handle: %d\n", handle);
     printf("handle_window: %d\n", whandle);
     printf("base_cstrike.exe:%x\n", basead);
-    printf("base_particleman.dll:%x\n", camera);
 
     LPCVOID point_matrix;
     point_matrix = getAddressPointer(handle, (LPCVOID)(basead+0x00946830));
@@ -234,7 +261,7 @@ int main(int argc, char const *argv[]) {
     int i, j;
     float M[4][4];
     if (initMatrixByPoint_4x4(handle, (LPCVOID)((int)point_matrix), (float*)&M) != 0){
-        printf("read Matrix ok.\n");
+        printf("read Matrix ok. first Matrix:\n");
         for (i = 0; i < 4; ++i) {
             for (j = 0; j < 4; ++j){
                 printf("%12.7f ", M[i][j]);
@@ -242,6 +269,11 @@ int main(int argc, char const *argv[]) {
             printf("\n");
         }
     }
+
+    LPCVOID point_xangle;
+    LPCVOID point_yangle;
+    point_xangle = getAddressPointer(handle, (LPCVOID)(basead+0x0090E86C))+4;
+    point_yangle = getAddressPointer(handle, (LPCVOID)(basead+0x0090E86C));
     
 
     // 读取目标地址的坐标
@@ -260,6 +292,34 @@ int main(int argc, char const *argv[]) {
     feet = -30;
     H = 15;
 
+    // 获取所有人物坐标信息，hp信息，身份信息
+    number = 0;
+    printf("first get players.\n");
+    for (int i = 0; i < PLAYER_NUMBER; ++i) {
+        printf("player %2d ", i);
+        for (int j = 0; j < 5; ++j) {
+            if (j < 4) {
+                i_point = (int)(point_info + infos[j] + gapif*i);
+                f = getFloatByPoint(handle, (LPCVOID)i_point);
+                printf("%12.5f ", f);
+                if (j == 0){ P[i].x = f; };
+                if (j == 1){ P[i].y = f; };
+                if (j == 2){ P[i].z = f; };
+                if (j == 3){ P[i].hp = f; };
+            } else {
+                s_point = (int)(point_side + sides[j-4] + gapsd*i);
+                s = getByteByPoint(handle, (LPCVOID)s_point);
+                P[i].dis = i == 0 ? 0.0 : sqrt(pow(P[i].x-P[0].x,2) + pow(P[i].y-P[0].y,2) + pow(P[i].y-P[0].y,2));
+                printf("side: %4d    distance: %8.2f\n", s, P[i].dis);
+                if (s != 1 && s != 2){ break; };
+                if (j == 4){ P[i].side = s; };
+                if (i == 0 && j == 4){ myside = s; };
+            }
+        }
+        number += 1;
+    }
+
+    POINT currpos = { 0, 0 };
     HBRUSH brush = CreateSolidBrush(RGB(200, 0, 0));
     while(1){
         // 不断获取窗口大小以兼容窗口移动
@@ -271,23 +331,20 @@ int main(int argc, char const *argv[]) {
         Gx = (R-L)/2;
         Gy = (B-T)/2;
 
-        // 获取所有人物坐标信息，hp信息，身份信息
         number = 0;
-        for (int i = 0; i < 16; ++i) {
-            // printf("player %2d ", i);
+        for (int i = 0; i < PLAYER_NUMBER; ++i) {
             for (int j = 0; j < 5; ++j) {
                 if (j < 4) {
                     i_point = (int)(point_info + infos[j] + gapif*i);
                     f = getFloatByPoint(handle, (LPCVOID)i_point);
-                    // printf("%12.5f ", f);
                     if (j == 0){ P[i].x = f; };
                     if (j == 1){ P[i].y = f; };
                     if (j == 2){ P[i].z = f; };
                     if (j == 3){ P[i].hp = f; };
                 } else {
                     s_point = (int)(point_side + sides[j-4] + gapsd*i);
+                    P[i].dis = i == 0 ? 0.0 : sqrt(pow(P[i].x-P[0].x,2) + pow(P[i].y-P[0].y,2) + pow(P[i].y-P[0].y,2));
                     s = getByteByPoint(handle, (LPCVOID)s_point);
-                    // printf("%4d\n", s);
                     if (s != 1 && s != 2){ break; };
                     if (j == 4){ P[i].side = s; };
                     if (i == 0 && j == 4){ myside = s; };
@@ -296,9 +353,11 @@ int main(int argc, char const *argv[]) {
             number += 1;
         }
 
+        GetCursorPos(&currpos);
+
         // 获取镜头矩阵，用人物参数计算需要画的部分
         initMatrixByPoint_4x4(handle, (LPCVOID)((int)point_matrix), (float*)&M);
-        for (i = 1; i < 16; ++i) {
+        for (i = 1; i < PLAYER_NUMBER; ++i) {
             Px = P[i].x;
             Py = P[i].y;
             Pz = P[i].z;
@@ -308,19 +367,44 @@ int main(int argc, char const *argv[]) {
             By  = Gy - (Px*M[0][1] + Py*M[1][1] + (Pz+head)*M[2][1] + M[3][1])*VieW*Gy;
             By2 = Gy - (Px*M[0][1] + Py*M[1][1] + (Pz+feet)*M[2][1] + M[3][1])*VieW*Gy;
             wid = abs(By - By2)*.25;
-            drawrect.left = (int)(Bx-wid+L);
-            drawrect.top = (int)(By+T+H);
-            drawrect.right = (int)(Bx+wid+L);
-            drawrect.bottom = (int)(By2+T+H);
+            P[i].x1 = (int)(Bx-wid+L);
+            P[i].y1 = (int)(By+T+H);
+            P[i].x2 = (int)(Bx+wid+L);
+            P[i].y2 = (int)(By2+T+H);
+            if (P[i].side == 1 || P[i].side == 2){
+                P[i].dis_arrow = sqrt(pow(currpos.x-(P[i].x1+P[i].x2)/2, 2) + pow(currpos.y-(P[i].y1+P[i].y2)/2, 2));
+            }
+        }
+
+        int min_arrow_dis_index = 0;
+        float min_arrow_dis_curr = INT_MAX;
+        for (i = 1; i < PLAYER_NUMBER; ++i) {
             if (P[i].hp > 1){
                 if (P[i].side == myside){
                     // drawRect(windc, &drawrect, BLACK_BRUSH);
-                }else{
-                    // 只画敌人
-                    drawRedRect(windc, &drawrect, brush);
+                }else if(P[i].side == 1 || P[i].side == 2){
+                    // drawRedRect(windc, &drawrect, brush);
+                    if (P[i].dis_arrow < min_arrow_dis_curr){
+                        min_arrow_dis_curr = P[i].dis_arrow;
+                        min_arrow_dis_index = i;
+                    }
                 }
             }
-        // Sleep(100);
         }
+
+        // 只画距离鼠标最近的一个，只自动瞄准鼠标最近的一个，这样对控制的人更加友好，也节约点资源。
+        if(min_arrow_dis_index){
+            drawrect.left = P[min_arrow_dis_index].x1;
+            drawrect.top = P[min_arrow_dis_index].y1;
+            drawrect.right = P[min_arrow_dis_index].x2;
+            drawrect.bottom = P[min_arrow_dis_index].y2;
+            drawRedRect(windc, &drawrect, brush);
+            // 最简单的一种键盘检测，左键自瞄
+            if (0x8000 & GetKeyState(VK_LBUTTON)){
+                // 自瞄，根据P的下标对人物进行瞄准。
+                focusEnemy(handle, min_arrow_dis_index, &P, point_xangle, point_yangle);
+            }
+        }
+        // break;
     }
 }
