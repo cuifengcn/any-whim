@@ -183,11 +183,6 @@ float getByteByPoint(HANDLE handle, LPCVOID addr){
     return i;
 }
 
-BOOL WriteFloat(HANDLE handle, LPCVOID addr, LPCVOID f){
-    return WriteProcessMemory(handle, addr, f, sizeof(f), NULL);;
-}
-
-
 int initMatrixByPoint_4x4(HANDLE handle, LPCVOID addr, float* M){
     return ReadProcessMemory(handle, addr, M, sizeof(float)*4*4, NULL);
 }
@@ -261,7 +256,7 @@ int main(int argc, char const *argv[]) {
     printf("pid: %d\n", pid);
     printf("handle: %d\n", handle);
     printf("handle_window: %d\n", whandle);
-    printf("base_cstrike.exe:%x\n", basead);
+    printf("base_cstrike.exe: %x\n", basead);
 
     LPCVOID point_matrix;
     point_matrix = getAddressPointer(handle, (LPCVOID)(basead+0x00946830));
@@ -284,6 +279,17 @@ int main(int argc, char const *argv[]) {
     point_xangle = getAddressPointer(handle, (LPCVOID)(basead+0x0090E86C))+4;
     point_yangle = getAddressPointer(handle, (LPCVOID)(basead+0x0090E86C));
     
+    int recoil;
+    int bullets;
+    LPCVOID point_recoil, point_bullets;
+    point_recoil = getAddressPointer(handle, (LPCVOID)(basead+0x11069BC));
+    point_recoil = getAddressPointer(handle, (LPCVOID)((int)point_recoil+0x7C));
+    point_recoil = getAddressPointer(handle, (LPCVOID)((int)point_recoil+0x5EC));
+    point_bullets = (LPCVOID)((int)point_recoil+0xCC);
+    point_recoil = (LPCVOID)((int)point_recoil+0x100);
+    bullets = getIntByPoint(handle, point_bullets);
+    printf("bullets addr: %x bullets: %d\n", point_bullets, bullets);
+    printf("recoil  addr: %x recoil:  %d\n", point_recoil,  getIntByPoint(handle, point_recoil));
 
     // 读取目标地址的坐标
     LPCVOID point_info, point_side;
@@ -414,6 +420,17 @@ int main(int argc, char const *argv[]) {
                 focusEnemy(handle, min_arrow_dis_index, &P, point_xangle, point_yangle);
             }
         }
-        // break;
+
+        // 后坐力调整为0，虽然游戏中枪口仍然会浮动，但是浮动会变很小。
+        // 枪械子弹固定为 30，无限子弹
+        recoil = 0;
+        bullets = 30;
+        point_recoil = getAddressPointer(handle, (LPCVOID)(basead+0x11069BC));
+        point_recoil = getAddressPointer(handle, (LPCVOID)((int)point_recoil+0x7C));
+        point_recoil = getAddressPointer(handle, (LPCVOID)((int)point_recoil+0x5EC));
+        point_bullets = (LPCVOID)((int)point_recoil+0xCC);
+        point_recoil = (LPCVOID)((int)point_recoil+0x100);
+        WriteProcessMemory(handle, (LPCVOID)((int)point_recoil), &recoil, sizeof(int), NULL);
+        WriteProcessMemory(handle, (LPCVOID)((int)point_bullets), &bullets, sizeof(int), NULL);
     }
 }
