@@ -6,6 +6,7 @@
 // 由于用的GDI所以为了效果好一点，目前透视只显示一个人
 // 透视窗距离你鼠标最近的一个就会显示。这样会比按照距离显示会好很多。
 // 自瞄同理，左键开枪会自动瞄准距离鼠标坐标最近的透视窗的人。
+// 附带简单的无后坐力，无限子弹
 
 #ifndef UNICODE
 #define UNICODE
@@ -346,6 +347,7 @@ int main(int argc, char const *argv[]) {
         Gx = (R-L)/2;
         Gy = (B-T)/2;
 
+        // 获取所有人坐标信息，hp信息，以及警匪分边的信息
         number = 0;
         for (int i = 0; i < PLAYER_NUMBER; ++i) {
             for (int j = 0; j < 5; ++j) {
@@ -370,7 +372,7 @@ int main(int argc, char const *argv[]) {
 
         GetCursorPos(&currpos);
 
-        // 获取镜头矩阵，用人物参数计算需要画的部分
+        // 获取镜头矩阵，用人物参数计算需要画的部分，计算出所有敌人的方框位置并存储
         initMatrixByPoint_4x4(handle, (LPCVOID)((int)point_matrix), (float*)&M);
         for (i = 1; i < PLAYER_NUMBER; ++i) {
             Px = P[i].x;
@@ -391,14 +393,14 @@ int main(int argc, char const *argv[]) {
             }
         }
 
+        // 找到仍有hp的，透视方框与当前鼠标最接近的人的ID，用在后面绘制与自瞄
         int min_arrow_dis_index = 0;
         float min_arrow_dis_curr = INT_MAX;
         for (i = 1; i < PLAYER_NUMBER; ++i) {
             if (P[i].hp > 1){
                 if (P[i].side == myside){
-                    // drawRect(windc, &drawrect, BLACK_BRUSH);
+                    // 
                 }else if(P[i].side == 1 || P[i].side == 2){
-                    // drawRedRect(windc, &drawrect, brush);
                     if (P[i].dis_arrow < min_arrow_dis_curr){
                         min_arrow_dis_curr = P[i].dis_arrow;
                         min_arrow_dis_index = i;
@@ -416,7 +418,6 @@ int main(int argc, char const *argv[]) {
             drawRedRect(windc, &drawrect, brush);
             // 最简单的一种键盘检测，左键自瞄
             if (0x8000 & GetKeyState(VK_LBUTTON)){
-                // 自瞄，根据P的下标对人物进行瞄准。
                 focusEnemy(handle, min_arrow_dis_index, &P, point_xangle, point_yangle);
             }
         }
