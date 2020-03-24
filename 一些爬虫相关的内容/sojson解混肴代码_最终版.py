@@ -3,6 +3,7 @@
 # 完全依赖 js2py
 # 开发于 python3
 # 直接执行脚本即可测试
+# 需要依赖安装 node(需要有npm) 的环境，用以下载 escodegen.js 的文件，只会下载一次。
 
 # 通过生成语法树，快速修改内部的某些混肴处理，从而简化代码
 # 直接使用 js2py 非常方便，因为其内部已经自带了一些 js 库的 python 化代码
@@ -541,17 +542,34 @@ def convenience_tree_null(tree):
                     convenience_tree_null(_tree)
 
 def get_script_from_tree(tree):
-    import js2py.py_node_modules.escodegen as escodegen
-    escodegen = escodegen.var.get('escodegen')
-    generate = escodegen.get('generate')
-    return generate(tree).to_python()
+    # 需要依赖安装 node 以及 npm 的环境
+    # 用以下载 escodegen.js 的文件，只会下载一次。
+    # 下载过后就会自动被js2py转成py代码，放在 js2py.py_node_modules 中。
+    # 以下是解决 win10 上面下载时可能会出现的 bug，
+    # 有时 powershell 才可以执行 有时 command 才可以执行，这么丑的写法，我也很绝望。
+    try:
+        escodegen = js2py.require('escodegen')
+    except:
+        import subprocess
+        def _call(*a, **k):
+            _a = list(a)
+            _a[0] = 'powershell '+a[0]
+            return _call_bak(*a, **k) if _call_bak(*_a, **k) != 0 else 0
+        _call_bak = subprocess.call
+        subprocess.call = _call
+        escodegen = js2py.require('escodegen')
+    return escodegen.generate(tree)
 
 def cover_undefined_null(node):
     # 如果不使用 js2py 内部的数据结构来包装一下这类的数据，反编译回 js 代码时就会出现问题。
     if node.get('raw') == 'null' and node.get('value', '') is None:
         node['value'] = JS_BUILTINS['null']
-    elif node.get('raw') == 'undefined' and node.get('undefined', '') is None:
+    elif node.get('raw') == 'undefined' and node.get('value', '') is None:
         node['value'] = JS_BUILTINS['undefined']
+    if node.get('raw', '') is None and node.get('value', '') is None:
+        node.clear()
+        node['type'] = 'Identifier'
+        node['name'] = 'null'
 
 def get_sojson_encoder(script):
     tree = pyjsparser.parse(script)
@@ -591,6 +609,8 @@ def cover_func_rc4(node):
         if node['callee'].get('name') and node['callee']['name'] == funcname and args[0]['type'] == 'Literal' and args[1]['type'] == 'Literal':
             _args = args[0]['value'], args[1]['value']
             val = decoder_func(*_args)
+            if val == None:
+                val = JS_BUILTINS['null']
             print('执行算法解密部分：{}{}: {}'.format(funcname, _args, val))
             node = {
                 "type": "Literal",
