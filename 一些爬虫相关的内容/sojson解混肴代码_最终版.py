@@ -718,7 +718,12 @@ def handle_key_value():
 
 def handle_key_values_delete():
     for parent_body, curr_key in hldel:
-        del(parent_body[curr_key])
+        toggle = set()
+        for i in parent_body[curr_key].get('properties') or []:
+            if i.get('type') == 'Property' and i.get('key') and i.get('key').get('type') == 'Literal':
+                toggle.add(len(i.get('key').get('value')))
+        if len(toggle) == 1 and toggle.pop() in [4, 5]:
+            del(parent_body[curr_key])
 
 def handle_key_value_input():
     def cover_list(node):
