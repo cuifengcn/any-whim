@@ -31,7 +31,6 @@ def get_media_url(jsondata):
             n = [None]*len(t)
             r = 0
             while (r < len(t)):
-
                 o = (ord(t[r]) - 97) if (ord("a") <= ord(t[r]) and ord("z") >= ord(t[r])) else (ord(t[r]) - ord("0") + 26)
                 i = 0
                 while (36 > i):
