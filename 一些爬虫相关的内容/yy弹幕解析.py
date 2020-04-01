@@ -52,53 +52,44 @@ class VSpider(scrapy.Spider):
     proxy = None # 'http://127.0.0.1:8888'
 
     def start_requests(self):
-        def mk_url_headers():
-            def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
+
+        # 通过视频pid获取全部的弹幕
+        pid = '15012_2464519401_39811675_1585621082589'
+
+        def mk_url_headers(pid):
+            import time
             url = (
                 'https://www.yy.com/video/replay/comments'
-                '?pid=15012_1636110082_16098731_1584608501347'
+                '?pid={}'
                 '&offset=0'
                 '&limit=30'
                 '&sort=desc'
-                '&n=1584677740649'
+                '&n={}'
                 '&pageContext='
-            )
-            url = quote_val(url)
+            ).format(pid, int(time.time()*1000))
             headers = {
                 "accept": "*/*",
                 "accept-encoding": "gzip, deflate, ", # auto delete br encoding. cos requests and scrapy can not decode it.
                 "accept-language": "zh-CN,zh;q=0.9",
                 "cache-control": "no-cache",
-                "cookie": (
-                    "Hm_lvt_c493393610cdccbddc1f124d567e36ab=1584515408,1584515409,1584670307; "
-                    "hd_newui=0.3904720232224077; "
-                    "hdjs_session_id=0.03405592389889023; "
-                    "hdjs_session_time=1584673076822; "
-                    "hiido_ui=0.2601776258040247; "
-                    "udb_c=; "
-                    "Hm_lpvt_c493393610cdccbddc1f124d567e36ab=1584673080"
-                ),
-                "pragma": "no-cache",
-                "referer": "https://www.yy.com/x/15012_992932602_98848776_1584592818452",
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-site": "same-origin",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
             }
             return url,headers
-        url,headers = mk_url_headers()
+        url,headers = mk_url_headers(pid)
         meta = {}
         meta['proxy'] = self.proxy
         r = Request(
                 url,
                 headers  = headers,
-                callback = self.parse,
+                callback = self.parse_danmu,
                 meta     = meta,
             )
         yield r
 
-    def parse(self, response):
-
+    def parse_danmu(self, response):
         s = unmarshal(response.body)
         s.get_int32()
         for i in range(s.get_int32()):
@@ -123,6 +114,64 @@ class VSpider(scrapy.Spider):
             import pprint
             pprint.pprint(d)
             yield d
+        # 获取弹幕总数，因为该处的参数 s 与上面的弹幕解析耦合，所以不能将上面部分单独分割出去做一个函数，另写一个类似的函数即可。
+        info = {}
+        for i in range(s.get_int32()):
+            v = s.get_string()
+            info[v] = s.get_string()
+        total = int(info['total'])
+        pages = int(total/30) if total%30==0 else int(total/30)+1
+        for page in range(1, pages):
+            def mk_url_headers(url, page):
+                url = re.sub('&offset=[^&]+', '&offset={}'.format(page*30), url)
+                headers = {
+                    "accept": "*/*",
+                    "accept-encoding": "gzip, deflate, ", # auto delete br encoding. cos requests and scrapy can not decode it.
+                    "accept-language": "zh-CN,zh;q=0.9",
+                    "cache-control": "no-cache",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin",
+                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+                }
+                return url,headers
+            url,headers = mk_url_headers(response.url, page)
+            meta = {}
+            meta['proxy'] = self.proxy
+            r = Request(
+                    url,
+                    headers  = headers,
+                    callback = self.parse_danmu_page,
+                    meta     = meta,
+                )
+            yield r
+
+    def parse_danmu_page(self, response):
+        s = unmarshal(response.body)
+        s.get_int32()
+        for i in range(s.get_int32()):
+            s.get_string()
+            s.get_int32()
+            s.get_int32()
+            a = unmarshal(s.get_bytes())
+            l = [a.get_int32(), a.get_int32(), a.get_int16(), a.get_int32(), a.get_int32(), a.get_int32(), a.get_bytes()][-1]
+            u = unmarshal(l)
+            c = [u.get_int32(), u.get_ustring()][-1]
+            f = [u.get_int32(), u.get_int32(), u.get_ustring()][-1]
+            try:
+                f = etree.HTML(f).xpath('//txt/@data')[0]
+            except:
+                pass
+            d = {}
+            d['nickname']= c
+            d['text']= f
+            d['ctime'] = time.strftime("%Y%m%d_%H%M%S", time.localtime(s.get_int32()))
+            s.get_int32()
+            print('------------------------------ split ------------------------------')
+            import pprint
+            pprint.pprint(d)
+            yield d
+
 
 
 # 配置在单脚本情况也能爬取的脚本的备选方案，使用项目启动则下面的代码无效
