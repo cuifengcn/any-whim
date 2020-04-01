@@ -81,6 +81,7 @@ class VSpider(scrapy.Spider):
         url,headers = mk_url_headers(pid)
         meta = {}
         meta['proxy'] = self.proxy
+        meta['pid'] = pid
         r = Request(
                 url,
                 headers  = headers,
@@ -109,6 +110,7 @@ class VSpider(scrapy.Spider):
             d['nickname']= c
             d['text']= f
             d['ctime'] = time.strftime("%Y%m%d_%H%M%S", time.localtime(s.get_int32()))
+            d['pid'] = response.meta.get('pid')
             s.get_int32()
             print('------------------------------ split ------------------------------')
             import pprint
@@ -138,6 +140,7 @@ class VSpider(scrapy.Spider):
             url,headers = mk_url_headers(response.url, page)
             meta = {}
             meta['proxy'] = self.proxy
+            meta['pid'] = response.meta.get('pid')
             r = Request(
                     url,
                     headers  = headers,
@@ -166,6 +169,7 @@ class VSpider(scrapy.Spider):
             d['nickname']= c
             d['text']= f
             d['ctime'] = time.strftime("%Y%m%d_%H%M%S", time.localtime(s.get_int32()))
+            d['pid'] = response.meta.get('pid')
             s.get_int32()
             print('------------------------------ split ------------------------------')
             import pprint

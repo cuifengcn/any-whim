@@ -151,7 +151,7 @@ def get_media_url(jsondata):
 
 if __name__ == '__main__':
 
-    # 音频id，通常是下面这样地址的最后一部分数字为音频id
+    # 音频id，通常是下面这样地址的最后一部分数字为音频id（喜马拉雅的部分音频地址需要解密，有些没有加密的可以直接拿到音频地址则无需解密）
     # https://www.ximalaya.com/youshengshu/24593608/193884895
     mediaid = '193884895'
 
