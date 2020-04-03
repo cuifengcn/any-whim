@@ -15,6 +15,8 @@ from .common import InfoExtractor
 #     eg. https://v.huya.com/play/216591840.html
 # 斗鱼show视频下载，适合如下连接格式
 #     eg. https://v.douyu.com/show/a4Jj7l23PrBWDk01
+# 一直播视频下载，适用于如下连接格式（该处网站视频似乎都有点大，七八个小时的直播视频都放一个m3u8地址，属实抽象）
+#     eg. http://www.yizhibo.com/l/2SEFmIKoZzT1mruj.html
 # 新华网视频下载插件，适用于如下连接格式
 #     eg. http://vod.xinhuanet.com/v/vod.html?vid=536626
 # 新华网视频下载插件，适用于如下连接格式
@@ -23,8 +25,7 @@ from .common import InfoExtractor
 # 使用前须知，
 # 1 将该脚本命名为 _my_extractor.py 并放在 youtube_dl/extractor 文件夹下
 # 2 请找到 youtube_dl/extractor 文件夹下的 extractors.py 文件
-#   并在最后添加一行内容 from ._my_extractor import YYRecordIE, DouyuShowIE, HuyaIE, XinHuaNetIE, XinHuaNet2IE
-
+#   并在最后添加一行内容 from ._my_extractor import YYRecordIE, DouyuShowIE, HuyaIE, XinHuaNetIE, XinHuaNet2IE, YiZhiBoIE
 
 
 # yy视频历史视频下载，适合如下连接格式
@@ -158,14 +159,10 @@ class DouyuShowIE(InfoExtractor):
             return url,headers,pbody
 
         uid = re.findall(self._VALID_URL, url)[0]
-        from lxml import etree
-
         url, headers = mk_url_headers(url)
         page = self._download_webpage(url, uid, headers=headers)
-        e = etree.HTML(page)
-        x = e.xpath('//script[contains(text(), "var $ROOM")]')[0]
-        script = etree.tostring(x)
-        pbody = self.get_m3u8_pbody(html.unescape(script.decode()))
+        script = re.findall(r'(var \$ROOM.*?)</script>', page, flags=re.S)[0]
+        pbody = self.get_m3u8_pbody(html.unescape(script))
         url, headers, body = mk_url_headers_body(pbody)
         page = self._download_webpage(url, uid, headers=headers, data=urllib.parse.urlencode(body).encode())
         jsondata = json.loads(page)
@@ -357,6 +354,35 @@ class DouyuShowIE(InfoExtractor):
         return d
 
 
+# 一直播视频下载，适用于如下连接格式（该处网站视频似乎都有点大，七八个小时的直播视频都放一个m3u8地址，确实有点抽象）
+# eg. http://www.yizhibo.com/l/2SEFmIKoZzT1mruj.html
+class YiZhiBoIE(InfoExtractor):
+    IE_NAME = 'YiZhiBoIE'
+    IE_DESC = 'YiZhiBoIE video downloader.'
+    _VALID_URL = r'http://www\.yizhibo\.com/l/([^/\?]+)\.html'
+
+    def _real_extract(self, url):
+        uid = re.findall(self._VALID_URL, url)[0]
+        page = self._download_webpage(url, uid)
+        url = re.findall(r'play_url:"([^"]+\.m3u8)"', page)[0]
+
+        page = self._download_webpage(url, uid)
+        number = len(re.findall('#EXTINF:', page))
+        print('需要下载 {} 片数据'.format(number))
+        # 如果下载片过大，请酌情在这里进行限制调整
+
+        # 对于 youtube-dl 工具而言，该函数返回的参数是一个字典，至少要包括 id，title，url 这三个key的字典。
+        if url:
+            return {
+                'id':       uid,
+                'title':    uid,
+                'url':      url,
+                'ext':      'mp4',
+            }
+        else:
+            print(traceback.format_exc())
+
+
 # 新华网视频下载插件，适用于如下连接格式
 # eg. http://vod.xinhuanet.com/v/vod.html?vid=536626
 class XinHuaNetIE(InfoExtractor):
@@ -439,3 +465,4 @@ class XinHuaNet2IE(InfoExtractor):
             }
         else:
             print(traceback.format_exc())
+
