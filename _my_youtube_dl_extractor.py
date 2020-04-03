@@ -58,8 +58,8 @@ class YYRecordIE(InfoExtractor):
 # 虎牙视频下载，适合如下格式连接
 # eg. https://v.huya.com/play/216591840.html
 class HuyaIE(InfoExtractor):
-    IE_NAME = 'YYRecordIE'
-    IE_DESC = 'YYRecordIE video downloader.'
+    IE_NAME = 'HuyaIE'
+    IE_DESC = 'HuyaIE video downloader.'
     _VALID_URL = r'https://v\.huya\.com/play/(\d+)\.html'
 
     def _real_extract(self, url):
