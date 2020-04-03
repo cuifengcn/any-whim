@@ -110,8 +110,6 @@ class HuyaIE(InfoExtractor):
 # 斗鱼show视频下载，适合如下连接格式
 # eg. https://v.douyu.com/show/a4Jj7l23PrBWDk01
 class DouyuShowIE(InfoExtractor):
-    # 斗鱼 show 连接加密部分
-
     IE_NAME = 'DouyuIE'
     IE_DESC = 'DouyuIE video downloader.'
     _VALID_URL = r'https://v\.douyu\.com/show/([a-zA-Z0-9]+)'
