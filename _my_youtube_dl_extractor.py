@@ -48,6 +48,7 @@ class YYRecordIE(InfoExtractor):
                 'id':       uid,
                 'title':    uid,
                 'url':      url,
+                'ext':      'mp4',
             }
         else:
             print(traceback.format_exc())
@@ -92,16 +93,13 @@ class HuyaIE(InfoExtractor):
                 url = d.get('url') or d.get('m3u8')
                 if url:
                     break
-        ext = None
-        if url.endswith('.mp4'):  ext = 'mp4'
-        if url.endswith('.m3u8'): ext = 'm3u8'
         # 对于 youtube-dl 工具而言，该函数返回的参数是一个字典，至少要包括 id，title，url 这三个key的字典。
         if url:
             return {
                 'id':       uid,
                 'title':    uid,
                 'url':      url,
-                'ext':      ext,
+                'ext':      'mp4',
             }
         else:
             print(traceback.format_exc())
