@@ -80,6 +80,8 @@ class Data:
         return imgname, xmlname
 
     def mkxml(self,folder,filename,realpath,w,h,channel,clazz,minx,miny,maxx,maxy):
+        # 保存为 python第三方库 labelImg 所标注的数据的结构信息
+        # 这样会方便于快速将虚拟数据的使用切换到实际数据的使用
         return r'''
 <annotation>
     <folder>{}</folder>
@@ -119,6 +121,43 @@ def drawrect_and_show(imgfile, rect, text):# 只能写英文
     cv2.imshow('test', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+
+
+def readxml(file, islist=False):
+    # 读取 xml 文件，根据其中的内容读取图片数据，并且获取标注信息
+    # 该类 xml 文件为 python第三方库 labelImg 所标注的数据的结构信息
+    # file：
+    #   xml文件的路径地址
+    # islist：
+    #   xml 文件是否包含多个标注，如果有，统一返回列表，
+    #   如果只有一个标注，直接返回一个信息字典方便使用
+    d = xml.dom.minidom.parse(file)
+    v = d.getElementsByTagName('annotation')[0]
+    f = v.getElementsByTagName('path')[0].firstChild.data
+    if not os.path.isfile(f):
+        raise 'fail load img: {}'.format(f)
+    size = v.getElementsByTagName('size')[0]
+    npimg = cv2.imread(f)
+    def readobj(obj):
+        d = {}
+        obj  = v.getElementsByTagName('object')[0]
+        bbox = obj.getElementsByTagName('bndbox')[0]
+        d['width']  = int(size.getElementsByTagName('width')[0].firstChild.data)
+        d['height'] = int(size.getElementsByTagName('height')[0].firstChild.data)
+        d['depth']  = int(size.getElementsByTagName('depth')[0].firstChild.data)
+        d['cate']   = obj.getElementsByTagName('name')[0].firstChild.data
+        d['xmin']   = int(bbox.getElementsByTagName('xmin')[0].firstChild.data)
+        d['ymin']   = int(bbox.getElementsByTagName('ymin')[0].firstChild.data)
+        d['xmax']   = int(bbox.getElementsByTagName('xmax')[0].firstChild.data)
+        d['ymax']   = int(bbox.getElementsByTagName('ymax')[0].firstChild.data)
+        d['centerx'] = (d['xmin'] + d['xmax'])/2.
+        d['centery'] = (d['ymin'] + d['ymax'])/2.
+        d['numpy']  = npimg
+        return d
+    if islist:  r = [readobj(obj) for obj in v.getElementsByTagName('object')]
+    else:       r = readobj(v.getElementsByTagName('object')[0])
+    return r
 
 
 
