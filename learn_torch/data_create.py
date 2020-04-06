@@ -63,7 +63,7 @@ class Data:
         filename, xmlname = self.create_name()
         realimgpath = os.path.join(self.imgpath, filename)
         realxmlpath = os.path.join(self.xmlpath, xmlname)
-        xml = self.mkxml(folder,filename,realimgpath,w,h,self.channel,c,minx,miny,maxx,maxy)
+        xml = self.mkxml(folder,filename,realimgpath,iw,ih,self.channel,c,minx,miny,maxx,maxy)
         cv2.imwrite(realimgpath, img)
         with open(realxmlpath, 'w', encoding='utf-8') as f:
             f.write(xml)
