@@ -1,5 +1,6 @@
 # 并非可以直接用的东西，后续会继续补充
-# 还在测试当中，感觉有些奇怪的问题
+# 还在测试当中，感觉有些奇怪的问题，感觉是在损失函数以及框架上面有问题
+# 后续考虑使用显卡加速，否则每次测试都太JB慢了
 
 import cv2
 import numpy as np
@@ -13,6 +14,9 @@ import os
 import math
 import xml.dom.minidom
 from collections import OrderedDict
+
+# 更好的打印输出
+torch.set_printoptions(precision=2, sci_mode=False, linewidth=120, profile='full')
 
 def readxml(file, islist=False):
     # 读取 xml 文件，根据其中的内容读取图片数据，并且获取标注信息
@@ -54,7 +58,7 @@ class ConvBN(nn.Module):
         padding   = (kernel_size - 1) // 2
         self.conv = nn.Conv2d(cin, cout, kernel_size, stride, padding, bias=False)
         self.bn   = nn.BatchNorm2d(cout, momentum=0.01)
-        self.relu = nn.LeakyReLU(0.1, inplace=True)
+        self.relu = nn.LeakyReLU(0.01, inplace=True)
     def forward(self, x): 
         return self.relu(self.bn(self.conv(x)))
 
@@ -100,25 +104,25 @@ def make_y_pred(imginfo, S, nB):
     wi, hi = wi - 1, hi - 1
     sx, sy = cx-ww[wi], cy-hh[hi] # 与ceil的偏差大小
     z = torch.zeros((S, S, nB*5+20))
+    # 暂时不考虑 ceil 归一化的处理，直接使用坐标点的处理方式来训练
     z[wi,hi,4] = 1 # 第一个计算窗的置信度
-    z[wi,hi,:4] = torch.FloatTensor([sx, sy, bw, bh])
+    z[wi,hi,:4] = torch.FloatTensor([cx, cy, bw, bh])/255. # torch.FloatTensor([sx, sy, bw, bh])
     z[wi,hi,9] = 1 # 第二个计算窗的置信度
-    z[wi,hi,5:9] = torch.FloatTensor([sx, sy, bw, bh])
+    z[wi,hi,5:9] = torch.FloatTensor([cx, cy, bw, bh])/255. # torch.FloatTensor([sx, sy, bw, bh])
     z[wi,hi,10:] = torch.FloatTensor([0.]*19+[1.])
-    # print(z.shape)
-    # print(z.size())
-    # q = z[:,:10].contiguous().view(-1,5)
-    # print(q.shape)
     return z
 
 
 class yoloLoss(nn.Module):
-    def __init__(self,S,B,l_coord,l_noobj):
+    def __init__(self,S,n_box,l_conls,l_nocon,l_coord,l_noobj,l_class):
         super(yoloLoss,self).__init__()
         self.S = S
-        self.B = B
-        self.l_coord = l_coord
-        self.l_noobj = l_noobj
+        self.B = n_box
+        self.l_conls = l_conls # 置信率的比重
+        self.l_coord = l_coord # 坐标的比重
+        self.l_nocon = l_nocon # 非锚点置信率比重
+        self.l_noobj = l_noobj # 非锚点坐标比重
+        self.l_class = l_class # 分类比重
 
     def compute_iou(self, box1, box2):
         '''Compute the intersection over union of two set of boxes, each box is [x1,y1,x2,y2].
@@ -162,16 +166,18 @@ class yoloLoss(nn.Module):
         box_pred = coo_pred[:,:10].contiguous().view(-1,5)
         class_pred = coo_pred[:,10:]
         
+        # 锚点区块的判定
         coo_target = target_tensor[coo_mask].view(-1,30)
         box_target = coo_target[:,:10].contiguous().view(-1,5)
         class_target = coo_target[:,10:]
 
+        # 非锚点区块的误差处理
         noo_pred = pred_tensor[noo_mask].view(-1,30)
         noo_target = target_tensor[noo_mask].view(-1,30)
         noo_pred_mask = torch.ByteTensor(noo_pred.size())
         noo_pred_mask.zero_()
-        noo_pred_mask[:,4]=1
-        noo_pred_mask[:,9]=1
+        noo_pred_mask[:,4] = 1
+        noo_pred_mask[:,9] = 1
         noo_pred_mask = noo_pred_mask.bool()
         noo_pred_c = noo_pred[noo_pred_mask]
         noo_target_c = noo_target[noo_pred_mask]
@@ -187,31 +193,57 @@ class yoloLoss(nn.Module):
         for i in range(0,box_target.size()[0],2):
             box1 = box_pred[i:i+2]
             box1_xyxy = Variable(torch.FloatTensor(box1.size()))
-            box1_xyxy[:,:2] = box1[:,:2]/14. -0.5*box1[:,2:4]
-            box1_xyxy[:,2:4] = box1[:,:2]/14. +0.5*box1[:,2:4]
+            box1_xyxy[:,:2] = box1[:,:2] - 0.5*box1[:,2:4]
+            box1_xyxy[:,2:4] = box1[:,:2] + 0.5*box1[:,2:4]
             box2 = box_target[i].view(-1,5)
             box2_xyxy = Variable(torch.FloatTensor(box2.size()))
-            box2_xyxy[:,:2] = box2[:,:2]/14. -0.5*box2[:,2:4]
-            box2_xyxy[:,2:4] = box2[:,:2]/14. +0.5*box2[:,2:4]
+            box2_xyxy[:,:2] = box2[:,:2] - 0.5*box2[:,2:4]
+            box2_xyxy[:,2:4] = box2[:,:2] + 0.5*box2[:,2:4]
             iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4])
             max_iou,max_index = iou.max(0)
+            # print(box1_xyxy[:,:4],box2_xyxy[:,:4])
+            # print(max_iou,max_index)
             max_index = max_index.data
             coo_response_mask[i+max_index] = 1
             coo_not_response_mask[i+1-max_index] = 1
             box_target_iou[i+max_index,torch.LongTensor([4])] = (max_iou).data
         box_target_iou = Variable(box_target_iou)
+        # print(box_target_iou)
         box_pred_response = box_pred[coo_response_mask].view(-1,5)
         box_target_response_iou = box_target_iou[coo_response_mask].view(-1,5)
-        box_target_response = box_target[coo_response_mask].view(-1,5)
+        # print(box_target_response_iou)
+        # exit()
+        # 锚点IOU置信度的损失率
         contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response_iou[:,4],reduction='sum')
-        loc_loss = F.mse_loss(box_pred_response[:,:2],box_target_response[:,:2],reduction='sum') + \
-                   F.mse_loss(torch.sqrt(box_pred_response[:,2:4]),torch.sqrt(box_target_response[:,2:4]),reduction='sum')
+        # 非锚点的IOU置信度的损失率
         box_pred_not_response = box_pred[coo_not_response_mask].view(-1,5)
         box_target_not_response = box_target[coo_not_response_mask].view(-1,5)
-        box_target_not_response[:,4]= 0
+        box_target_not_response[:,4] = 0
         not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],reduction='sum')
+        # 使用长宽坐标做损失
+        box_target_response = box_target[coo_response_mask].view(-1,5)
+        locxy_loss = F.mse_loss(box_pred_response[:,:2],box_target_response[:,:2],reduction='sum')
+        locwh_loss = F.mse_loss(box_pred_response[:,2:4],box_target_response[:,2:4],reduction='sum')
+        loc_loss = locxy_loss + locwh_loss
+        # 分类损失率
         class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
-        return (self.l_coord*loc_loss + 2*contain_loss + not_contain_loss + self.l_noobj*nooobj_loss + class_loss)/N
+        
+        v = (
+            self.l_coord*loc_loss + 
+            self.l_conls*contain_loss + 
+            self.l_nocon*not_contain_loss + 
+            self.l_noobj*nooobj_loss +
+            self.l_class*class_loss
+        )/N
+        print('locxy_loss', locxy_loss)
+        print('locwh_loss', locwh_loss)
+        print('loc_loss', loc_loss)
+        print('contain_loss', contain_loss)
+        print('not_contain_loss', not_contain_loss)
+        print('nooobj_loss', nooobj_loss)
+        print('class_loss', class_loss)
+        print('all_loss', v)
+        return v
 
 
 
@@ -229,8 +261,54 @@ train_data = [(torch.FloatTensor(imginfo['numpy']), \
 print('x_pred.shape:',train_data[0][0].shape)
 print('y_pred.shape:',train_data[0][1].shape)
 
+
+TEST = 0
+if TEST:
+    net = torch.load('net.pkl')
+    x_pred_test = net(train_data[0][0].unsqueeze(0)/255.)
+    print(x_pred_test[:,:,:,4][:,:9,:9])
+    print(x_pred_test[:,:,:,9][:,:9,:9])
+    a = x_pred_test[:,:,:,4].detach().numpy()
+    b = x_pred_test[:,:,:,9].detach().numpy()
+    print(a.shape)
+    print(b.shape)
+    nn = None
+    mm = float('inf')
+    for ii,i in enumerate(a[0]):
+        for jj,j in enumerate(i):
+            if j > mm or nn == None:
+                nn = (ii,jj)
+                mm = j
+    print('a',nn)
+    print('a',mm)
+    print('a35',a[0][3][5])
+    nn = None
+    mm = float('inf')
+    for ii,i in enumerate(b[0]):
+        for jj,j in enumerate(i):
+            if j > mm or nn == None:
+                nn = (ii,jj)
+                mm = j
+    print('b',nn)
+    print('b',mm)
+    print('b35',b[0][3][5])
+    print(x_pred_test[0,3,5,:4])
+    print(x_pred_test[0,6,9,5:9])
+    print(x_pred_test[0,3,5,:4])
+    print(x_pred_test[0,3,5,5:9])
+    print('r',torch.FloatTensor([110.5, 160.0, 121, 174])/255.)
+    exit()
+
+
+
+
+
+
+
+
+
 EPOCH = 1
-BATCH_SIZE = 1
+BATCH_SIZE = 10
 LR = 0.0001
 train_loader = Data.DataLoader(
     dataset=train_data,
@@ -242,46 +320,107 @@ with torch.no_grad():
     y_test = train_data[0][1]
 
 net = Mini()
-yloss = yoloLoss(13, 2, 5, 0.5)
+yloss = yoloLoss(13, 
+    n_box = 2, 
+    l_coord = 2,
+    l_conls = 1,
+    l_nocon = 1,
+    l_noobj = 1,
+    l_class = 1,
+)
 optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
+
+def log_losinfo(x_pred_test):
+    print(x_pred_test[:,:,:,4][:,:9,:9])
+    print(x_pred_test[:,:,:,9][:,:9,:9])
+    a = x_pred_test[:,:,:,4].detach().numpy()
+    b = x_pred_test[:,:,:,9].detach().numpy()
+    nn = None
+    mm = float('inf')
+    for ii,i in enumerate(a[0]):
+        for jj,j in enumerate(i):
+            if j > mm or nn == None:
+                nn = (ii,jj)
+                mm = j
+    print('a',nn)
+    print('a',mm)
+    print('a35',a[0][3][5])
+    print('ada',x_pred_test[0,3,5,0:4])
+    nn = None
+    mm = float('inf')
+    for ii,i in enumerate(b[0]):
+        for jj,j in enumerate(i):
+            if j > mm or nn == None:
+                nn = (ii,jj)
+                mm = j
+    print('b',nn)
+    print('b',mm)
+    print('b35',b[0][3][5])
+    print('bda',x_pred_test[0,3,5,5:9])
+    print('r',torch.FloatTensor([110.5, 160.0, 121, 174])/255.)
+    print('=================')
+
+
 print('start.')
-for epoch in range(EPOCH):
-    for step, (x_pred, y_pred) in enumerate(train_loader):
-        x_pred = Variable(x_pred)
-        y_pred = Variable(y_pred)
+# for epoch in range(EPOCH):
+#     for step, (x_pred, y_pred) in enumerate(train_loader):
+#         x_pred = Variable(x_pred)
+#         y_pred = Variable(y_pred)
+#         output = net(x_pred)
 
-        print(y_pred[y_pred != 0])
+#         # print(x_pred)
+#         # print(output)
+#         # exit()
+#         loss = yloss(output, y_pred)
+#         optimizer.zero_grad()
+#         loss.backward()
+#         optimizer.step()
 
-        output = net(x_pred)
+#         print(step)
+#         if step % 1 == 0 and step != 0:
+#             x_pred_test = net(x_test.unsqueeze(0))
+#             log_losinfo(x_pred_test)
 
-        print(x_pred)
-        print(output)
-        exit()
-        loss = yloss(output, y_pred)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
 
-        print(step)
-        if step % 5 == 0 and step != 0:
-            x_pred_test = net(x_test.unsqueeze(0))
-            v = x_pred_test.detach().numpy()
-            print(x_pred_test)
-            print(x_pred_test[:,:,:,4])
-            print(x_pred_test[:,:,:,9])
-            a = x_pred_test[:,:,:,4]
-            b = x_pred_test[:,:,:,9]
-            a = a[np.newaxis,:]
-            b = b[np.newaxis,:]
-            print(a.shape)
-            print(b.shape)
-            # print(v[v.argmax(axis=3)])
-            # q = v[:,:,:,v.argmax(axis=3)]
-            # print(q)
-            # print(q.shape)
 
-            exit()
+
+for idx,(x_pred, y_pred) in enumerate(train_loader):
+    if idx == 0:break
+for step in range(100):
+    x_pred = Variable(x_pred)
+    y_pred = Variable(y_pred)
+    output = net(x_pred)
+
+    # print(x_pred)
+    # print(output)
+    # exit()
+    loss = yloss(output, y_pred)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    x_pred_test = net(x_test.unsqueeze(0))
+    log_losinfo(x_pred_test)
+    print(step)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 print('end.')
 torch.save(net, 'net.pkl')
