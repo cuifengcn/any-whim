@@ -1,10 +1,12 @@
 # 并非可以直接用的东西，后续会继续补充
+# 还在测试当中，感觉有些奇怪的问题
 
 import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.data as Data
 from torch.autograd import Variable
 
 import os
@@ -75,25 +77,11 @@ class Mini(nn.Module):
             ])
         )
     def forward(self, x):
-        return self.model(x)
+        return self.model(x).permute(0,2,3,1)
 
-class loss(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, pred_box, true_box):
-        '''
-        pred_box: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
-        true_box: (tensor) size(batchsize,S,S,30)
-        '''
-        pass
-
-
-
-
-def make_img_train_tensor(imginfo, S, B):
+def make_y_pred(imginfo, S, nB):
     '''
-    pred_box: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
+    pred_box: (tensor) size(batchsize,S,S,Bx5+20=30) B[x,y,w,h,c] num_classes[20]
     '''
     cx = imginfo['centerx']
     cy = imginfo['centery']
@@ -111,41 +99,19 @@ def make_img_train_tensor(imginfo, S, B):
             break
     wi, hi = wi - 1, hi - 1
     sx, sy = cx-ww[wi], cy-hh[hi] # 与ceil的偏差大小
-    z = torch.zeros((1, B*5+20, S, S))
-    z[:,4,wi,hi] = 1 # 第一个计算窗的置信度
-    z[:,:4,wi,hi] = torch.FloatTensor([sx, sy, bw, bh])
-    z[:,9,wi,hi] = 1 # 第二个计算窗的置信度
-    z[:,5:9,wi,hi] = torch.FloatTensor([sx, sy, bw, bh])
-    z[:,10:,wi,hi] = torch.FloatTensor([0.]*19+[1.])
-    print(z.shape)
-    print(z.size())
-    q = z[:,:10].contiguous().view(-1,5)
-    print(q.shape)
+    z = torch.zeros((S, S, nB*5+20))
+    z[wi,hi,4] = 1 # 第一个计算窗的置信度
+    z[wi,hi,:4] = torch.FloatTensor([sx, sy, bw, bh])
+    z[wi,hi,9] = 1 # 第二个计算窗的置信度
+    z[wi,hi,5:9] = torch.FloatTensor([sx, sy, bw, bh])
+    z[wi,hi,10:] = torch.FloatTensor([0.]*19+[1.])
+    # print(z.shape)
+    # print(z.size())
+    # q = z[:,:10].contiguous().view(-1,5)
+    # print(q.shape)
+    return z
 
 
-xmlpath = './train_img/xmlpath/'
-file = os.path.join(xmlpath, os.listdir(xmlpath)[0])
-imginfo = readxml(file, islist=False)
-
-img_ = imginfo['numpy']
-img_ = torch.FloatTensor(img_).unsqueeze(0)
-print(img_.shape)
-s = make_img_train_tensor(imginfo, 13, 2)
-
-
-net = Mini()
-v = net(img_)
-print(v.shape)
-
-
-
-
-
-
-
-
-
-# 下面的模型是从别的代码里面抄过来的，后续会更具这些进行个人代码上的修改
 class yoloLoss(nn.Module):
     def __init__(self,S,B,l_coord,l_noobj):
         super(yoloLoss,self).__init__()
@@ -164,28 +130,24 @@ class yoloLoss(nn.Module):
         '''
         N = box1.size(0)
         M = box2.size(0)
-
         lt = torch.max(
             box1[:,:2].unsqueeze(1).expand(N,M,2),  # [N,2] -> [N,1,2] -> [N,M,2]
             box2[:,:2].unsqueeze(0).expand(N,M,2),  # [M,2] -> [1,M,2] -> [N,M,2]
         )
-
         rb = torch.min(
             box1[:,2:].unsqueeze(1).expand(N,M,2),  # [N,2] -> [N,1,2] -> [N,M,2]
             box2[:,2:].unsqueeze(0).expand(N,M,2),  # [M,2] -> [1,M,2] -> [N,M,2]
         )
-
         wh = rb - lt  # [N,M,2]
         wh[wh<0] = 0  # clip at 0
         inter = wh[:,:,0] * wh[:,:,1]  # [N,M]
-
         area1 = (box1[:,2]-box1[:,0]) * (box1[:,3]-box1[:,1])  # [N,]
         area2 = (box2[:,2]-box2[:,0]) * (box2[:,3]-box2[:,1])  # [M,]
         area1 = area1.unsqueeze(1).expand_as(inter)  # [N,] -> [N,1] -> [N,M]
         area2 = area2.unsqueeze(0).expand_as(inter)  # [M,] -> [1,M] -> [N,M]
-
         iou = inter / (area1 + area2 - inter)
         return iou
+
     def forward(self,pred_tensor,target_tensor):
         '''
         pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
@@ -196,32 +158,33 @@ class yoloLoss(nn.Module):
         noo_mask = target_tensor[:,:,:,4] == 0
         coo_mask = coo_mask.unsqueeze(-1).expand_as(target_tensor)
         noo_mask = noo_mask.unsqueeze(-1).expand_as(target_tensor)
-
         coo_pred = pred_tensor[coo_mask].view(-1,30)
-        box_pred = coo_pred[:,:10].contiguous().view(-1,5) #box[x1,y1,w1,h1,c1]
-        class_pred = coo_pred[:,10:]                       #[x2,y2,w2,h2,c2]
+        box_pred = coo_pred[:,:10].contiguous().view(-1,5)
+        class_pred = coo_pred[:,10:]
         
         coo_target = target_tensor[coo_mask].view(-1,30)
         box_target = coo_target[:,:10].contiguous().view(-1,5)
         class_target = coo_target[:,10:]
 
-        # compute not contain obj loss
         noo_pred = pred_tensor[noo_mask].view(-1,30)
         noo_target = target_tensor[noo_mask].view(-1,30)
-        noo_pred_mask = torch.cuda.ByteTensor(noo_pred.size())
+        noo_pred_mask = torch.ByteTensor(noo_pred.size())
         noo_pred_mask.zero_()
-        noo_pred_mask[:,4]=1;noo_pred_mask[:,9]=1
-        noo_pred_c = noo_pred[noo_pred_mask] #noo pred只需要计算 c 的损失 size[-1,2]
+        noo_pred_mask[:,4]=1
+        noo_pred_mask[:,9]=1
+        noo_pred_mask = noo_pred_mask.bool()
+        noo_pred_c = noo_pred[noo_pred_mask]
         noo_target_c = noo_target[noo_pred_mask]
-        nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,size_average=False)
+        nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,reduction='sum')
 
-        #compute contain obj loss
-        coo_response_mask = torch.cuda.ByteTensor(box_target.size())
+        coo_response_mask = torch.ByteTensor(box_target.size())
         coo_response_mask.zero_()
-        coo_not_response_mask = torch.cuda.ByteTensor(box_target.size())
+        coo_response_mask = coo_response_mask.bool()
+        coo_not_response_mask = torch.ByteTensor(box_target.size())
         coo_not_response_mask.zero_()
-        box_target_iou = torch.zeros(box_target.size()).cuda()
-        for i in range(0,box_target.size()[0],2): #choose the best iou box
+        coo_not_response_mask = coo_not_response_mask.bool()
+        box_target_iou = torch.zeros(box_target.size())
+        for i in range(0,box_target.size()[0],2):
             box1 = box_pred[i:i+2]
             box1_xyxy = Variable(torch.FloatTensor(box1.size()))
             box1_xyxy[:,:2] = box1[:,:2]/14. -0.5*box1[:,2:4]
@@ -230,40 +193,96 @@ class yoloLoss(nn.Module):
             box2_xyxy = Variable(torch.FloatTensor(box2.size()))
             box2_xyxy[:,:2] = box2[:,:2]/14. -0.5*box2[:,2:4]
             box2_xyxy[:,2:4] = box2[:,:2]/14. +0.5*box2[:,2:4]
-            iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4]) #[2,1]
+            iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4])
             max_iou,max_index = iou.max(0)
-            max_index = max_index.data.cuda()
-            
-            coo_response_mask[i+max_index]=1
-            coo_not_response_mask[i+1-max_index]=1
-
-            #####
-            # we want the confidence score to equal the
-            # intersection over union (IOU) between the predicted box
-            # and the ground truth
-            #####
-            box_target_iou[i+max_index,torch.LongTensor([4]).cuda()] = (max_iou).data.cuda()
-        box_target_iou = Variable(box_target_iou).cuda()
-        #1.response loss
+            max_index = max_index.data
+            coo_response_mask[i+max_index] = 1
+            coo_not_response_mask[i+1-max_index] = 1
+            box_target_iou[i+max_index,torch.LongTensor([4])] = (max_iou).data
+        box_target_iou = Variable(box_target_iou)
         box_pred_response = box_pred[coo_response_mask].view(-1,5)
         box_target_response_iou = box_target_iou[coo_response_mask].view(-1,5)
         box_target_response = box_target[coo_response_mask].view(-1,5)
-        contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response_iou[:,4],size_average=False)
-        loc_loss = F.mse_loss(box_pred_response[:,:2],box_target_response[:,:2],size_average=False) + F.mse_loss(torch.sqrt(box_pred_response[:,2:4]),torch.sqrt(box_target_response[:,2:4]),size_average=False)
-        #2.not response loss
+        contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response_iou[:,4],reduction='sum')
+        loc_loss = F.mse_loss(box_pred_response[:,:2],box_target_response[:,:2],reduction='sum') + \
+                   F.mse_loss(torch.sqrt(box_pred_response[:,2:4]),torch.sqrt(box_target_response[:,2:4]),reduction='sum')
         box_pred_not_response = box_pred[coo_not_response_mask].view(-1,5)
         box_target_not_response = box_target[coo_not_response_mask].view(-1,5)
         box_target_not_response[:,4]= 0
-        #not_contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response[:,4],size_average=False)
-        
-        #I believe this bug is simply a typo
-        not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],size_average=False)
-
-        #3.class loss
-        class_loss = F.mse_loss(class_pred,class_target,size_average=False)
-
+        not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],reduction='sum')
+        class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
         return (self.l_coord*loc_loss + 2*contain_loss + not_contain_loss + self.l_noobj*nooobj_loss + class_loss)/N
 
 
 
 
+
+
+
+
+xmlpath = './train_img/xmlpath/'
+files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath)]
+print('load_xml_num:',len(files))
+imginfos = [readxml(file) for file in files]
+train_data = [(torch.FloatTensor(imginfo['numpy']), \
+              make_y_pred(imginfo, 13, 2)) for imginfo in imginfos]
+print('x_pred.shape:',train_data[0][0].shape)
+print('y_pred.shape:',train_data[0][1].shape)
+
+EPOCH = 1
+BATCH_SIZE = 1
+LR = 0.0001
+train_loader = Data.DataLoader(
+    dataset=train_data,
+    batch_size=BATCH_SIZE,
+    # shuffle=True,
+)
+with torch.no_grad():
+    x_test = train_data[0][0]
+    y_test = train_data[0][1]
+
+net = Mini()
+yloss = yoloLoss(13, 2, 5, 0.5)
+optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+
+print('start.')
+for epoch in range(EPOCH):
+    for step, (x_pred, y_pred) in enumerate(train_loader):
+        x_pred = Variable(x_pred)
+        y_pred = Variable(y_pred)
+
+        print(y_pred[y_pred != 0])
+
+        output = net(x_pred)
+
+        print(x_pred)
+        print(output)
+        exit()
+        loss = yloss(output, y_pred)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        print(step)
+        if step % 5 == 0 and step != 0:
+            x_pred_test = net(x_test.unsqueeze(0))
+            v = x_pred_test.detach().numpy()
+            print(x_pred_test)
+            print(x_pred_test[:,:,:,4])
+            print(x_pred_test[:,:,:,9])
+            a = x_pred_test[:,:,:,4]
+            b = x_pred_test[:,:,:,9]
+            a = a[np.newaxis,:]
+            b = b[np.newaxis,:]
+            print(a.shape)
+            print(b.shape)
+            # print(v[v.argmax(axis=3)])
+            # q = v[:,:,:,v.argmax(axis=3)]
+            # print(q)
+            # print(q.shape)
+
+            exit()
+
+print('end.')
+torch.save(net, 'net.pkl')
+print('save.')
