@@ -2,6 +2,14 @@
 # 还在测试当中，感觉有些奇怪的问题，感觉是在损失函数以及框架上面有问题
 # 后续考虑使用显卡加速，否则每次测试都太JB慢了
 
+# 使用 CUDA 加速后进入了另一个世界，加速训练后的模型也能放到cpu里面使用
+# 只需要在加载网络的使用注意将 net.to('cpu') 即可，真是爽到
+
+# 开发于 python3
+# 依赖 pytorch：（官网找安装方式）开发使用版本为 torch-1.4.0-cp36-cp36m-win_amd64.whl
+# 依赖 opencv： （pip install opencv-contrib-python==3.4.1.15）
+#     其实这里的 opencv 版本不重要，py3能用就行，只是个人喜欢这个版本，因为能用sift图像检测，稳。
+
 import cv2
 import numpy as np
 import torch
@@ -15,6 +23,9 @@ import math
 import xml.dom.minidom
 from collections import OrderedDict
 
+# 是否使用CUDA
+USE_CUDA = True if torch.cuda.is_available() else False
+# USE_CUDA = False
 # 更好的打印输出
 torch.set_printoptions(precision=2, sci_mode=False, linewidth=120, profile='full')
 
@@ -152,7 +163,7 @@ class yoloLoss(nn.Module):
         iou = inter / (area1 + area2 - inter)
         return iou
 
-    def forward(self,pred_tensor,target_tensor):
+    def forward_cpu(self,pred_tensor,target_tensor):
         '''
         pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
         target_tensor: (tensor) size(batchsize,S,S,30)
@@ -245,6 +256,119 @@ class yoloLoss(nn.Module):
         print('all_loss', v)
         return v
 
+    def forward_cuda(self,pred_tensor,target_tensor):
+        '''
+        pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
+        target_tensor: (tensor) size(batchsize,S,S,30)
+        '''
+        N = pred_tensor.size()[0]
+        coo_mask = target_tensor[:,:,:,4] > 0
+        noo_mask = target_tensor[:,:,:,4] == 0
+        coo_mask = coo_mask.unsqueeze(-1).expand_as(target_tensor)
+        noo_mask = noo_mask.unsqueeze(-1).expand_as(target_tensor)
+        coo_pred = pred_tensor[coo_mask].view(-1,30).to('cuda')
+        box_pred = coo_pred[:,:10].contiguous().view(-1,5).to('cuda')
+        class_pred = coo_pred[:,10:]
+        
+        # 锚点区块的判定
+        coo_target = target_tensor[coo_mask].view(-1,30).to('cuda')
+        box_target = coo_target[:,:10].contiguous().view(-1,5).to('cuda')
+        class_target = coo_target[:,10:]
+
+        # 非锚点区块的误差处理
+        noo_pred = pred_tensor[noo_mask].view(-1,30).to('cuda')
+        noo_target = target_tensor[noo_mask].view(-1,30).to('cuda')
+        noo_pred_mask = torch.ByteTensor(noo_pred.size()).to('cuda')
+        noo_pred_mask.zero_()
+        noo_pred_mask[:,4] = 1
+        noo_pred_mask[:,9] = 1
+        noo_pred_mask = noo_pred_mask.bool()
+        noo_pred_c = noo_pred[noo_pred_mask]
+        noo_target_c = noo_target[noo_pred_mask]
+        nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,reduction='sum')
+
+        coo_response_mask = torch.ByteTensor(box_target.size()).to('cuda')
+        coo_response_mask.zero_()
+        coo_response_mask = coo_response_mask.bool()
+        coo_not_response_mask = torch.ByteTensor(box_target.size()).to('cuda')
+        coo_not_response_mask.zero_()
+        coo_not_response_mask = coo_not_response_mask.bool()
+        box_target_iou = torch.zeros(box_target.size()).to('cuda')
+        for i in range(0,box_target.size()[0],2):
+            box1 = box_pred[i:i+2]
+            box1_xyxy = Variable(torch.FloatTensor(box1.size()))
+            box1_xyxy[:,:2] = box1[:,:2] - 0.5*box1[:,2:4]
+            box1_xyxy[:,2:4] = box1[:,:2] + 0.5*box1[:,2:4]
+            box2 = box_target[i].view(-1,5)
+            box2_xyxy = Variable(torch.FloatTensor(box2.size()))
+            box2_xyxy[:,:2] = box2[:,:2] - 0.5*box2[:,2:4]
+            box2_xyxy[:,2:4] = box2[:,:2] + 0.5*box2[:,2:4]
+            iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4])
+            max_iou,max_index = iou.max(0)
+            # print(box1_xyxy[:,:4],box2_xyxy[:,:4])
+            # print(max_iou,max_index)
+            max_index = max_index.data
+            coo_response_mask[i+max_index] = 1
+            coo_not_response_mask[i+1-max_index] = 1
+            box_target_iou[i+max_index,torch.LongTensor([4])] = (max_iou).data
+        box_target_iou = Variable(box_target_iou)
+        # print(box_target_iou)
+        box_pred_response = box_pred[coo_response_mask].view(-1,5)
+        box_target_response_iou = box_target_iou[coo_response_mask].view(-1,5)
+        # print(box_target_response_iou)
+        # exit()
+        # 锚点IOU置信度的损失率
+        contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response_iou[:,4],reduction='sum')
+        # 非锚点的IOU置信度的损失率
+        box_pred_not_response = box_pred[coo_not_response_mask].view(-1,5)
+        box_target_not_response = box_target[coo_not_response_mask].view(-1,5)
+        box_target_not_response[:,4] = 0
+        not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],reduction='sum')
+        # 使用长宽坐标做损失
+        box_target_response = box_target[coo_response_mask].view(-1,5)
+        locxy_loss = F.mse_loss(box_pred_response[:,:2],box_target_response[:,:2],reduction='sum')
+        locwh_loss = F.mse_loss(box_pred_response[:,2:4],box_target_response[:,2:4],reduction='sum')
+        loc_loss = locxy_loss + locwh_loss
+        # 分类损失率
+        class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
+        
+        v = (
+            self.l_coord*loc_loss + 
+            self.l_conls*contain_loss + 
+            self.l_nocon*not_contain_loss + 
+            self.l_noobj*nooobj_loss +
+            self.l_class*class_loss
+        )/N
+        print('locxy_loss', locxy_loss)
+        print('locwh_loss', locwh_loss)
+        print('loc_loss', loc_loss)
+        print('contain_loss', contain_loss)
+        print('not_contain_loss', not_contain_loss)
+        print('nooobj_loss', nooobj_loss)
+        print('class_loss', class_loss)
+        print('all_loss', v)
+        return v
+
+    if USE_CUDA:
+        forward = forward_cuda
+    else:
+        forward = forward_cpu
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -261,15 +385,25 @@ train_data = [(torch.FloatTensor(imginfo['numpy']), \
 print('x_pred.shape:',train_data[0][0].shape)
 print('y_pred.shape:',train_data[0][1].shape)
 
-
-TEST = 0
+TEST = 1
 if TEST:
-    net = torch.load('net.pkl')
-    x_pred_test = net(train_data[0][0].unsqueeze(0)/255.)
+    if USE_CUDA:
+        net = torch.load('net.pkl').to('cuda')
+        x_test = train_data[0][0].unsqueeze(0)/255.
+        x_test = x_test.to('cuda')
+    else:
+        net = torch.load('net.pkl').to('cpu')
+        x_test = train_data[0][0].unsqueeze(0)/255.
+        x_test = x_test.to('cpu')
+    x_pred_test = net(x_test)
     print(x_pred_test[:,:,:,4][:,:9,:9])
     print(x_pred_test[:,:,:,9][:,:9,:9])
-    a = x_pred_test[:,:,:,4].detach().numpy()
-    b = x_pred_test[:,:,:,9].detach().numpy()
+    if USE_CUDA:
+        a = x_pred_test[:,:,:,4].cpu().detach().numpy()
+        b = x_pred_test[:,:,:,9].cpu().detach().numpy()
+    else:
+        a = x_pred_test[:,:,:,4].detach().numpy()
+        b = x_pred_test[:,:,:,9].detach().numpy()
     print(a.shape)
     print(b.shape)
     nn = None
@@ -292,8 +426,8 @@ if TEST:
     print('b',nn)
     print('b',mm)
     print('b35',b[0][3][5])
-    print(x_pred_test[0,3,5,:4])
-    print(x_pred_test[0,6,9,5:9])
+    print(x_pred_test[0,6,3,:4])
+    print(x_pred_test[0,2,9,5:9])
     print(x_pred_test[0,3,5,:4])
     print(x_pred_test[0,3,5,5:9])
     print('r',torch.FloatTensor([110.5, 160.0, 121, 174])/255.)
@@ -307,8 +441,14 @@ if TEST:
 
 
 
+
+
+
+
+
+
 EPOCH = 1
-BATCH_SIZE = 10
+BATCH_SIZE = 20
 LR = 0.0001
 train_loader = Data.DataLoader(
     dataset=train_data,
@@ -320,6 +460,8 @@ with torch.no_grad():
     y_test = train_data[0][1]
 
 net = Mini()
+if USE_CUDA:
+    net.cuda()
 yloss = yoloLoss(13, 
     n_box = 2, 
     l_coord = 2,
@@ -334,8 +476,12 @@ optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 def log_losinfo(x_pred_test):
     print(x_pred_test[:,:,:,4][:,:9,:9])
     print(x_pred_test[:,:,:,9][:,:9,:9])
-    a = x_pred_test[:,:,:,4].detach().numpy()
-    b = x_pred_test[:,:,:,9].detach().numpy()
+    if USE_CUDA:
+        a = x_pred_test[:,:,:,4].cpu().detach().numpy()
+        b = x_pred_test[:,:,:,9].cpu().detach().numpy()
+    else:
+        a = x_pred_test[:,:,:,4].detach().numpy()
+        b = x_pred_test[:,:,:,9].detach().numpy()
     nn = None
     mm = float('inf')
     for ii,i in enumerate(a[0]):
@@ -388,18 +534,18 @@ print('start.')
 for idx,(x_pred, y_pred) in enumerate(train_loader):
     if idx == 0:break
 for step in range(100):
-    x_pred = Variable(x_pred)
-    y_pred = Variable(y_pred)
+    if USE_CUDA:
+        x_pred = Variable(x_pred).to('cuda')
+        y_pred = Variable(y_pred).to('cuda')
+    else:
+        x_pred = Variable(x_pred).to('cpu')
+        y_pred = Variable(y_pred).to('cpu')
     output = net(x_pred)
-
-    # print(x_pred)
-    # print(output)
-    # exit()
     loss = yloss(output, y_pred)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    x_pred_test = net(x_test.unsqueeze(0))
+    x_pred_test = net(x_test.unsqueeze(0).to('cuda'))
     log_losinfo(x_pred_test)
     print(step)
 
