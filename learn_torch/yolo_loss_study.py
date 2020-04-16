@@ -26,7 +26,8 @@ from collections import OrderedDict
 # 是否使用CUDA
 USE_CUDA = True if torch.cuda.is_available() else False
 # USE_CUDA = False
-# 更好的打印输出
+
+DEVICE = 'cuda' if USE_CUDA else 'cpu'
 torch.set_printoptions(precision=2, sci_mode=False, linewidth=120, profile='full')
 
 def readxml(file, islist=False):
@@ -163,7 +164,7 @@ class yoloLoss(nn.Module):
         iou = inter / (area1 + area2 - inter)
         return iou
 
-    def forward_cpu(self,pred_tensor,target_tensor):
+    def forward(self,pred_tensor,target_tensor):
         '''
         pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
         target_tensor: (tensor) size(batchsize,S,S,30)
@@ -173,19 +174,19 @@ class yoloLoss(nn.Module):
         noo_mask = target_tensor[:,:,:,4] == 0
         coo_mask = coo_mask.unsqueeze(-1).expand_as(target_tensor)
         noo_mask = noo_mask.unsqueeze(-1).expand_as(target_tensor)
-        coo_pred = pred_tensor[coo_mask].view(-1,30)
-        box_pred = coo_pred[:,:10].contiguous().view(-1,5)
+        coo_pred = pred_tensor[coo_mask].view(-1,30).to(DEVICE)
+        box_pred = coo_pred[:,:10].contiguous().view(-1,5).to(DEVICE)
         class_pred = coo_pred[:,10:]
         
         # 锚点区块的判定
-        coo_target = target_tensor[coo_mask].view(-1,30)
-        box_target = coo_target[:,:10].contiguous().view(-1,5)
+        coo_target = target_tensor[coo_mask].view(-1,30).to(DEVICE)
+        box_target = coo_target[:,:10].contiguous().view(-1,5).to(DEVICE)
         class_target = coo_target[:,10:]
 
         # 非锚点区块的误差处理
-        noo_pred = pred_tensor[noo_mask].view(-1,30)
-        noo_target = target_tensor[noo_mask].view(-1,30)
-        noo_pred_mask = torch.ByteTensor(noo_pred.size())
+        noo_pred = pred_tensor[noo_mask].view(-1,30).to(DEVICE)
+        noo_target = target_tensor[noo_mask].view(-1,30).to(DEVICE)
+        noo_pred_mask = torch.ByteTensor(noo_pred.size()).to(DEVICE)
         noo_pred_mask.zero_()
         noo_pred_mask[:,4] = 1
         noo_pred_mask[:,9] = 1
@@ -194,13 +195,13 @@ class yoloLoss(nn.Module):
         noo_target_c = noo_target[noo_pred_mask]
         nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,reduction='sum')
 
-        coo_response_mask = torch.ByteTensor(box_target.size())
+        coo_response_mask = torch.ByteTensor(box_target.size()).to(DEVICE)
         coo_response_mask.zero_()
         coo_response_mask = coo_response_mask.bool()
-        coo_not_response_mask = torch.ByteTensor(box_target.size())
+        coo_not_response_mask = torch.ByteTensor(box_target.size()).to(DEVICE)
         coo_not_response_mask.zero_()
         coo_not_response_mask = coo_not_response_mask.bool()
-        box_target_iou = torch.zeros(box_target.size())
+        box_target_iou = torch.zeros(box_target.size()).to(DEVICE)
         for i in range(0,box_target.size()[0],2):
             box1 = box_pred[i:i+2]
             box1_xyxy = Variable(torch.FloatTensor(box1.size()))
@@ -212,18 +213,13 @@ class yoloLoss(nn.Module):
             box2_xyxy[:,2:4] = box2[:,:2] + 0.5*box2[:,2:4]
             iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4])
             max_iou,max_index = iou.max(0)
-            # print(box1_xyxy[:,:4],box2_xyxy[:,:4])
-            # print(max_iou,max_index)
             max_index = max_index.data
             coo_response_mask[i+max_index] = 1
             coo_not_response_mask[i+1-max_index] = 1
             box_target_iou[i+max_index,torch.LongTensor([4])] = (max_iou).data
         box_target_iou = Variable(box_target_iou)
-        # print(box_target_iou)
         box_pred_response = box_pred[coo_response_mask].view(-1,5)
         box_target_response_iou = box_target_iou[coo_response_mask].view(-1,5)
-        # print(box_target_response_iou)
-        # exit()
         # 锚点IOU置信度的损失率
         contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response_iou[:,4],reduction='sum')
         # 非锚点的IOU置信度的损失率
@@ -255,104 +251,6 @@ class yoloLoss(nn.Module):
         print('class_loss', class_loss)
         print('all_loss', v)
         return v
-
-    def forward_cuda(self,pred_tensor,target_tensor):
-        '''
-        pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=30) [x,y,w,h,c]
-        target_tensor: (tensor) size(batchsize,S,S,30)
-        '''
-        N = pred_tensor.size()[0]
-        coo_mask = target_tensor[:,:,:,4] > 0
-        noo_mask = target_tensor[:,:,:,4] == 0
-        coo_mask = coo_mask.unsqueeze(-1).expand_as(target_tensor)
-        noo_mask = noo_mask.unsqueeze(-1).expand_as(target_tensor)
-        coo_pred = pred_tensor[coo_mask].view(-1,30).to('cuda')
-        box_pred = coo_pred[:,:10].contiguous().view(-1,5).to('cuda')
-        class_pred = coo_pred[:,10:]
-        
-        # 锚点区块的判定
-        coo_target = target_tensor[coo_mask].view(-1,30).to('cuda')
-        box_target = coo_target[:,:10].contiguous().view(-1,5).to('cuda')
-        class_target = coo_target[:,10:]
-
-        # 非锚点区块的误差处理
-        noo_pred = pred_tensor[noo_mask].view(-1,30).to('cuda')
-        noo_target = target_tensor[noo_mask].view(-1,30).to('cuda')
-        noo_pred_mask = torch.ByteTensor(noo_pred.size()).to('cuda')
-        noo_pred_mask.zero_()
-        noo_pred_mask[:,4] = 1
-        noo_pred_mask[:,9] = 1
-        noo_pred_mask = noo_pred_mask.bool()
-        noo_pred_c = noo_pred[noo_pred_mask]
-        noo_target_c = noo_target[noo_pred_mask]
-        nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,reduction='sum')
-
-        coo_response_mask = torch.ByteTensor(box_target.size()).to('cuda')
-        coo_response_mask.zero_()
-        coo_response_mask = coo_response_mask.bool()
-        coo_not_response_mask = torch.ByteTensor(box_target.size()).to('cuda')
-        coo_not_response_mask.zero_()
-        coo_not_response_mask = coo_not_response_mask.bool()
-        box_target_iou = torch.zeros(box_target.size()).to('cuda')
-        for i in range(0,box_target.size()[0],2):
-            box1 = box_pred[i:i+2]
-            box1_xyxy = Variable(torch.FloatTensor(box1.size()))
-            box1_xyxy[:,:2] = box1[:,:2] - 0.5*box1[:,2:4]
-            box1_xyxy[:,2:4] = box1[:,:2] + 0.5*box1[:,2:4]
-            box2 = box_target[i].view(-1,5)
-            box2_xyxy = Variable(torch.FloatTensor(box2.size()))
-            box2_xyxy[:,:2] = box2[:,:2] - 0.5*box2[:,2:4]
-            box2_xyxy[:,2:4] = box2[:,:2] + 0.5*box2[:,2:4]
-            iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4])
-            max_iou,max_index = iou.max(0)
-            # print(box1_xyxy[:,:4],box2_xyxy[:,:4])
-            # print(max_iou,max_index)
-            max_index = max_index.data
-            coo_response_mask[i+max_index] = 1
-            coo_not_response_mask[i+1-max_index] = 1
-            box_target_iou[i+max_index,torch.LongTensor([4])] = (max_iou).data
-        box_target_iou = Variable(box_target_iou)
-        # print(box_target_iou)
-        box_pred_response = box_pred[coo_response_mask].view(-1,5)
-        box_target_response_iou = box_target_iou[coo_response_mask].view(-1,5)
-        # print(box_target_response_iou)
-        # exit()
-        # 锚点IOU置信度的损失率
-        contain_loss = F.mse_loss(box_pred_response[:,4],box_target_response_iou[:,4],reduction='sum')
-        # 非锚点的IOU置信度的损失率
-        box_pred_not_response = box_pred[coo_not_response_mask].view(-1,5)
-        box_target_not_response = box_target[coo_not_response_mask].view(-1,5)
-        box_target_not_response[:,4] = 0
-        not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],reduction='sum')
-        # 使用长宽坐标做损失
-        box_target_response = box_target[coo_response_mask].view(-1,5)
-        locxy_loss = F.mse_loss(box_pred_response[:,:2],box_target_response[:,:2],reduction='sum')
-        locwh_loss = F.mse_loss(box_pred_response[:,2:4],box_target_response[:,2:4],reduction='sum')
-        loc_loss = locxy_loss + locwh_loss
-        # 分类损失率
-        class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
-        
-        v = (
-            self.l_coord*loc_loss + 
-            self.l_conls*contain_loss + 
-            self.l_nocon*not_contain_loss + 
-            self.l_noobj*nooobj_loss +
-            self.l_class*class_loss
-        )/N
-        print('locxy_loss', locxy_loss)
-        print('locwh_loss', locwh_loss)
-        print('loc_loss', loc_loss)
-        print('contain_loss', contain_loss)
-        print('not_contain_loss', not_contain_loss)
-        print('nooobj_loss', nooobj_loss)
-        print('class_loss', class_loss)
-        print('all_loss', v)
-        return v
-
-    if USE_CUDA:
-        forward = forward_cuda
-    else:
-        forward = forward_cpu
 
 
 
@@ -385,16 +283,11 @@ train_data = [(torch.FloatTensor(imginfo['numpy']), \
 print('x_pred.shape:',train_data[0][0].shape)
 print('y_pred.shape:',train_data[0][1].shape)
 
-TEST = 1
+TEST = 0
 if TEST:
-    if USE_CUDA:
-        net = torch.load('net.pkl').to('cuda')
-        x_test = train_data[0][0].unsqueeze(0)/255.
-        x_test = x_test.to('cuda')
-    else:
-        net = torch.load('net.pkl').to('cpu')
-        x_test = train_data[0][0].unsqueeze(0)/255.
-        x_test = x_test.to('cpu')
+    net = torch.load('net.pkl').to(DEVICE)
+    x_test = train_data[0][0].unsqueeze(0)/255.
+    x_test = x_test.to(DEVICE)
     x_pred_test = net(x_test)
     print(x_pred_test[:,:,:,4][:,:9,:9])
     print(x_pred_test[:,:,:,9][:,:9,:9])
@@ -533,21 +426,18 @@ print('start.')
 
 for idx,(x_pred, y_pred) in enumerate(train_loader):
     if idx == 0:break
-for step in range(100):
-    if USE_CUDA:
-        x_pred = Variable(x_pred).to('cuda')
-        y_pred = Variable(y_pred).to('cuda')
-    else:
-        x_pred = Variable(x_pred).to('cpu')
-        y_pred = Variable(y_pred).to('cpu')
+for step in range(2000):
+    x_pred = Variable(x_pred).to(DEVICE)
+    y_pred = Variable(y_pred).to(DEVICE)
     output = net(x_pred)
     loss = yloss(output, y_pred)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    x_pred_test = net(x_test.unsqueeze(0).to('cuda'))
-    log_losinfo(x_pred_test)
+    x_pred_test = net(x_test.unsqueeze(0).to(DEVICE))
     print(step)
+    if step%10==0:
+        log_losinfo(x_pred_test)
 
 
 
