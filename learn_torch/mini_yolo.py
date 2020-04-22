@@ -1,3 +1,19 @@
+# 这部分的代码接近能用了，不过暂时还在调整当中
+# 至少在无限训练一张图片的时候能够收敛了！使用的 backbone 网络非常粗暴。
+# 目前仅考虑小图定位的处理。后续按需求扩展。
+# 需要配合标注工具使用
+
+# 开发于 python3
+# 依赖 pytorch：（官网找安装方式）开发使用版本为 torch-1.4.0-cp36-cp36m-win_amd64.whl
+# 依赖 opencv： （pip install opencv-contrib-python==3.4.1.15）
+#     其实这里的 opencv 版本不重要，py3能用就行，只是个人喜欢这个版本，因为能用sift图像检测，稳。
+
+
+
+
+
+
+
 import cv2
 import numpy as np
 import torch
@@ -20,7 +36,7 @@ def readxml(file, islist=False):
         raise 'fail load img: {}'.format(f)
     size = v.getElementsByTagName('size')[0]
     npimg = cv2.cvtColor(cv2.imread(f), cv2.COLOR_BGR2RGB)
-    npimg = np.transpose(npimg, (2,0,1))
+    npimg_ = np.transpose(npimg, (2,0,1))
     def readobj(obj):
         d = {}
         obj  = v.getElementsByTagName('object')[0]
@@ -33,18 +49,17 @@ def readxml(file, islist=False):
         d['ymin']   = int(bbox.getElementsByTagName('ymin')[0].firstChild.data)
         d['xmax']   = int(bbox.getElementsByTagName('xmax')[0].firstChild.data)
         d['ymax']   = int(bbox.getElementsByTagName('ymax')[0].firstChild.data)
+        d['rect']   = d['ymin'],d['xmin'],d['ymax'],d['xmax']
         d['centerx'] = (d['xmin'] + d['xmax'])/2.
         d['centery'] = (d['ymin'] + d['ymax'])/2.
-        d['numpy']  = npimg
+        d['numpy']  = npimg_
+        d['file'] = f
         return d
     if islist:  r = [readobj(obj) for obj in v.getElementsByTagName('object')]
     else:       r = readobj(v.getElementsByTagName('object')[0])
     return r
 
 def make_y_true(imginfo, S, anchors, class_types):
-    '''
-    pred_box: (tensor) size(batchsize,S,S,Bx5+20=ceil_len) B[x,y,w,h,c] num_classes[20]
-    '''
     cx = imginfo['centerx']
     cy = imginfo['centery']
     w, h = imginfo['width'], imginfo['height']
@@ -64,11 +79,11 @@ def make_y_true(imginfo, S, anchors, class_types):
     ceillen = (5+len(class_types))
     log = math.log
     z = torch.zeros((S, S, len(anchors)*ceillen))
-    for i, (ax, ay) in enumerate(anchors):
+    for i, (ax, ay) in enumerate(anchors): # 目前这里没有使用 anchors，因为我不会用，陡曾复杂度
         left = i*ceillen
         clz = [0.]*len(class_types)
         clz[class_types.get(imginfo['cate'])] = 1.
-        v = torch.FloatTensor([sx, sy, log(bw/ax), log(bh/ay), 1.] + clz)
+        v = torch.FloatTensor([sx, sy, bw, bh, 1.] + clz)
         z[wi,hi,left:left+ceillen] = v
     return z
 
@@ -76,16 +91,13 @@ def make_y_true(imginfo, S, anchors, class_types):
 xmlpath = './train_img/xmlpath/'
 files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath)]
 print('load_xml_num:',len(files))
-anchors = [[60, 60], [60, 100], [100, 60]]
-
+anchors = [[121, 174]] # 这里的内容没有被实际用到，仅留后续扩展考虑。
 imginfos = [readxml(file) for file in files]
 class_types = [imginfo.get('cate') for imginfo in imginfos]
 class_types = {typ:idx for idx,typ in enumerate(sorted(list(set(class_types))))}
 train_data = [(torch.FloatTensor(imginfo['numpy']), \
               make_y_true(imginfo, 13, anchors, class_types)) for imginfo in imginfos]
-
-
-
+print('class_types:',class_types)
 
 
 
@@ -148,59 +160,46 @@ class Mini(nn.Module):
         return self.model(x).permute(0,2,3,1)
 
 class yoloLoss(nn.Module):
-    def __init__(self,S,
-            anchors,
-            class_types,
-            l_conls,
-            l_nocon,
-            l_coord,
-            l_noobj,
-            l_class
-        ):
+    def __init__(self,S, anchors, class_types):
         super(yoloLoss,self).__init__()
         self.S = S
         self.B = len(anchors)
         self.clazlen = len(class_types)
         self.ceillen = (5+self.clazlen)
-        self.l_conls = l_conls # 置信率的比重
-        self.l_coord = l_coord # 坐标的比重
-        self.l_nocon = l_nocon # 非锚点置信率比重
-        self.l_noobj = l_noobj # 非锚点坐标比重
-        self.l_class = l_class # 分类比重
 
-    def compute_iou(self, box1, box2):
-        '''Compute the intersection over union of two set of boxes, each box is [x1,y1,x2,y2].
-        Args:
-          box1: (tensor) bounding boxes, sized [N,4].
-          box2: (tensor) bounding boxes, sized [M,4].
-        Return:
-          (tensor) iou, sized [N,M].
-        '''
-        N = box1.size(0)
-        M = box2.size(0)
-        lt = torch.max(
-            box1[:,:2].unsqueeze(1).expand(N,M,2),  # [N,2] -> [N,1,2] -> [N,M,2]
-            box2[:,:2].unsqueeze(0).expand(N,M,2),  # [M,2] -> [1,M,2] -> [N,M,2]
-        )
-        rb = torch.min(
-            box1[:,2:].unsqueeze(1).expand(N,M,2),  # [N,2] -> [N,1,2] -> [N,M,2]
-            box2[:,2:].unsqueeze(0).expand(N,M,2),  # [M,2] -> [1,M,2] -> [N,M,2]
-        )
-        wh = rb - lt  # [N,M,2]
-        wh[wh<0] = 0  # clip at 0
-        inter = wh[:,:,0] * wh[:,:,1]  # [N,M]
-        area1 = (box1[:,2]-box1[:,0]) * (box1[:,3]-box1[:,1])  # [N,]
-        area2 = (box2[:,2]-box2[:,0]) * (box2[:,3]-box2[:,1])  # [M,]
-        area1 = area1.unsqueeze(1).expand_as(inter)  # [N,] -> [N,1] -> [N,M]
-        area2 = area2.unsqueeze(0).expand_as(inter)  # [M,] -> [1,M] -> [N,M]
-        iou = inter / (area1 + area2 - inter)
-        return iou
+    def get_iou(self,box_pred,box_target):
+        rate = 416/self.S
+
+        pre_xy = box_pred[:,:2] * rate
+        pre_wh_half = box_pred[:,2:4]/2
+        pre_mins = pre_xy - pre_wh_half
+        pre_maxs = pre_xy + pre_wh_half
+        true_xy = box_target[:,:2] * rate
+        true_wh_half = box_target[:,2:4]/2
+        true_mins = true_xy - true_wh_half
+        true_maxs = true_xy + true_wh_half
+
+        inter_mins = torch.max(true_mins, pre_mins)
+        inter_maxs = torch.min(true_maxs, pre_maxs)
+        inter_wh   = torch.max(inter_maxs - inter_mins, torch.FloatTensor([0.]).to(DEVICE))
+        inter_area = inter_wh[:,0] * inter_wh[:,1]
+        ture_area = box_pred[:,2] * box_pred[:,3]
+        pred_area = box_target[:,2] * box_target[:,3]
+        IOUS = inter_area/(ture_area+pred_area-inter_area)
+        # print('true_xy',true_xy)
+        # print('pre_xy',pre_xy)
+        # print('inter_wh',inter_wh)
+        # print(inter_area, inter_maxs - inter_mins)
+        # print('inter_maxs',inter_maxs)
+        # print('inter_mins',inter_mins)
+        # print('true_maxs',true_maxs, pre_maxs)
+        # print('true_mins',true_mins, pre_mins)
+        # print('ture_area',ture_area)
+        # print('pred_area',pred_area)
+        # print('inter_area', inter_area)
+        return IOUS
 
     def forward(self,pred_tensor,target_tensor):
-        '''
-        pred_tensor: (tensor) size(batchsize,S,S,Bx5+20=ceil_len) [x,y,w,h,c]
-        target_tensor: (tensor) size(batchsize,S,S,ceil_len)
-        '''
         N = pred_tensor.size()[0]
         coo_mask = target_tensor[:,:,:,4] > 0
         noo_mask = target_tensor[:,:,:,4] == 0
@@ -209,79 +208,44 @@ class yoloLoss(nn.Module):
         coo_pred = pred_tensor[coo_mask].view(-1,self.ceillen).to(DEVICE)
         box_pred = coo_pred[:,0:5].contiguous().view(-1,5).to(DEVICE)
         class_pred = coo_pred[:,5:5+self.clazlen]
-        
-        # 锚点区块的判定
         coo_target = target_tensor[coo_mask].view(-1,self.ceillen).to(DEVICE)
         box_target = coo_target[:,0:5].contiguous().view(-1,5).to(DEVICE)
         class_target = coo_target[:,5:5+self.clazlen]
 
-        # 非锚点区块的误差处理
+        # 使用torch的函数时候，要注意会在执行点进行训练处理，所以不能将该处的处理滞后
+        # 这里可以很重要，因为容易变踩坑，滞后的话训练会出现异常
+        box_pred[:,4] = torch.sigmoid(box_pred[:,4])
+        box_pred[:,:2] = torch.sigmoid(box_pred[:,:2])
+        # 非目标区将降低误差处理
         noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen).to(DEVICE)
         noo_target = target_tensor[noo_mask].view(-1,self.ceillen).to(DEVICE)
-        noo_pred_mask = torch.ByteTensor(noo_pred.size()).to(DEVICE)
-        noo_pred_mask.zero_()
-        noo_pred_mask[:,4] = 1
-        noo_pred_mask = noo_pred_mask.bool()
-        noo_pred_c = noo_pred[noo_pred_mask]
-        noo_target_c = noo_target[noo_pred_mask]
-        nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,reduction='sum')
-
-        coo_response_mask = torch.ByteTensor(box_target.size()).to(DEVICE)
-        coo_response_mask.zero_()
-        coo_response_mask = coo_response_mask.bool()
-        coo_not_response_mask = torch.ByteTensor(box_target.size()).to(DEVICE)
-        coo_not_response_mask.zero_()
-        coo_not_response_mask = coo_not_response_mask.bool()
-        box_target_iou = torch.zeros(box_target.size()).to(DEVICE)
-        for i in range(0,box_target.size()[0],2):
-            box1 = box_pred[i:i+2]
-            box1_xyxy = Variable(torch.FloatTensor(box1.size()))
-            box1_xyxy[:,:2] = box1[:,:2] - 0.5*box1[:,2:4]
-            box1_xyxy[:,2:4] = box1[:,:2] + 0.5*box1[:,2:4]
-            box2 = box_target[i].view(-1,5)
-            box2_xyxy = Variable(torch.FloatTensor(box2.size()))
-            box2_xyxy[:,:2] = box2[:,:2] - 0.5*box2[:,2:4]
-            box2_xyxy[:,2:4] = box2[:,:2] + 0.5*box2[:,2:4]
-            iou = self.compute_iou(box1_xyxy[:,:4],box2_xyxy[:,:4])
-            max_iou,max_index = iou.max(0)
-            max_index = max_index.data
-            coo_response_mask[i+max_index] = 1
-            coo_not_response_mask[i+1-max_index] = 1
-            box_target_iou[i+max_index,torch.LongTensor([4])] = (max_iou).data
-        box_target_iou = Variable(box_target_iou)
-        box_pred_response = box_pred[coo_response_mask].view(-1,5)
-        box_target_response_iou = box_target_iou[coo_response_mask].view(-1,5)
-        # 锚点IOU置信度的损失率
-        contain_loss = F.mse_loss(F.sigmoid(box_pred_response[:,4]),box_target_response_iou[:,4],reduction='sum')
-        # 非锚点的IOU置信度的损失率
-        box_pred_not_response = box_pred[coo_not_response_mask].view(-1,5)
-        box_target_not_response = box_target[coo_not_response_mask].view(-1,5)
-        box_target_not_response[:,4] = 0
-        not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],reduction='sum')
-        # 使用长宽坐标做损失
-        box_target_response = box_target[coo_response_mask].view(-1,5)
-        locxy_loss = F.mse_loss(F.sigmoid(box_pred_response[:,:2]),box_target_response[:,:2],reduction='sum')
-        locwh_loss = F.mse_loss(torch.exp(box_pred_response[:,2:4]),torch.exp(box_target_response[:,2:4]),reduction='sum')
+        # 置信度
+        IOUS = self.get_iou(box_pred,box_target)
+        contain_loss = F.mse_loss(box_pred[:,4]*IOUS,box_target[:,4],reduction='sum')
+        not_contain_loss = F.mse_loss(noo_pred[:,4]*IOUS,noo_target[:,4],reduction='sum')*.25
+        # 坐标点的误差
+        locxy_loss = F.mse_loss(box_pred[:,:2],box_target[:,:2],reduction='sum')
+        locwh_loss = F.mse_loss(box_pred[:,2:4],box_target[:,2:4],reduction='sum')
         loc_loss = locxy_loss + locwh_loss
-        # 分类损失率
+        # 分类误差
         class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
-        
-        v = (
-            self.l_coord*loc_loss + 
-            self.l_conls*contain_loss + 
-            # self.l_nocon*not_contain_loss + 
-            # self.l_noobj*nooobj_loss +
-            self.l_class*class_loss
-        )/N
-        print('locxy_loss', locxy_loss)
-        print('locwh_loss', locwh_loss)
-        print('loc_loss', loc_loss)
-        print('contain_loss', contain_loss)
-        print('not_contain_loss', not_contain_loss)
-        print('nooobj_loss', nooobj_loss)
-        print('class_loss', class_loss)
-        print('all_loss', v)
-        return v
+        # print('[ IOUS ]              :', IOUS)
+        # print('[ contain_loss ]      :', contain_loss)
+        # print('[ not_contain_loss ]  :', not_contain_loss)
+        # print('[ loc_loss ]          :', loc_loss)
+        # print('[  |locxy_loss ]      :', locxy_loss)
+        # print('[  |locwh_loss ]      :', locwh_loss)
+        # print('[ class_loss ]        :', class_loss)
+        return contain_loss + not_contain_loss + loc_loss + class_loss
+
+
+
+
+
+
+
+
+
 
 
 
@@ -299,8 +263,8 @@ class yoloLoss(nn.Module):
 
 
 EPOCH = 1
-BATCH_SIZE = 20
-LR = 0.0001
+BATCH_SIZE = 1
+LR = 0.001
 train_loader = Data.DataLoader(
     dataset=train_data,
     batch_size=BATCH_SIZE,
@@ -309,41 +273,29 @@ train_loader = Data.DataLoader(
 net = Mini(anchors, class_types)
 optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 net.to(DEVICE)
-yloss = yoloLoss(13, 
-    anchors = anchors, 
-    class_types = class_types,
-    l_coord = 2,
-    l_conls = 1,
-    l_nocon = 1,
-    l_noobj = 1,
-    l_class = 1,
-)
+yloss = yoloLoss(13, anchors=anchors, class_types=class_types, )
 with torch.no_grad():
     x_test = train_data[0][0]
     y_test = train_data[0][1]
-# 测试使用的部分，希望至少无限训练一张图至少能够正常收敛，否者，感觉后续无脑训练就会有点虚
-for idx,(x_true, y_true) in enumerate(train_loader):
+# 测试代码，目前只抽取一张图片无限训练，这样可以很快测试这张图片是否存在收敛
+# 正式使用请改成训练全部图片的代码
+for idx,(x_true_, y_true_) in enumerate(train_loader):
     if idx == 0:break
 for step in range(2000):
-    x_true = Variable(x_true).to(DEVICE)
-    y_true = Variable(y_true).to(DEVICE)
+    x_true = Variable(x_true_).to(DEVICE)
+    y_true = Variable(y_true_).to(DEVICE)
     output = net(x_true)
     loss = yloss(output, y_true)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
     x_pred_test = net(x_test.unsqueeze(0).to(DEVICE))
-    print(step)
 
     def log_losinfo(x_pred_test):
-        print(x_pred_test[:,:,:,4][:,:9,:9])
-        print(x_pred_test[:,:,:,9][:,:9,:9])
         if USE_CUDA:
             a = x_pred_test[:,:,:,4].cpu().detach().numpy()
-            b = x_pred_test[:,:,:,9].cpu().detach().numpy()
         else:
             a = x_pred_test[:,:,:,4].detach().numpy()
-            b = x_pred_test[:,:,:,9].detach().numpy()
         nn = None
         mm = float('inf')
         for ii,i in enumerate(a[0]):
@@ -351,28 +303,51 @@ for step in range(2000):
                 if j > mm or nn == None:
                     nn = (ii,jj)
                     mm = j
+        print(x_pred_test.shape[1])
+        gap = 416/x_pred_test.shape[1]
+        x, y = nn
+        contain = torch.sigmoid(x_pred_test[0,x,y,4])
+        pred_xy = (torch.sigmoid(x_pred_test[0,x,y,0:2]))
+        pred_wh = (x_pred_test[0,x,y,2:4])
+        pred_clz = x_pred_test[0,x,y,5:5+len(class_types)]
+        if USE_CUDA:
+            pred_xy = pred_xy.cpu().detach().numpy()
+            pred_wh = pred_wh.cpu().detach().numpy()
+            pred_clz = pred_clz.cpu().detach().numpy()
+        else:
+            pred_xy = pred_xy.detach().numpy()
+            pred_wh = pred_wh.detach().numpy()
+            pred_clz = pred_clz.detach().numpy()
+        cx, cy = map(float, pred_xy)
+        rx, ry = int((cx + x)*gap), int((cy + y)*gap)
+        rw, rh = map(int, pred_wh)
+        clz_   = list(map(float, pred_clz))
+        l = int(rx - rw/2)
+        r = int(rx + rw/2)
+        t = int(ry - rh/2)
+        b = int(ry + rh/2)
+        
+        for key in class_types:
+            if clz_.index(max(clz_)) == class_types[key]:
+                clz = key
+                break
+        print('rect(t,l,b,r), clz', (t,l,b,r), clz)
+        return (t,l,b,r), clz
 
-        def sigmoid(x):
-            return 1 / (1 + np.exp(-x))
-        print('a',nn)
-        print('a',mm,'sig',sigmoid(mm))
-        print('a35',a[0][3][5],sigmoid(a[0][3][5]))
-        x_pred_test[0,3,5,0:2] = F.sigmoid(x_pred_test[0,3,5,0:2])
-        print('ada',x_pred_test[0,3,5,0:4])
-        nn = None
-        mm = float('inf')
-        for ii,i in enumerate(b[0]):
-            for jj,j in enumerate(i):
-                if j > mm or nn == None:
-                    nn = (ii,jj)
-                    mm = j
-        print('b',nn)
-        print('b',mm,'sig',sigmoid(mm))
-        print('b35',b[0][3][5],sigmoid(b[0][3][5]))
-        x_pred_test[0,3,5,5:7] = F.sigmoid(x_pred_test[0,3,5,5:7])
-        print('bda',x_pred_test[0,3,5,5:9])
-        print('r',[0.4531, 0.0000, 0.7014, 1.0647])
-        print('=================')
-
-    if step%10==0:
-        log_losinfo(x_pred_test)
+    print(step)
+    if step%10 == 0:
+        rect, clz = log_losinfo(x_pred_test)
+    if step == 150:
+        def drawrect_and_show(imgfile, rect, text):# 只能写英文
+            img = cv2.imread(imgfile)
+            cv2.rectangle(img, rect[:2], rect[2:], (10,10,10), 1, 1)
+            x, y = rect[:2]
+            cv2.putText(img, text, (x,y+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10,10,10), 1)
+            cv2.imshow('test', img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        print(imginfos[0]['numpy'].shape)
+        print(imginfos[0]['rect'])
+        print(imginfos[0]['cate'])
+        drawrect_and_show(imginfos[0]['file'], rect, clz)
+        break
