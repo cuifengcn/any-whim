@@ -217,10 +217,11 @@ class yoloLoss(nn.Module):
         box_pred[:,4] = torch.sigmoid(box_pred[:,4])
         box_pred[:,:2] = torch.sigmoid(box_pred[:,:2])
         # 非目标区将降低误差处理
-        noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen).to(DEVICE)
-        noo_target = target_tensor[noo_mask].view(-1,self.ceillen).to(DEVICE)
+        noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen,N).to(DEVICE)
+        noo_target = target_tensor[noo_mask].view(-1,self.ceillen,N).to(DEVICE)
         # 置信度
         IOUS = self.get_iou(box_pred,box_target)
+        print(noo_pred.shape, noo_target.shape, IOUS.shape)
         contain_loss = F.mse_loss(box_pred[:,4]*IOUS,box_target[:,4],reduction='sum')
         not_contain_loss = F.mse_loss(noo_pred[:,4]*IOUS,noo_target[:,4],reduction='sum')*.25
         # 坐标点的误差
@@ -236,6 +237,7 @@ class yoloLoss(nn.Module):
         # print('[  |locxy_loss ]      :', locxy_loss)
         # print('[  |locwh_loss ]      :', locwh_loss)
         # print('[ class_loss ]        :', class_loss)
+        print('[ all_loss ]          :', contain_loss + not_contain_loss + loc_loss + class_loss)
         return contain_loss + not_contain_loss + loc_loss + class_loss
 
 
@@ -263,7 +265,7 @@ class yoloLoss(nn.Module):
 
 
 EPOCH = 1
-BATCH_SIZE = 1
+BATCH_SIZE = 2
 LR = 0.001
 train_loader = Data.DataLoader(
     dataset=train_data,
@@ -279,75 +281,86 @@ with torch.no_grad():
     y_test = train_data[0][1]
 # 测试代码，目前只抽取一张图片无限训练，这样可以很快测试这张图片是否存在收敛
 # 正式使用请改成训练全部图片的代码
-for idx,(x_true_, y_true_) in enumerate(train_loader):
-    if idx == 0:break
-for step in range(2000):
-    x_true = Variable(x_true_).to(DEVICE)
-    y_true = Variable(y_true_).to(DEVICE)
-    output = net(x_true)
-    loss = yloss(output, y_true)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-    x_pred_test = net(x_test.unsqueeze(0).to(DEVICE))
+for epoch in range(EPOCH):
+    for step, (x_true_, y_true_) in enumerate(train_loader):
+    #     break
+    # for step in range(100):
+        x_true = Variable(x_true_).to(DEVICE)
+        y_true = Variable(y_true_).to(DEVICE)
+        output = net(x_true)
+        loss = yloss(output, y_true)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        x_pred_test = net(x_test.unsqueeze(0).to(DEVICE))
 
-    def log_losinfo(x_pred_test):
-        if USE_CUDA:
-            a = x_pred_test[:,:,:,4].cpu().detach().numpy()
-        else:
-            a = x_pred_test[:,:,:,4].detach().numpy()
-        nn = None
-        mm = float('inf')
-        for ii,i in enumerate(a[0]):
-            for jj,j in enumerate(i):
-                if j > mm or nn == None:
-                    nn = (ii,jj)
-                    mm = j
-        print(x_pred_test.shape[1])
-        gap = 416/x_pred_test.shape[1]
-        x, y = nn
-        contain = torch.sigmoid(x_pred_test[0,x,y,4])
-        pred_xy = (torch.sigmoid(x_pred_test[0,x,y,0:2]))
-        pred_wh = (x_pred_test[0,x,y,2:4])
-        pred_clz = x_pred_test[0,x,y,5:5+len(class_types)]
-        if USE_CUDA:
-            pred_xy = pred_xy.cpu().detach().numpy()
-            pred_wh = pred_wh.cpu().detach().numpy()
-            pred_clz = pred_clz.cpu().detach().numpy()
-        else:
-            pred_xy = pred_xy.detach().numpy()
-            pred_wh = pred_wh.detach().numpy()
-            pred_clz = pred_clz.detach().numpy()
-        cx, cy = map(float, pred_xy)
-        rx, ry = int((cx + x)*gap), int((cy + y)*gap)
-        rw, rh = map(int, pred_wh)
-        clz_   = list(map(float, pred_clz))
-        l = int(rx - rw/2)
-        r = int(rx + rw/2)
-        t = int(ry - rh/2)
-        b = int(ry + rh/2)
-        
-        for key in class_types:
-            if clz_.index(max(clz_)) == class_types[key]:
-                clz = key
-                break
-        print('rect(t,l,b,r), clz', (t,l,b,r), clz)
-        return (t,l,b,r), clz
+        def log_losinfo(x_pred_test):
+            if USE_CUDA:
+                a = x_pred_test[:,:,:,4].cpu().detach().numpy()
+            else:
+                a = x_pred_test[:,:,:,4].detach().numpy()
+            nn = None
+            mm = float('inf')
+            for ii,i in enumerate(a[0]):
+                for jj,j in enumerate(i):
+                    if j > mm or nn == None:
+                        nn = (ii,jj)
+                        mm = j
+            print(x_pred_test.shape[1])
+            gap = 416/x_pred_test.shape[1]
+            x, y = nn
+            contain = torch.sigmoid(x_pred_test[0,x,y,4])
+            pred_xy = (torch.sigmoid(x_pred_test[0,x,y,0:2]))
+            pred_wh = (x_pred_test[0,x,y,2:4])
+            pred_clz = x_pred_test[0,x,y,5:5+len(class_types)]
+            if USE_CUDA:
+                pred_xy = pred_xy.cpu().detach().numpy()
+                pred_wh = pred_wh.cpu().detach().numpy()
+                pred_clz = pred_clz.cpu().detach().numpy()
+            else:
+                pred_xy = pred_xy.detach().numpy()
+                pred_wh = pred_wh.detach().numpy()
+                pred_clz = pred_clz.detach().numpy()
+            cx, cy = map(float, pred_xy)
+            rx, ry = int((cx + x)*gap), int((cy + y)*gap)
+            rw, rh = map(int, pred_wh)
+            clz_   = list(map(float, pred_clz))
+            l = int(rx - rw/2)
+            r = int(rx + rw/2)
+            t = int(ry - rh/2)
+            b = int(ry + rh/2)
+            
+            for key in class_types:
+                if clz_.index(max(clz_)) == class_types[key]:
+                    clz = key
+                    break
+            print('rect(t,l,b,r), clz', (t,l,b,r), clz)
+            return (t,l,b,r), clz
+        print(step)
+        if step%10 == 0:
+            rect, clz = log_losinfo(x_pred_test)
 
-    print(step)
-    if step%10 == 0:
-        rect, clz = log_losinfo(x_pred_test)
-    if step == 150:
-        def drawrect_and_show(imgfile, rect, text):# 只能写英文
-            img = cv2.imread(imgfile)
-            cv2.rectangle(img, rect[:2], rect[2:], (10,10,10), 1, 1)
-            x, y = rect[:2]
-            cv2.putText(img, text, (x,y+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10,10,10), 1)
-            cv2.imshow('test', img)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-        print(imginfos[0]['numpy'].shape)
-        print(imginfos[0]['rect'])
-        print(imginfos[0]['cate'])
-        drawrect_and_show(imginfos[0]['file'], rect, clz)
-        break
+print('end.')
+torch.save(net, 'net.pkl')
+print('save.')
+
+
+
+
+
+
+
+
+
+def drawrect_and_show(imgfile, rect, text):# 只能写英文
+    img = cv2.imread(imgfile)
+    cv2.rectangle(img, rect[:2], rect[2:], (10,10,10), 1, 1)
+    x, y = rect[:2]
+    cv2.putText(img, text, (x,y+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10,10,10), 1)
+    cv2.imshow('test', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+print(imginfos[0]['numpy'].shape)
+print(imginfos[0]['rect'])
+print(imginfos[0]['cate'])
+drawrect_and_show(imginfos[0]['file'], rect, clz)
