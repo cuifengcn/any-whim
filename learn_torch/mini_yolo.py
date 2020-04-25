@@ -35,24 +35,29 @@ def readxml(file, islist=False):
     if not os.path.isfile(f):
         raise 'fail load img: {}'.format(f)
     size = v.getElementsByTagName('size')[0]
-    npimg = cv2.cvtColor(cv2.imread(f), cv2.COLOR_BGR2RGB)
-    npimg.resize((416, 416, 3))
-    npimg_ = np.transpose(npimg, (2,0,1))
+    npimg = cv2.imread(f)
+    npimg = cv2.cvtColor(npimg, cv2.COLOR_BGR2RGB) # [y,x,c]
+    npimg = cv2.resize(npimg, (416, 416))
+    npimg_ = np.transpose(npimg, (2,1,0)) # [c,x,y]
     def readobj(obj):
         d = {}
         obj  = v.getElementsByTagName('object')[0]
         bbox = obj.getElementsByTagName('bndbox')[0]
         d['width']  = int(size.getElementsByTagName('width')[0].firstChild.data)
         d['height'] = int(size.getElementsByTagName('height')[0].firstChild.data)
+        d['ratew']  = rw = d['width']/416
+        d['rateh']  = rh = d['height']/416
         d['depth']  = int(size.getElementsByTagName('depth')[0].firstChild.data)
         d['cate']   = obj.getElementsByTagName('name')[0].firstChild.data
-        d['xmin']   = int(bbox.getElementsByTagName('xmin')[0].firstChild.data)
-        d['ymin']   = int(bbox.getElementsByTagName('ymin')[0].firstChild.data)
-        d['xmax']   = int(bbox.getElementsByTagName('xmax')[0].firstChild.data)
-        d['ymax']   = int(bbox.getElementsByTagName('ymax')[0].firstChild.data)
-        d['rect']   = d['ymin'],d['xmin'],d['ymax'],d['xmax']
-        d['ratew']  = d['width']/416
-        d['rateh']  = d['height']/416
+        d['xmin']   = int(bbox.getElementsByTagName('xmin')[0].firstChild.data)/rw
+        d['ymin']   = int(bbox.getElementsByTagName('ymin')[0].firstChild.data)/rh
+        d['xmax']   = int(bbox.getElementsByTagName('xmax')[0].firstChild.data)/rw
+        d['ymax']   = int(bbox.getElementsByTagName('ymax')[0].firstChild.data)/rh
+        d['w']      = d['xmax'] - d['xmin']
+        d['h']      = d['ymax'] - d['ymin']
+        d['rect']   = d['xmin'],d['ymin'],d['xmax'],d['ymax']
+        import pprint
+        pprint.pprint(d)
         d['centerx'] = (d['xmin'] + d['xmax'])/2.
         d['centery'] = (d['ymin'] + d['ymax'])/2.
         d['numpy']  = npimg_
@@ -65,19 +70,22 @@ def readxml(file, islist=False):
 def make_y_true(imginfo, S, anchors, class_types):
     cx = imginfo['centerx']
     cy = imginfo['centery']
-    w, h = imginfo['width'], imginfo['height']
-    bw = imginfo['xmax'] - imginfo['xmin']
-    bh = imginfo['ymax'] - imginfo['ymin']
-    gap = int(w/S)
+    bw = imginfo['w']
+    bh = imginfo['h']
+    gap = int(416/S)
     ww = list(range(416))[::int(gap)]
     for wi in range(len(ww)):
-        if cx < ww[wi]:
+        if ww[wi] > cx: 
             break
     hh = list(range(416))[::int(gap)]
     for hi in range(len(hh)):
-        if cy < hh[hi]:
+        if hh[hi] > cy: 
             break
     wi, hi = wi - 1, hi - 1
+    print(imginfo['ymin'])
+    print(imginfo['ymax'])
+    print(cx, (cx-ww[wi]))
+    print(cy, (cy-hh[hi]))
     sx, sy = (cx-ww[wi])/gap, (cy-hh[hi])/gap # 用ceil左上角做坐标并进行归一化
     ceillen = (5+len(class_types))
     log = math.log
@@ -88,21 +96,10 @@ def make_y_true(imginfo, S, anchors, class_types):
         clz[class_types.get(imginfo['cate'])] = 1.
         # v = torch.FloatTensor([sx, sy, log(bw/aw), log(bh/ah), 1.] + clz)
         v = torch.FloatTensor([sx, sy, bw, bh, 1.] + clz)
-        z[wi,hi,left:left+ceillen] = v
+        print(wi, hi, v)
+        # exit()
+        z[wi, hi, left:left+ceillen] = v
     return z
-
-
-xmlpath = './train_img'
-files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath) if path.endswith('.xml')]
-print('load_xml_num:',len(files))
-anchors = [[121, 174]] # 这里的内容没有被实际用到，仅留后续扩展考虑。
-imginfos = [readxml(file) for file in files]
-class_types = [imginfo.get('cate') for imginfo in imginfos]
-class_types = {typ:idx for idx,typ in enumerate(sorted(list(set(class_types))))}
-train_data = [(torch.FloatTensor(imginfo['numpy']), \
-              make_y_true(imginfo, 13, anchors, class_types)) for imginfo in imginfos]
-print('class_types:',class_types)
-
 
 
 
@@ -130,33 +127,32 @@ USE_CUDA = True if torch.cuda.is_available() else False
 DEVICE = 'cuda' if USE_CUDA else 'cpu'
 torch.set_printoptions(precision=2, sci_mode=False, linewidth=120, profile='full')
 
-class ConvBN(nn.Module):
-    def __init__(self, cin, cout, kernel_size=3, stride=1, padding=None):
-        super().__init__()
-        padding   = (kernel_size - 1) // 2
-        self.conv = nn.Conv2d(cin, cout, kernel_size, stride, padding, bias=False)
-        self.bn   = nn.BatchNorm2d(cout, momentum=0.01)
-        self.relu = nn.LeakyReLU(0.01, inplace=True)
-    def forward(self, x): 
-        return self.relu(self.bn(self.conv(x)))
-
 class Mini(nn.Module):
+    class ConvBN(nn.Module):
+        def __init__(self, cin, cout, kernel_size=3, stride=1, padding=None):
+            super().__init__()
+            padding   = (kernel_size - 1) // 2
+            self.conv = nn.Conv2d(cin, cout, kernel_size, stride, padding, bias=False)
+            self.bn   = nn.BatchNorm2d(cout, momentum=0.01)
+            self.relu = nn.LeakyReLU(0.01, inplace=True)
+        def forward(self, x): 
+            return self.relu(self.bn(self.conv(x)))
     def __init__(self, anchors, class_types, inchennel=3):
         super().__init__()
         self.oceil = len(anchors)*(5+len(class_types))
         self.model = nn.Sequential(
             OrderedDict([
-                ('ConvBN_0',  ConvBN(inchennel, 32)),
+                ('ConvBN_0',  self.ConvBN(inchennel, 32)),
                 ('Pool_0',    nn.MaxPool2d(2, 2)),
-                ('ConvBN_1',  ConvBN(32, 64)),
+                ('ConvBN_1',  self.ConvBN(32, 64)),
                 ('Pool_1',    nn.MaxPool2d(2, 2)),
-                ('ConvBN_2',  ConvBN(64, 128)),
+                ('ConvBN_2',  self.ConvBN(64, 128)),
                 ('Pool_2',    nn.MaxPool2d(2, 2)),
-                ('ConvBN_3',  ConvBN(128, 256)),
+                ('ConvBN_3',  self.ConvBN(128, 256)),
                 ('Pool_3',    nn.MaxPool2d(2, 2)),
-                ('ConvBN_4',  ConvBN(256, 512)),
+                ('ConvBN_4',  self.ConvBN(256, 512)),
                 ('Pool_4',    nn.MaxPool2d(2, 2)),
-                ('ConvBN_5',  ConvBN(512, 1024)),
+                ('ConvBN_5',  self.ConvBN(512, 1024)),
                 ('ConvEND',   nn.Conv2d(1024, self.oceil, 1)),
             ])
         )
@@ -191,6 +187,11 @@ class yoloLoss(nn.Module):
         ture_area = box_pred[...,2] * box_pred[...,3]
         pred_area = box_target[...,2] * box_target[...,3]
         IOUS = inter_area/(ture_area+pred_area-inter_area)
+        print(box_pred)
+        print('pre_xy',pre_xy)
+        print('true_xy',true_xy)
+        print('pre_wh',pre_wh_half*2)
+        print('true_wh',true_wh_half*2)
         return IOUS
 
     def forward(self,pred_tensor,target_tensor):
@@ -218,21 +219,21 @@ class yoloLoss(nn.Module):
         IOUS = self.get_iou(box_pred,box_target)
         box_contain_loss = F.mse_loss(box_pred[...,4]*IOUS,box_target[...,4],reduction='sum')
         noo_contain_loss = F.mse_loss(noo_pred[...,4]*IOUS,noo_target[...,4],reduction='sum')*.5
-        # 坐标点的误差
+        # 坐标点的误差，注意这里的wh，因为我没有使用anchor，所以这里直接除以 416 来均衡敏感度。
         locxy_loss = F.mse_loss(box_pred[...,:2],box_target[...,:2],reduction='sum')
-        locwh_loss = F.mse_loss(box_pred[...,2:4],box_target[...,2:4],reduction='sum')
+        locwh_loss = F.mse_loss(box_pred[...,2:4]/416,box_target[...,2:4]/416,reduction='sum')
         loc_loss   = locxy_loss + locwh_loss
         # 分类误差
         class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
         # 全部误差
         all_loss = (box_contain_loss + noo_contain_loss + loc_loss + class_loss)/N
-        # print('[ IOUS ]              :', IOUS)
-        # print('[ box_contain_loss ]  :', box_contain_loss)
-        # print('[ noo_contain_loss ]  :', noo_contain_loss)
-        # print('[ loc_loss ]          :', loc_loss)
-        # print('[  |locxy_loss ]      :', locxy_loss)
-        # print('[  |locwh_loss ]      :', locwh_loss)
-        # print('[ class_loss ]        :', class_loss)
+        print('[ IOUS ]              :', IOUS)
+        print('[ box_contain_loss ]  :', box_contain_loss)
+        print('[ noo_contain_loss ]  :', noo_contain_loss)
+        print('[ loc_loss ]          :', loc_loss)
+        print('[  |locxy_loss ]      :', locxy_loss)
+        print('[  |locwh_loss ]      :', locwh_loss)
+        print('[ class_loss ]        :', class_loss)
         print('[ all_loss ]          :', all_loss)
         return all_loss
 
@@ -251,7 +252,7 @@ class yoloLoss(nn.Module):
 
 
 
-
+# 将经过网络得内容转换成坐标和分类名字
 def parse_y_pred(ypred):
     if USE_CUDA:
         a = ypred[:,:,:,4].cpu().detach().numpy()
@@ -265,10 +266,14 @@ def parse_y_pred(ypred):
                 nn = (ii,jj)
                 mm = j
     gap = 416/ypred.shape[1]
-    x, y = nn
+    x,y = nn
+    print('======')
+    print(ypred[0,x,y,:])
     contain = torch.sigmoid(ypred[0,x,y,4])
-    pred_xy = (torch.sigmoid(ypred[0,x,y,0:2]))
-    pred_wh = (ypred[0,x,y,2:4])
+    pred_xy = torch.sigmoid(ypred[0,x,y,0:2])
+    pred_wh = ypred[0,x,y,2:4]
+    print(pred_wh)
+    print(ypred[0,x,y,:])
     pred_clz = ypred[0,x,y,5:5+len(class_types)]
     if USE_CUDA:
         pred_xy = pred_xy.cpu().detach().numpy()
@@ -279,18 +284,21 @@ def parse_y_pred(ypred):
         pred_wh = pred_wh.detach().numpy()
         pred_clz = pred_clz.detach().numpy()
     cx, cy = map(float, pred_xy)
-    rx, ry = int((cx + x)*gap), int((cy + y)*gap)
+    rx, ry = (cx + x)*gap, (cy + y)*gap
     rw, rh = map(float, pred_wh)
     clz_   = list(map(float, pred_clz))
-    l = int(rx - rw/2)
-    r = int(rx + rw/2)
-    t = int(ry - rh/2)
-    b = int(ry + rh/2)
+    xx = rx - rw/2
+    x_ = rx + rw/2
+    yy = ry - rh/2
+    y_ = ry + rh/2
+    print(ypred[:,:,:,4])
+    print(pred_xy)
+    print(pred_wh)
     for key in class_types:
         if clz_.index(max(clz_)) == class_types[key]:
             clz = key
             break
-    return (t,l,b,r), clz
+    return [xx,yy,x_,y_], clz, mm
 
 
 
@@ -309,20 +317,17 @@ def parse_y_pred(ypred):
 
 
 def train():
-    EPOCH = 100
-    BATCH_SIZE = 10
+    EPOCH = 1
+    BATCH_SIZE = 2
     LR = 0.001
     train_loader = Data.DataLoader(
         dataset=train_data,
         batch_size=BATCH_SIZE,
-        shuffle=True,
+        # shuffle=SHUFFLE,
     )
-    try:
-        net = torch.load('net.pkl').to(DEVICE)
-    except:
-        net = Mini(anchors, class_types)
-    optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+    net = Mini(anchors, class_types)
     net.to(DEVICE)
+    optimizer = torch.optim.Adam(net.parameters(), lr=LR)
     yloss = yoloLoss(13, anchors=anchors, class_types=class_types, )
     with torch.no_grad():
         x_test = train_data[0][0]
@@ -332,10 +337,9 @@ def train():
     for epoch in range(EPOCH):
         print('epoch', epoch)
         for step, (x_true_, y_true_) in enumerate(train_loader):
-        #     break
-        # for step in range(100):
+            break
+        for step in range(500):
             print('[{:<3}]'.format(step), end='')
-
             x_true = Variable(x_true_).to(DEVICE)
             y_true = Variable(y_true_).to(DEVICE)
             output = net(x_true)
@@ -345,8 +349,8 @@ def train():
             optimizer.step()
             if step%10 == 0:
                 y_pred = net(x_test.unsqueeze(0).to(DEVICE))
-                rect, clz = parse_y_pred(y_pred)
-
+                rect, clz, con = parse_y_pred(y_pred)
+                print(rect,'--------------')
     print('end.')
     torch.save(net, 'net.pkl')
     print('save.')
@@ -361,7 +365,7 @@ def train():
 
 def drawrect_and_show(imgfile, rect, text):# 只能写英文
     img = cv2.imread(imgfile)
-    cv2.rectangle(img, rect[:2], rect[2:], (10,10,10), 1, 1)
+    cv2.rectangle(img, tuple(rect[:2]), tuple(rect[2:]), (10,10,10), 1, 1)
     x, y = rect[:2]
     cv2.putText(img, text, (x,y+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10,10,10), 1)
     cv2.imshow('test', img)
@@ -370,15 +374,64 @@ def drawrect_and_show(imgfile, rect, text):# 只能写英文
 def test():
     net = torch.load('net.pkl').to(DEVICE)
     with torch.no_grad():
-        for i in range(30):
-            x_test = train_data[i][0]
-            y_pred = net(x_test.unsqueeze(0).to(DEVICE))
-            rect, clz = parse_y_pred(y_pred)
+        for i in range(2):
+            y_pred = net(train_data[i][0].unsqueeze(0).to(DEVICE))
+            rect, clz, con = parse_y_pred(y_pred)
             print(imginfos[i]['numpy'].shape)
             print(imginfos[i]['rect'])
             print(imginfos[i]['cate'])
-            drawrect_and_show(imginfos[i]['file'], rect, clz)
+            # (t,l,b,r) = rect
+            rh = imginfos[i]['rateh']
+            rw = imginfos[i]['ratew']
+            print(rw, rh)
+            print(rect)
+            rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
+            rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
+            print(rect)
+            rect = tuple(map(int, rect))
+            drawrect_and_show(imginfos[i]['file'], rect, clz+'|'+str(con))
 
 
-# train()
+    with torch.no_grad():
+        x_test = train_data[0][0]
+        y_test = train_data[0][1]
+
+        y_pred = net(x_test.unsqueeze(0).to(DEVICE))
+        rect, clz, con = parse_y_pred(y_pred)
+        print(rect,'--------------')
+
+
+
+
+xmlpath = './train_img'
+# xmlpath = './_temp'
+SHUFFLE = False
+files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath) if path.endswith('.xml')]
+print('load_xml_num:',len(files))
+anchors = [[121, 174]] # 这里的内容没有被实际用到，仅留后续扩展考虑。
+imginfos = [readxml(file) for file in files]
+class_types = [imginfo.get('cate') for imginfo in imginfos]
+class_types = {typ:idx for idx,typ in enumerate(sorted(list(set(class_types))))}
+train_data = [(torch.FloatTensor(imginfo['numpy']), \
+              make_y_true(imginfo, 13, anchors, class_types)) for imginfo in imginfos]
+print('class_types:',class_types)
+train()
 test()
+
+
+
+
+
+
+
+
+# f = imginfos[0]['file']
+# rw,rh = imginfos[0]['ratew'],imginfos[0]['rateh']
+# rect = tuple(map(int, imginfos[0]['rect']))
+# print(rect)
+# v = cv2.imread(f)
+# v = cv2.cvtColor(v, cv2.COLOR_BGR2RGB)
+# v = cv2.resize(v, (416, 416))
+# cv2.rectangle(v, tuple(rect[:2]), tuple(rect[2:]), (10,10,10), 1, 1)
+# cv2.imshow('123', v.astype(np.uint8))
+# cv2.waitKey(0)

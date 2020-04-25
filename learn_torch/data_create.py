@@ -8,6 +8,8 @@ import numpy as np
 class Data:
     def __init__(   self, 
                     path = 'train_img',
+                    imgfile = 'imgfile',
+                    xmlpath = 'xmlpath',
                     minw = 416,
                     minh = 416,
                     maxw = 416,
@@ -21,8 +23,10 @@ class Data:
                     },
                     bgcolor = [230,230,230],
                 ):
-        self.imgpath = os.path.join(path, 'imgfile')
-        self.xmlpath = os.path.join(path, 'xmlpath')
+        imgfile = imgfile if imgfile else ''
+        xmlpath = xmlpath if xmlpath else ''
+        self.imgpath = os.path.join(path, imgfile)
+        self.xmlpath = os.path.join(path, xmlpath)
         if not os.path.isdir(self.imgpath): os.makedirs(self.imgpath)
         if not os.path.isdir(self.xmlpath): os.makedirs(self.xmlpath)
         self.minw = minw
@@ -79,9 +83,9 @@ class Data:
         self.img_id += 1
         return imgname, xmlname
 
-    def mkxml(self,folder,filename,realpath,w,h,channel,clazz,minx,miny,maxx,maxy):
-        # 保存为 python第三方库 labelImg 所标注的数据的结构信息
-        # 这样会方便于快速将虚拟数据的使用切换到实际数据的使用
+    def mkxml(self,folder,filename,realpath,w,h,channel,clazz,miny,minx,maxy,maxx):
+        # 非常注意的是，xml里面的 xmin,xmax 为纵坐标
+        # 与我个人习惯的 x 代表横坐标有点不太一样，所以这里的wh也需要注意修改
         return r'''
 <annotation>
     <folder>{}</folder>
@@ -109,7 +113,7 @@ class Data:
         </bndbox>
     </object>
 </annotation>
-'''.format(folder,filename,realpath,w,h,channel,clazz,minx,miny,maxx,maxy).strip()
+'''.format(folder,filename,realpath,h,w,channel,clazz,minx,miny,maxx,maxy).strip()
 
 
 
@@ -124,45 +128,13 @@ def drawrect_and_show(imgfile, rect, text):# 只能写英文
 
 
 
-def readxml(file, islist=False):
-    # 读取 xml 文件，根据其中的内容读取图片数据，并且获取标注信息
-    # 该类 xml 文件为 python第三方库 labelImg 所标注的数据的结构信息
-    # file：
-    #   xml文件的路径地址
-    # islist：
-    #   xml 文件是否包含多个标注，如果有，统一返回列表，
-    #   如果只有一个标注，直接返回一个信息字典方便使用
-    d = xml.dom.minidom.parse(file)
-    v = d.getElementsByTagName('annotation')[0]
-    f = v.getElementsByTagName('path')[0].firstChild.data
-    if not os.path.isfile(f):
-        raise 'fail load img: {}'.format(f)
-    size = v.getElementsByTagName('size')[0]
-    npimg = cv2.imread(f)
-    def readobj(obj):
-        d = {}
-        obj  = v.getElementsByTagName('object')[0]
-        bbox = obj.getElementsByTagName('bndbox')[0]
-        d['width']  = int(size.getElementsByTagName('width')[0].firstChild.data)
-        d['height'] = int(size.getElementsByTagName('height')[0].firstChild.data)
-        d['depth']  = int(size.getElementsByTagName('depth')[0].firstChild.data)
-        d['cate']   = obj.getElementsByTagName('name')[0].firstChild.data
-        d['xmin']   = int(bbox.getElementsByTagName('xmin')[0].firstChild.data)
-        d['ymin']   = int(bbox.getElementsByTagName('ymin')[0].firstChild.data)
-        d['xmax']   = int(bbox.getElementsByTagName('xmax')[0].firstChild.data)
-        d['ymax']   = int(bbox.getElementsByTagName('ymax')[0].firstChild.data)
-        d['centerx'] = (d['xmin'] + d['xmax'])/2.
-        d['centery'] = (d['ymin'] + d['ymax'])/2.
-        d['numpy']  = npimg
-        return d
-    if islist:  r = [readobj(obj) for obj in v.getElementsByTagName('object')]
-    else:       r = readobj(v.getElementsByTagName('object')[0])
-    return r
-
-
-
 if __name__ == '__main__':
-    d = Data()
+    d = Data(imgfile=None,xmlpath=None,
+        minw = 416,
+        maxw = 416,
+        minh = 616,
+        maxh = 616,
+    )
     for i in range(2):
         img = d.create_img()
     drawrect_and_show(img, (20,20,100,100), 'hello world.')
