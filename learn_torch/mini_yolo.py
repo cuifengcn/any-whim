@@ -3,11 +3,23 @@
 # 目前仅考虑小图定位的处理。后续按需求扩展。
 # 需要配合标注工具使用
 
-# 开发于 python3
+# 开发于 python3，仅需要下面两个第三方依赖，训练的数据为 labelimg 标注型的数据。
 # 依赖 pytorch：（官网找安装方式）开发使用版本为 torch-1.4.0-cp36-cp36m-win_amd64.whl
 # 依赖 opencv： （pip install opencv-contrib-python==3.4.1.15）
 #     其实这里的 opencv 版本不重要，py3能用就行，只是个人喜欢这个版本，因为能用sift图像检测，稳。
 
+
+
+
+
+
+# 下面的 readxml 函数是用的 python 自带的库实现加载 labelimg 的数据，降低了第三方依赖度
+# 生成的数据将会自动进行相关的标签处理，所以算是一种对类似格式数据加载的一种定制化处理。
+# 后续如果需要使用新的数据，就尽量使用 labelimg 标注的数据
+# 目前只是一次训练即可保存模型，加载模型即刻测试当前数据集的部分数据。
+# 后续将增强处理的功能。可能增加部分多分类处理的部分。
+# 或许增加试试查看误差的折线图之类的处理？
+# 另外在加载网络结构的时候注意需要 net.eval() 否则结果可能不准。（已经包含于以下代码中）
 
 
 
@@ -56,8 +68,6 @@ def readxml(file, islist=False):
         d['w']      = d['xmax'] - d['xmin']
         d['h']      = d['ymax'] - d['ymin']
         d['rect']   = d['xmin'],d['ymin'],d['xmax'],d['ymax']
-        import pprint
-        pprint.pprint(d)
         d['centerx'] = (d['xmin'] + d['xmax'])/2.
         d['centery'] = (d['ymin'] + d['ymax'])/2.
         d['numpy']  = npimg_
@@ -82,10 +92,6 @@ def make_y_true(imginfo, S, anchors, class_types):
         if hh[hi] > cy: 
             break
     wi, hi = wi - 1, hi - 1
-    print(imginfo['ymin'])
-    print(imginfo['ymax'])
-    print(cx, (cx-ww[wi]))
-    print(cy, (cy-hh[hi]))
     sx, sy = (cx-ww[wi])/gap, (cy-hh[hi])/gap # 用ceil左上角做坐标并进行归一化
     ceillen = (5+len(class_types))
     log = math.log
@@ -96,8 +102,6 @@ def make_y_true(imginfo, S, anchors, class_types):
         clz[class_types.get(imginfo['cate'])] = 1.
         # v = torch.FloatTensor([sx, sy, log(bw/aw), log(bh/ah), 1.] + clz)
         v = torch.FloatTensor([sx, sy, bw, bh, 1.] + clz)
-        print(wi, hi, v)
-        # exit()
         z[wi, hi, left:left+ceillen] = v
     return z
 
@@ -131,7 +135,7 @@ class Mini(nn.Module):
     class ConvBN(nn.Module):
         def __init__(self, cin, cout, kernel_size=3, stride=1, padding=None):
             super().__init__()
-            padding   = (kernel_size - 1) // 2
+            padding   = (kernel_size - 1) // 2 if not padding else padding
             self.conv = nn.Conv2d(cin, cout, kernel_size, stride, padding, bias=False)
             self.bn   = nn.BatchNorm2d(cout, momentum=0.01)
             self.relu = nn.LeakyReLU(0.01, inplace=True)
@@ -187,11 +191,6 @@ class yoloLoss(nn.Module):
         ture_area = box_pred[...,2] * box_pred[...,3]
         pred_area = box_target[...,2] * box_target[...,3]
         IOUS = inter_area/(ture_area+pred_area-inter_area)
-        print(box_pred)
-        print('pre_xy',pre_xy)
-        print('true_xy',true_xy)
-        print('pre_wh',pre_wh_half*2)
-        print('true_wh',true_wh_half*2)
         return IOUS
 
     def forward(self,pred_tensor,target_tensor):
@@ -267,13 +266,9 @@ def parse_y_pred(ypred):
                 mm = j
     gap = 416/ypred.shape[1]
     x,y = nn
-    print('======')
-    print(ypred[0,x,y,:])
     contain = torch.sigmoid(ypred[0,x,y,4])
     pred_xy = torch.sigmoid(ypred[0,x,y,0:2])
     pred_wh = ypred[0,x,y,2:4]
-    print(pred_wh)
-    print(ypred[0,x,y,:])
     pred_clz = ypred[0,x,y,5:5+len(class_types)]
     if USE_CUDA:
         pred_xy = pred_xy.cpu().detach().numpy()
@@ -288,17 +283,14 @@ def parse_y_pred(ypred):
     rw, rh = map(float, pred_wh)
     clz_   = list(map(float, pred_clz))
     xx = rx - rw/2
-    x_ = rx + rw/2
+    _x = rx + rw/2
     yy = ry - rh/2
-    y_ = ry + rh/2
-    print(ypred[:,:,:,4])
-    print(pred_xy)
-    print(pred_wh)
+    _y = ry + rh/2
     for key in class_types:
         if clz_.index(max(clz_)) == class_types[key]:
             clz = key
             break
-    return [xx,yy,x_,y_], clz, mm
+    return [xx, yy, _x, _y], clz, mm
 
 
 
@@ -350,7 +342,6 @@ def train():
             if step%10 == 0:
                 y_pred = net(x_test.unsqueeze(0).to(DEVICE))
                 rect, clz, con = parse_y_pred(y_pred)
-                print(rect,'--------------')
     print('end.')
     torch.save(net, 'net.pkl')
     print('save.')
@@ -373,38 +364,30 @@ def drawrect_and_show(imgfile, rect, text):# 只能写英文
     cv2.destroyAllWindows()
 def test():
     net = torch.load('net.pkl').to(DEVICE)
+    net.eval() # 重点中的重点，被坑了一整天。
     with torch.no_grad():
         for i in range(2):
             y_pred = net(train_data[i][0].unsqueeze(0).to(DEVICE))
             rect, clz, con = parse_y_pred(y_pred)
-            print(imginfos[i]['numpy'].shape)
-            print(imginfos[i]['rect'])
-            print(imginfos[i]['cate'])
-            # (t,l,b,r) = rect
             rh = imginfos[i]['rateh']
             rw = imginfos[i]['ratew']
-            print(rw, rh)
-            print(rect)
             rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
             rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
-            print(rect)
-            rect = tuple(map(int, rect))
-            drawrect_and_show(imginfos[i]['file'], rect, clz+'|'+str(con))
-
-
-    with torch.no_grad():
-        x_test = train_data[0][0]
-        y_test = train_data[0][1]
-
-        y_pred = net(x_test.unsqueeze(0).to(DEVICE))
-        rect, clz, con = parse_y_pred(y_pred)
-        print(rect,'--------------')
+            con = torch.sigmoid(torch.FloatTensor([con])).tolist()[0]
+            drawrect_and_show(imginfos[i]['file'], rect, '{}|{:<.2f}'.format(clz,con))
 
 
 
 
+
+
+
+
+
+
+
+# 加载数据，生成训练数据的结构，主要需要的三个数据 anchors，class_types，train_data
 xmlpath = './train_img'
-# xmlpath = './_temp'
 SHUFFLE = False
 files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath) if path.endswith('.xml')]
 print('load_xml_num:',len(files))
