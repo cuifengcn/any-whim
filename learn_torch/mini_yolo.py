@@ -98,12 +98,11 @@ def make_y_true(imginfo, S, anchors, class_types):
     ceillen = (5+len(class_types))
     log = math.log
     z = torch.zeros((S, S, len(anchors)*ceillen))
-    for i, (aw, ah) in enumerate(anchors): # 这里的 anchor 没有参与处理，因为我暂时不会用，照着公式写仍旧有问题
+    for i, (aw, ah) in enumerate(anchors):
         left = i*ceillen
         clz = [0.]*len(class_types)
         clz[class_types.get(imginfo['cate'])] = 1.
         v = torch.FloatTensor([sx, sy, log(bw/aw), log(bh/ah), 1.] + clz)
-        # v = torch.FloatTensor([sx, sy, bw, bh, 1.] + clz)
         z[wi, hi, left:left+ceillen] = v
     return z
 
@@ -217,9 +216,10 @@ class yoloLoss(nn.Module):
         noo_target = target_tensor[noo_mask].view(N,-1,self.ceillen).to(DEVICE)
         # 置信度
         IOUS = self.get_iou(box_pred,box_target)
+        print(box_pred[...,4]*IOUS,box_target[...,4])
         box_contain_loss = F.mse_loss(box_pred[...,4]*IOUS,box_target[...,4],reduction='sum')
         noo_contain_loss = F.mse_loss(noo_pred[...,4]*IOUS,noo_target[...,4],reduction='sum')*.5
-        # 坐标点的误差，注意这里的wh，因为我没有使用anchor，所以这里直接除以 416 来均衡敏感度。
+        # 坐标点的误差
         locxy_loss = F.mse_loss(box_pred[...,0:2],box_target[...,0:2],reduction='sum')
         locwh_loss = F.mse_loss(box_pred[...,2:4],box_target[...,2:4],reduction='sum')
         loc_loss   = locxy_loss + locwh_loss
