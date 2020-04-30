@@ -185,8 +185,6 @@ class yoloLoss(nn.Module):
         true_wh_half = torch.exp(box_target[...,2:4])*self.anchors[0]/2
         true_mins = true_xy - true_wh_half
         true_maxs = true_xy + true_wh_half
-        print('pre_wh_half',pre_wh_half)
-        print('true_wh_half',true_wh_half)
 
         inter_mins = torch.max(true_mins, pre_mins)
         inter_maxs = torch.min(true_maxs, pre_maxs)
@@ -219,7 +217,6 @@ class yoloLoss(nn.Module):
         noo_target = target_tensor[noo_mask].view(N,-1,self.ceillen).to(DEVICE)
         # 置信度
         IOUS = self.get_iou(box_pred,box_target)
-        print(box_pred[...,4]*IOUS,box_target[...,4])
         box_contain_loss = F.mse_loss(box_pred[...,4]*IOUS,box_target[...,4],reduction='sum')
         noo_contain_loss = F.mse_loss(noo_pred[...,4]*IOUS,noo_target[...,4],reduction='sum')*.5
         # 坐标点的误差，注意这里的wh，因为我没有使用anchor，所以这里直接除以 416 来均衡敏感度。
