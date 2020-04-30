@@ -21,6 +21,8 @@
 # 或许增加试试查看误差的折线图之类的处理？
 # 另外在加载网络结构的时候注意需要 net.eval() 否则结果可能不准。（已经包含于以下代码中）
 
+# 目前已经可以使用 1个 anchor，后续会修改成能适配任意个 anchor 的代码。
+
 
 
 
@@ -100,8 +102,8 @@ def make_y_true(imginfo, S, anchors, class_types):
         left = i*ceillen
         clz = [0.]*len(class_types)
         clz[class_types.get(imginfo['cate'])] = 1.
-        # v = torch.FloatTensor([sx, sy, log(bw/aw), log(bh/ah), 1.] + clz)
-        v = torch.FloatTensor([sx, sy, bw, bh, 1.] + clz)
+        v = torch.FloatTensor([sx, sy, log(bw/aw), log(bh/ah), 1.] + clz)
+        # v = torch.FloatTensor([sx, sy, bw, bh, 1.] + clz)
         z[wi, hi, left:left+ceillen] = v
     return z
 
@@ -170,26 +172,28 @@ class yoloLoss(nn.Module):
         self.B = len(anchors)
         self.clazlen = len(class_types)
         self.ceillen = (5+self.clazlen)
-        # self.anchor0 = torch.FloatTensor(anchors[0]).to(DEVICE)
+        self.anchors = torch.FloatTensor(anchors).to(DEVICE)
 
     def get_iou(self,box_pred,box_target):
         rate = 416/self.S
 
         pre_xy = box_pred[...,:2] * rate
-        pre_wh_half = box_pred[...,2:4]/2
+        pre_wh_half = torch.exp(box_pred[...,2:4])*self.anchors[0]/2
         pre_mins = pre_xy - pre_wh_half
         pre_maxs = pre_xy + pre_wh_half
         true_xy = box_target[...,:2] * rate
-        true_wh_half = box_target[...,2:4]/2
+        true_wh_half = torch.exp(box_target[...,2:4])*self.anchors[0]/2
         true_mins = true_xy - true_wh_half
         true_maxs = true_xy + true_wh_half
+        print('pre_wh_half',pre_wh_half)
+        print('true_wh_half',true_wh_half)
 
         inter_mins = torch.max(true_mins, pre_mins)
         inter_maxs = torch.min(true_maxs, pre_maxs)
         inter_wh   = torch.max(inter_maxs - inter_mins, torch.FloatTensor([0.]).to(DEVICE))
         inter_area = inter_wh[...,0] * inter_wh[...,1]
-        ture_area = box_pred[...,2] * box_pred[...,3]
-        pred_area = box_target[...,2] * box_target[...,3]
+        ture_area = torch.exp(box_pred[...,2])*self.anchors[0][0] * torch.exp(box_pred[...,3])*self.anchors[0][1]
+        pred_area = torch.exp(box_target[...,2])*self.anchors[0][0] * torch.exp(box_target[...,3])*self.anchors[0][1]
         IOUS = inter_area/(ture_area+pred_area-inter_area)
         return IOUS
 
@@ -210,17 +214,17 @@ class yoloLoss(nn.Module):
         # 这里可以很重要，因为容易变踩坑，滞后的话训练会出现异常
         box_pred[...,4]  = torch.sigmoid(box_pred[...,4])
         box_pred[...,:2] = torch.sigmoid(box_pred[...,:2])
-        # box_pred[...,2:4] = torch.exp(box_pred[...,2:4])*self.anchor0
         # 非目标区将降低误差处理
-        noo_pred   = pred_tensor[noo_mask].view(N,-1,self.ceillen).to(DEVICE)
+        noo_pred   = torch.sigmoid(pred_tensor[noo_mask].view(N,-1,self.ceillen).to(DEVICE))
         noo_target = target_tensor[noo_mask].view(N,-1,self.ceillen).to(DEVICE)
         # 置信度
         IOUS = self.get_iou(box_pred,box_target)
+        print(box_pred[...,4]*IOUS,box_target[...,4])
         box_contain_loss = F.mse_loss(box_pred[...,4]*IOUS,box_target[...,4],reduction='sum')
         noo_contain_loss = F.mse_loss(noo_pred[...,4]*IOUS,noo_target[...,4],reduction='sum')*.5
         # 坐标点的误差，注意这里的wh，因为我没有使用anchor，所以这里直接除以 416 来均衡敏感度。
-        locxy_loss = F.mse_loss(box_pred[...,:2],box_target[...,:2],reduction='sum')
-        locwh_loss = F.mse_loss(box_pred[...,2:4]/416,box_target[...,2:4]/416,reduction='sum')
+        locxy_loss = F.mse_loss(box_pred[...,0:2],box_target[...,0:2],reduction='sum')
+        locwh_loss = F.mse_loss(box_pred[...,2:4],box_target[...,2:4],reduction='sum')
         loc_loss   = locxy_loss + locwh_loss
         # 分类误差
         class_loss = F.mse_loss(class_pred,class_target,reduction='sum')
@@ -278,14 +282,18 @@ def parse_y_pred(ypred):
         pred_xy = pred_xy.detach().numpy()
         pred_wh = pred_wh.detach().numpy()
         pred_clz = pred_clz.detach().numpy()
+    import math
+    exp = math.exp
     cx, cy = map(float, pred_xy)
     rx, ry = (cx + x)*gap, (cy + y)*gap
     rw, rh = map(float, pred_wh)
+    rw, rh = exp(rw)*anchors[0][0], exp(rh)*anchors[0][1]
     clz_   = list(map(float, pred_clz))
     xx = rx - rw/2
     _x = rx + rw/2
     yy = ry - rh/2
     _y = ry + rh/2
+    print(torch.sigmoid(ypred[:,:,:,4]))
     for key in class_types:
         if clz_.index(max(clz_)) == class_types[key]:
             clz = key
@@ -313,24 +321,31 @@ def train():
     BATCH_SIZE = 2
     LR = 0.001
     train_loader = Data.DataLoader(
-        dataset=train_data,
-        batch_size=BATCH_SIZE,
-        # shuffle=SHUFFLE,
+        dataset    = train_data,
+        batch_size = BATCH_SIZE,
+        # shuffle    = True,
     )
-    net = Mini(anchors, class_types)
-    net.to(DEVICE)
-    optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+    try:
+        state = torch.load('net.pkl')
+        net = state['net'].to(DEVICE)
+        optimizer = state['optimizer']
+        epoch = state['epoch']
+        print('load train.')
+    except:
+        net = Mini(anchors, class_types)
+        net.to(DEVICE)
+        optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+        epoch = 0
+        print('new train.')
     yloss = yoloLoss(13, anchors=anchors, class_types=class_types, )
-    with torch.no_grad():
-        x_test = train_data[0][0]
-        y_test = train_data[0][1]
     # 测试代码，目前只抽取一张图片无限训练，这样可以很快测试这张图片是否存在收敛
     # 正式使用请改成训练全部图片的代码
-    for epoch in range(EPOCH):
+    net.train()
+    for epoch in range(epoch, epoch+EPOCH):
         print('epoch', epoch)
         for step, (x_true_, y_true_) in enumerate(train_loader):
             break
-        for step in range(500):
+        for step in range(50):
             print('[{:<3}]'.format(step), end='')
             x_true = Variable(x_true_).to(DEVICE)
             y_true = Variable(y_true_).to(DEVICE)
@@ -339,11 +354,9 @@ def train():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if step%10 == 0:
-                y_pred = net(x_test.unsqueeze(0).to(DEVICE))
-                rect, clz, con = parse_y_pred(y_pred)
     print('end.')
-    torch.save(net, 'net.pkl')
+    state = {'net':net, 'optimizer':optimizer, 'epoch':epoch+1}
+    torch.save(state, 'net.pkl')
     print('save.')
 
 
@@ -363,7 +376,9 @@ def drawrect_and_show(imgfile, rect, text):# 只能写英文
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 def test():
-    net = torch.load('net.pkl').to(DEVICE)
+    state = torch.load('net.pkl')
+    net = state['net'].to(DEVICE)
+    optimizer = state['optimizer']
     net.eval() # 重点中的重点，被坑了一整天。
     with torch.no_grad():
         for i in range(2):
@@ -386,20 +401,46 @@ def test():
 
 
 
+
+
+
+def load_xml_data(xmlpath):
+    anchors = [[121, 174]] # 这里的内容没有被实际用到，仅留后续扩展考虑。
+    files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath) if path.endswith('.xml')]
+    imginfos = [readxml(file) for file in files]
+    class_types = [imginfo.get('cate') for imginfo in imginfos]
+    class_types = {typ:idx for idx,typ in enumerate(sorted(list(set(class_types))))}
+    train_data = [(torch.FloatTensor(imginfo['numpy']), \
+                  make_y_true(imginfo, 13, anchors, class_types)) for imginfo in imginfos]    
+    print('load_xml_num:',len(files))
+    print('class_types:',class_types)
+    return train_data, class_types, anchors, imginfos
+
+
+
+
+
+
+
+
+
+
+
 # 加载数据，生成训练数据的结构，主要需要的三个数据 anchors，class_types，train_data
 xmlpath = './train_img'
-SHUFFLE = False
-files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath) if path.endswith('.xml')]
-print('load_xml_num:',len(files))
-anchors = [[121, 174]] # 这里的内容没有被实际用到，仅留后续扩展考虑。
-imginfos = [readxml(file) for file in files]
-class_types = [imginfo.get('cate') for imginfo in imginfos]
-class_types = {typ:idx for idx,typ in enumerate(sorted(list(set(class_types))))}
-train_data = [(torch.FloatTensor(imginfo['numpy']), \
-              make_y_true(imginfo, 13, anchors, class_types)) for imginfo in imginfos]
-print('class_types:',class_types)
+train_data, class_types, anchors, imginfos = load_xml_data(xmlpath)
 train()
 test()
+
+
+
+
+
+
+
+
+
+
 
 
 
