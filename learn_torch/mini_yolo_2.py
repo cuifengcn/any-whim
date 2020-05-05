@@ -29,7 +29,7 @@ import math
 import xml.dom.minidom
 from collections import OrderedDict
 
-def readxml(file, islist=False):
+def read_voc_xml(file, islist=False):
     # 读取 xml 文件，根据其中的内容读取图片数据，并且获取标注信息
     # 该类 xml 文件为 python第三方库 labelImg 所标注的数据的结构信息
     # islist：
@@ -71,6 +71,7 @@ def readxml(file, islist=False):
     else:       r = readobj(v.getElementsByTagName('object')[0])
     return r
 
+# 生成 y_true 用于误差计算
 def make_y_true(imginfo, S, anchors, class_types):
     def get_max_match_anchor_idx(anchors, bw, bh):
         ious = []
@@ -107,6 +108,58 @@ def make_y_true(imginfo, S, anchors, class_types):
             z[wi, hi, left:left+ceillen] = v
     return z
 
+# 将经过网络得内容转换成坐标和分类名字
+def parse_y_pred(ypred, anchors, class_types):
+    ceillen = 5+len(class_types)
+    nn = None
+    mm = float('inf')
+    for idx in range(len(anchors)):
+        if USE_CUDA:
+            a = ypred[:,:,:,4+idx*ceillen].cpu().detach().numpy()
+        else:
+            a = ypred[:,:,:,4+idx*ceillen].detach().numpy()
+        for ii,i in enumerate(a[0]):
+            for jj,j in enumerate(i):
+                if j > mm or nn == None:
+                    nn = (ii,jj,idx)
+                    mm = j
+    gap = 416/ypred.shape[1]
+    x,y,idx = nn
+    gp = idx*ceillen
+    contain = torch.sigmoid(ypred[0,x,y,gp+4])
+    pred_xy = torch.sigmoid(ypred[0,x,y,gp+0:gp+2])
+    pred_wh = ypred[0,x,y,gp+2:gp+4]
+    pred_clz = ypred[0,x,y,gp+5:gp+5+len(class_types)]
+    if USE_CUDA:
+        pred_xy = pred_xy.cpu().detach().numpy()
+        pred_wh = pred_wh.cpu().detach().numpy()
+        pred_clz = pred_clz.cpu().detach().numpy()
+    else:
+        pred_xy = pred_xy.detach().numpy()
+        pred_wh = pred_wh.detach().numpy()
+        pred_clz = pred_clz.detach().numpy()
+    import math
+    exp = math.exp
+    cx, cy = map(float, pred_xy)
+    rx, ry = (cx + x)*gap, (cy + y)*gap
+    rw, rh = map(float, pred_wh)
+    rw, rh = exp(rw)*anchors[idx][0], exp(rh)*anchors[idx][1]
+    clz_   = list(map(float, pred_clz))
+    xx = rx - rw/2
+    _x = rx + rw/2
+    yy = ry - rh/2
+    _y = ry + rh/2
+    np.set_printoptions(precision=2, linewidth=200, suppress=True)
+    if USE_CUDA:
+        log_cons = torch.sigmoid(ypred[:,:,:,gp+4]).cpu().detach().numpy()
+    else:
+        log_cons = torch.sigmoid(ypred[:,:,:,gp+4]).detach().numpy()
+    log_cons = np.transpose(log_cons, (0, 2, 1))
+    for key in class_types:
+        if clz_.index(max(clz_)) == class_types[key]:
+            clz = key
+            break
+    return [xx, yy, _x, _y], clz, mm, log_cons
 
 
 
@@ -166,7 +219,7 @@ class Mini(nn.Module):
         return self.model(x).permute(0,2,3,1)
 
 class yoloLoss(nn.Module):
-    def __init__(self,S, anchors, class_types):
+    def __init__(self, S, anchors, class_types):
         super(yoloLoss,self).__init__()
         self.S = S
         self.B = len(anchors)
@@ -196,16 +249,21 @@ class yoloLoss(nn.Module):
 
     def forward(self,predict_tensor,target_tensor):
         N = predict_tensor.size()[0]
-        all_loss = 0
+        box_contain_loss = 0
+        noo_contain_loss = 0
+        locxy_loss       = 0
+        locwh_loss       = 0
+        loc_loss         = 0
+        class_loss       = 0
         for idx in range(self.B):
             targ_tensor = target_tensor [:,:,:,idx*self.ceillen:(idx+1)*self.ceillen]
             pred_tensor = predict_tensor[:,:,:,idx*self.ceillen:(idx+1)*self.ceillen]
             coo_mask = (targ_tensor[:,:,:,4] >  0).unsqueeze(-1).expand_as(targ_tensor)
             noo_mask = (targ_tensor[:,:,:,4] == 0).unsqueeze(-1).expand_as(targ_tensor)
             if not torch.any(coo_mask): 
-                noo_pred = torch.sigmoid(pred_tensor[noo_mask].view(-1,self.ceillen))
+                noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen)
                 noo_targ = targ_tensor[noo_mask].view(-1,self.ceillen)
-                all_loss += F.mse_loss(noo_pred[...,4]*ious, noo_targ[...,4],reduction='sum')*.2
+                noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4])*1, noo_targ[...,4],reduction='sum')*.1
             else:
                 coo_pred = pred_tensor[coo_mask].view(-1,self.ceillen).to(DEVICE)
                 coo_targ = targ_tensor[coo_mask].view(-1,self.ceillen).to(DEVICE)
@@ -219,21 +277,20 @@ class yoloLoss(nn.Module):
 
                 box_pred[...,:2] = torch.sigmoid(box_pred[...,:2])
                 ious = self.get_iou(box_pred,box_targ,idx)
-                box_contain_loss = F.mse_loss(torch.sigmoid(box_pred[...,4])*ious, box_targ[...,4],reduction='sum')
-                noo_contain_loss = F.mse_loss(torch.sigmoid(noo_pred[...,4])*ious, noo_targ[...,4],reduction='sum')*.2
-                locxy_loss = F.mse_loss(box_pred[...,0:2], box_targ[...,0:2],reduction='sum')
-                locwh_loss = F.mse_loss(box_pred[...,2:4], box_targ[...,2:4],reduction='sum')
-                loc_loss   = locxy_loss + locwh_loss
-                class_loss = F.mse_loss(class_pred,class_targ,reduction='sum')
-                all_loss  += (box_contain_loss + noo_contain_loss + loc_loss + class_loss)/N
+                box_contain_loss += F.mse_loss(torch.sigmoid(box_pred[...,4])*ious, box_targ[...,4],reduction='sum')
+                noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4])*ious, noo_targ[...,4],reduction='sum')*.1
+                locxy_loss       += F.mse_loss(box_pred[...,0:2], box_targ[...,0:2],reduction='sum')
+                locwh_loss       += F.mse_loss(box_pred[...,2:4], box_targ[...,2:4],reduction='sum')
+                loc_loss         += locxy_loss + locwh_loss
+                class_loss       += F.mse_loss(class_pred,class_targ,reduction='sum')
                 # print('[ ious ]              :', ious)
-                # print('[ box_contain_loss ]  :', box_contain_loss)
-                # print('[ noo_contain_loss ]  :', noo_contain_loss)
-                # print('[ loc_loss ]          :', loc_loss)
-                # print('[  |locxy_loss ]      :', locxy_loss)
-                # print('[  |locwh_loss ]      :', locwh_loss)
-                # print('[ class_loss ]        :', class_loss)
-        print('[ all_loss ]          :', all_loss)
+        all_loss = (box_contain_loss + noo_contain_loss + loc_loss + class_loss)/N/self.B
+        print(
+            '[ loss ] (con){:>.3f}, (noo){:>.3f}, (xy){:>.3f}, (wh){:>.3f}, (class){:>.3f}, (all){:>.3f}.'.format(
+                box_contain_loss.item(),    noo_contain_loss.item(),    locxy_loss.item(),
+                locwh_loss.item(),          class_loss.item(),          all_loss.item(),
+            )
+        )
         return all_loss
 
 
@@ -251,53 +308,6 @@ class yoloLoss(nn.Module):
 
 
 
-# 将经过网络得内容转换成坐标和分类名字
-def parse_y_pred(ypred):
-    ceillen = 5+len(class_types)
-    nn = None
-    mm = float('inf')
-    for idx in range(len(anchors)):
-        if USE_CUDA:
-            a = ypred[:,:,:,4+idx*ceillen].cpu().detach().numpy()
-        else:
-            a = ypred[:,:,:,4+idx*ceillen].detach().numpy()
-        for ii,i in enumerate(a[0]):
-            for jj,j in enumerate(i):
-                if j > mm or nn == None:
-                    nn = (ii,jj,idx)
-                    mm = j
-    gap = 416/ypred.shape[1]
-    x,y,idx = nn
-    gp = idx*ceillen
-    contain = torch.sigmoid(ypred[0,x,y,gp+4])
-    pred_xy = torch.sigmoid(ypred[0,x,y,gp+0:gp+2])
-    pred_wh = ypred[0,x,y,gp+2:gp+4]
-    pred_clz = ypred[0,x,y,gp+5:gp+5+len(class_types)]
-    if USE_CUDA:
-        pred_xy = pred_xy.cpu().detach().numpy()
-        pred_wh = pred_wh.cpu().detach().numpy()
-        pred_clz = pred_clz.cpu().detach().numpy()
-    else:
-        pred_xy = pred_xy.detach().numpy()
-        pred_wh = pred_wh.detach().numpy()
-        pred_clz = pred_clz.detach().numpy()
-    import math
-    exp = math.exp
-    cx, cy = map(float, pred_xy)
-    rx, ry = (cx + x)*gap, (cy + y)*gap
-    rw, rh = map(float, pred_wh)
-    rw, rh = exp(rw)*anchors[idx][0], exp(rh)*anchors[idx][1]
-    clz_   = list(map(float, pred_clz))
-    xx = rx - rw/2
-    _x = rx + rw/2
-    yy = ry - rh/2
-    _y = ry + rh/2
-    print(torch.sigmoid(ypred[:,:,:,gp+4]))
-    for key in class_types:
-        if clz_.index(max(clz_)) == class_types[key]:
-            clz = key
-            break
-    return [xx, yy, _x, _y], clz, mm
 
 
 
@@ -306,16 +316,7 @@ def parse_y_pred(ypred):
 
 
 
-
-
-
-
-
-
-
-
-
-def train():
+def train(train_data, anchors, class_types):
     EPOCH = 1
     BATCH_SIZE = 2
     LR = 0.001
@@ -352,7 +353,7 @@ def train():
             loss.backward()
             optimizer.step()
     print('end.')
-    state = {'net':net, 'optimizer':optimizer, 'epoch':epoch+1}
+    state = {'net':net, 'optimizer':optimizer, 'epoch':epoch+1, 'anchors':anchors, 'class_types':class_types}
     torch.save(state, 'net.pkl')
     print('save.')
 
@@ -372,21 +373,46 @@ def drawrect_and_show(imgfile, rect, text):# 只能写英文
     cv2.imshow('test', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-def test():
+def test(imginfos):
     state = torch.load('net.pkl')
     net = state['net'].to(DEVICE)
     optimizer = state['optimizer']
+    anchors = state['anchors']
+    class_types = state['class_types']
     net.eval() # 重点中的重点，被坑了一整天。
     with torch.no_grad():
-        for i in range(2):
-            y_pred = net(train_data[i][0].unsqueeze(0).to(DEVICE))
-            rect, clz, con = parse_y_pred(y_pred)
+        for i in range(10):
+            y_pred = net(torch.FloatTensor(imginfos[i]['numpy']).unsqueeze(0).to(DEVICE))
+            rect, clz, con, log_cons = parse_y_pred(y_pred, anchors, class_types)
             rh = imginfos[i]['rateh']
             rw = imginfos[i]['ratew']
             rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
             rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
-            con = torch.sigmoid(torch.FloatTensor([con])).tolist()[0]
+            con = torch.sigmoid(torch.FloatTensor([con])).item()
+            print(con)
+            print(log_cons)
             drawrect_and_show(imginfos[i]['file'], rect, '{}|{:<.2f}'.format(clz,con))
+def test2(filename):
+    state = torch.load('net.pkl')
+    net = state['net'].to(DEVICE)
+    optimizer = state['optimizer']
+    anchors = state['anchors']
+    class_types = state['class_types']
+    net.eval() # 重点中的重点，被坑了一整天。
+    npimg = cv2.imread(filename)
+    height, width = npimg.shape[:2]
+    npimg = cv2.cvtColor(npimg, cv2.COLOR_BGR2RGB) # [y,x,c]
+    npimg = cv2.resize(npimg, (416, 416))
+    npimg_ = np.transpose(npimg, (2,1,0)) # [c,x,y]
+    y_pred = net(torch.FloatTensor(npimg_).unsqueeze(0).to(DEVICE))
+    rect, clz, con, log_cons = parse_y_pred(y_pred, anchors, class_types)
+    rw, rh = width/416, height/416
+    rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
+    rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
+    con = torch.sigmoid(torch.FloatTensor([con])).item()
+    print(con)
+    print(log_cons)
+    drawrect_and_show(filename, rect, '{}|{:<.2f}'.format(clz,con))
 
 
 
@@ -397,23 +423,24 @@ def test():
 
 
 
-
-
-
-
-def load_xml_data(xmlpath):
-    anchors = [[40, 80],[80, 40],[60, 60]]
+def load_voc_data(xmlpath, anchors):
     files = [os.path.join(xmlpath, path) for path in os.listdir(xmlpath) if path.endswith('.xml')]
     imginfos = []
-    for file in files:
-        imginfos.extend(readxml(file, islist=True))
+    for idx, file in enumerate(files):
+        imginfos.extend(read_voc_xml(file, islist=True))
+    # 注意这里加载数据的方式是小批量加载处理，所以自动生成 class_types
+    # 如果有大量数据想要进行多批次训练，那么就需要注意 class_types 的生成。
     class_types = [imginfo.get('cate') for imginfo in imginfos]
     class_types = {typ:idx for idx,typ in enumerate(sorted(list(set(class_types))))}
-    train_data = [(torch.FloatTensor(imginfo['numpy']), \
-                  make_y_true(imginfo, 13, anchors, class_types)) for imginfo in imginfos]    
-    print('load_xml_num:',len(files))
-    print('class_types:',class_types)
-    return train_data, class_types, anchors, imginfos
+    train_data = []
+    for idx, imginfo in enumerate(imginfos):
+        x_true = torch.FloatTensor(imginfo['numpy'])
+        y_true = make_y_true(imginfo, 13, anchors, class_types)
+        train_data.append([x_true, y_true])
+    print('load_xml_num:', len(files))
+    print('class_types:', class_types)
+    print('anchors:', anchors)
+    return train_data, imginfos, class_types
 
 
 
@@ -426,11 +453,16 @@ def load_xml_data(xmlpath):
 
 
 # 加载数据，生成训练数据的结构，主要需要的三个数据 anchors，class_types，train_data
-xmlpath = './train_img'
-train_data, class_types, anchors, imginfos = load_xml_data(xmlpath)
-train()
-test()
+# 训练结束后会将 anchors, class_types 信息一并存放，所以预测时无需重新加载数据获取这两项信息
+# 如果存在之前的训练文件，会自动加载进行继续训练，并且保存时会覆盖之前的模型
+# xmlpath = './train_img'
+# anchors = [[40, 80],[80, 40],[60, 60]]
+# train_data, imginfos, class_types = load_voc_data(xmlpath, anchors)
+# train(train_data, anchors, class_types)
 
+
+test(imginfos)
+test2('./train_img/20200426_00000.png')
 
 
 
