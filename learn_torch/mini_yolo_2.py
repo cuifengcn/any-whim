@@ -108,10 +108,10 @@ def make_y_true(imginfo, S, anchors, class_types):
     return z
 
 # 将经过网络得内容转换成坐标和分类名字
-def parse_y_pred(ypred, anchors, class_types):
+def parse_y_pred(ypred, anchors, class_types, islist=False, threshold=0.2):
     ceillen = 5+len(class_types)
-    nn = None
-    mm = float('inf')
+    sigmoid = lambda x:1/(1+math.exp(-x))
+    infos = []
     for idx in range(len(anchors)):
         if USE_CUDA:
             a = ypred[:,:,:,4+idx*ceillen].cpu().detach().numpy()
@@ -119,46 +119,50 @@ def parse_y_pred(ypred, anchors, class_types):
             a = ypred[:,:,:,4+idx*ceillen].detach().numpy()
         for ii,i in enumerate(a[0]):
             for jj,j in enumerate(i):
-                if j > mm or nn == None:
-                    nn = (ii,jj,idx)
-                    mm = j
-    gap = 416/ypred.shape[1]
-    x,y,idx = nn
-    gp = idx*ceillen
-    contain = torch.sigmoid(ypred[0,x,y,gp+4])
-    pred_xy = torch.sigmoid(ypred[0,x,y,gp+0:gp+2])
-    pred_wh = ypred[0,x,y,gp+2:gp+4]
-    pred_clz = ypred[0,x,y,gp+5:gp+5+len(class_types)]
-    if USE_CUDA:
-        pred_xy = pred_xy.cpu().detach().numpy()
-        pred_wh = pred_wh.cpu().detach().numpy()
-        pred_clz = pred_clz.cpu().detach().numpy()
+                infos.append((ii,jj,idx,sigmoid(j)))
+    infos = sorted(infos, key=lambda i:-i[3])
+    def get_xyxy_clz_con(info):
+        gap = 416/ypred.shape[1]
+        x,y,idx,con = info
+        gp = idx*ceillen
+        contain = torch.sigmoid(ypred[0,x,y,gp+4])
+        pred_xy = torch.sigmoid(ypred[0,x,y,gp+0:gp+2])
+        pred_wh = ypred[0,x,y,gp+2:gp+4]
+        pred_clz = ypred[0,x,y,gp+5:gp+5+len(class_types)]
+        if USE_CUDA:
+            pred_xy = pred_xy.cpu().detach().numpy()
+            pred_wh = pred_wh.cpu().detach().numpy()
+            pred_clz = pred_clz.cpu().detach().numpy()
+        else:
+            pred_xy = pred_xy.detach().numpy()
+            pred_wh = pred_wh.detach().numpy()
+            pred_clz = pred_clz.detach().numpy()
+        import math
+        exp = math.exp
+        cx, cy = map(float, pred_xy)
+        rx, ry = (cx + x)*gap, (cy + y)*gap
+        rw, rh = map(float, pred_wh)
+        rw, rh = exp(rw)*anchors[idx][0], exp(rh)*anchors[idx][1]
+        clz_   = list(map(float, pred_clz))
+        xx = rx - rw/2
+        _x = rx + rw/2
+        yy = ry - rh/2
+        _y = ry + rh/2
+        np.set_printoptions(precision=2, linewidth=200, suppress=True)
+        if USE_CUDA:
+            log_cons = torch.sigmoid(ypred[:,:,:,gp+4]).cpu().detach().numpy()
+        else:
+            log_cons = torch.sigmoid(ypred[:,:,:,gp+4]).detach().numpy()
+        log_cons = np.transpose(log_cons, (0, 2, 1))
+        for key in class_types:
+            if clz_.index(max(clz_)) == class_types[key]:
+                clz = key
+                break
+        return [xx, yy, _x, _y], clz, con, log_cons
+    if islist:
+        return [get_xyxy_clz_con(i) for i in infos if i[3] > threshold]
     else:
-        pred_xy = pred_xy.detach().numpy()
-        pred_wh = pred_wh.detach().numpy()
-        pred_clz = pred_clz.detach().numpy()
-    import math
-    exp = math.exp
-    cx, cy = map(float, pred_xy)
-    rx, ry = (cx + x)*gap, (cy + y)*gap
-    rw, rh = map(float, pred_wh)
-    rw, rh = exp(rw)*anchors[idx][0], exp(rh)*anchors[idx][1]
-    clz_   = list(map(float, pred_clz))
-    xx = rx - rw/2
-    _x = rx + rw/2
-    yy = ry - rh/2
-    _y = ry + rh/2
-    np.set_printoptions(precision=2, linewidth=200, suppress=True)
-    if USE_CUDA:
-        log_cons = torch.sigmoid(ypred[:,:,:,gp+4]).cpu().detach().numpy()
-    else:
-        log_cons = torch.sigmoid(ypred[:,:,:,gp+4]).detach().numpy()
-    log_cons = np.transpose(log_cons, (0, 2, 1))
-    for key in class_types:
-        if clz_.index(max(clz_)) == class_types[key]:
-            clz = key
-            break
-    return [xx, yy, _x, _y], clz, mm, log_cons
+        return get_xyxy_clz_con(infos[0])
 
 
 
@@ -282,7 +286,7 @@ class yoloLoss(nn.Module):
                 locwh_loss       += F.mse_loss(box_pred[...,2:4], box_targ[...,2:4],reduction='sum')
                 loc_loss         += locxy_loss + locwh_loss
                 class_loss       += F.mse_loss(class_pred,class_targ,reduction='sum')
-                # print('[ ious ]              :', ious)
+                # print('[ ious ] :', ious)
         all_loss = (box_contain_loss + noo_contain_loss + loc_loss + class_loss)/N/self.B
         print(
             '[ loss ] (con){:>.3f}, (noo){:>.3f}, (xy){:>.3f}, (wh){:>.3f}, (class){:>.3f}, (all){:>.3f}.'.format(
@@ -317,7 +321,7 @@ class yoloLoss(nn.Module):
 
 def train(train_data, anchors, class_types):
     EPOCH = 1
-    BATCH_SIZE = 2
+    BATCH_SIZE = 4
     LR = 0.001
     train_loader = Data.DataLoader(
         dataset    = train_data,
@@ -341,8 +345,8 @@ def train(train_data, anchors, class_types):
     for epoch in range(epoch, epoch+EPOCH):
         print('epoch', epoch)
         for step, (x_true_, y_true_) in enumerate(train_loader):
-            break
-        for step in range(250):
+            break                 # for test
+        for step in range(250):   # for test
             print('[{:<3}]'.format(step), end='')
             x_true = Variable(x_true_).to(DEVICE)
             y_true = Variable(y_true_).to(DEVICE)
@@ -351,10 +355,11 @@ def train(train_data, anchors, class_types):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+        state = {'net':net, 'optimizer':optimizer, 'epoch':epoch+1, 
+                 'anchors':anchors, 'class_types':class_types}
+        torch.save(state, 'net.pkl')
+        print('save.')
     print('end.')
-    state = {'net':net, 'optimizer':optimizer, 'epoch':epoch+1, 'anchors':anchors, 'class_types':class_types}
-    torch.save(state, 'net.pkl')
-    print('save.')
 
 
 
@@ -364,11 +369,32 @@ def train(train_data, anchors, class_types):
 
 
 
-def drawrect_and_show(imgfile, rect, text):# 只能写英文
-    img = cv2.imread(imgfile)
+
+
+
+
+
+
+
+def drawrect(img, rect, text):
     cv2.rectangle(img, tuple(rect[:2]), tuple(rect[2:]), (10,10,10), 1, 1)
     x, y = rect[:2]
-    cv2.putText(img, text, (x,y+10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10,10,10), 1)
+    def cv2ImgAddText(img, text, left, top, textColor=(0, 255, 0), textSize=20):
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(img)
+        fontText = ImageFont.truetype( "font/simsun.ttc", textSize, encoding="utf-8")
+        draw.text((left, top), text, textColor, font=fontText)
+        return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
+    import re
+    if re.findall('[\u4e00-\u9fa5]', text):
+        img = cv2ImgAddText(img, text, x, y-12, (10,10,10), 12) # 如果存在中文则使用这种方式绘制文字
+    else:
+        cv2.putText(img, text, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (10,10,10), 1)
+    return img
+def drawrect_and_show(imgfile, rect, text):# 只能写英文
+    img = cv2.imread(imgfile)
+    img = drawrect(img, rect, text)
     cv2.imshow('test', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -387,7 +413,6 @@ def test(imginfos):
             rw = imginfos[i]['ratew']
             rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
             rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
-            con = torch.sigmoid(torch.FloatTensor([con])).item()
             print(con)
             print(log_cons)
             drawrect_and_show(imginfos[i]['file'], rect, '{}|{:<.2f}'.format(clz,con))
@@ -408,11 +433,34 @@ def test2(filename):
     rw, rh = width/416, height/416
     rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
     rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
-    con = torch.sigmoid(torch.FloatTensor([con])).item()
     print(con)
     print(log_cons)
     drawrect_and_show(filename, rect, '{}|{:<.2f}'.format(clz,con))
-
+def test3(filename):
+    state = torch.load('net.pkl')
+    net = state['net'].to(DEVICE)
+    optimizer = state['optimizer']
+    anchors = state['anchors']
+    class_types = state['class_types']
+    net.eval() # 重点中的重点，被坑了一整天。
+    npimg = cv2.imread(filename)
+    height, width = npimg.shape[:2]
+    npimg = cv2.cvtColor(npimg, cv2.COLOR_BGR2RGB) # [y,x,c]
+    npimg = cv2.resize(npimg, (416, 416))
+    npimg_ = np.transpose(npimg, (2,1,0)) # [c,x,y]
+    y_pred = net(torch.FloatTensor(npimg_).unsqueeze(0).to(DEVICE))
+    img = cv2.imread(filename)
+    v = parse_y_pred(y_pred, anchors, class_types, islist=True, threshold=0.2)
+    print(len(v))
+    for i in v:
+        rect, clz, con, log_cons = i
+        rw, rh = width/416, height/416
+        rect[0],rect[2] = int(rect[0]*rw),int(rect[2]*rw)
+        rect[1],rect[3] = int(rect[1]*rh),int(rect[3]*rh)
+        img = drawrect(img, rect, '{}|{:<.2f}'.format(clz,con))
+    cv2.imshow('test', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 
@@ -460,8 +508,8 @@ train_data, imginfos, class_types = load_voc_data(xmlpath, anchors)
 train(train_data, anchors, class_types)
 test(imginfos)
 
-
-test2('./train_img/20200426_00000.png')
+# test2('./train_img/20200426_00000.png') # 单点标注测试
+# test3('./train_img/20200426_00000.png') # 多点标注测试
 
 
 
