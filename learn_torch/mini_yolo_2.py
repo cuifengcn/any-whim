@@ -261,17 +261,17 @@ class yoloLoss(nn.Module):
             coo_mask = (targ_tensor[:,:,:,4] >  0).unsqueeze(-1).expand_as(targ_tensor)
             noo_mask = (targ_tensor[:,:,:,4] == 0).unsqueeze(-1).expand_as(targ_tensor)
             if not torch.any(coo_mask): 
-                noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen)
-                noo_targ = targ_tensor[noo_mask].view(-1,self.ceillen)
+                noo_pred = pred_tensor[noo_mask].view(N,-1,self.ceillen)
+                noo_targ = targ_tensor[noo_mask].view(N,-1,self.ceillen)
                 noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4])*1, noo_targ[...,4],reduction='sum')*.1
             else:
-                coo_pred = pred_tensor[coo_mask].view(-1,self.ceillen).to(DEVICE)
-                coo_targ = targ_tensor[coo_mask].view(-1,self.ceillen).to(DEVICE)
-                noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen)
-                noo_targ = targ_tensor[noo_mask].view(-1,self.ceillen)
+                coo_pred = pred_tensor[coo_mask].view(N,-1,self.ceillen).to(DEVICE)
+                coo_targ = targ_tensor[coo_mask].view(N,-1,self.ceillen).to(DEVICE)
+                noo_pred = pred_tensor[noo_mask].view(N,-1,self.ceillen)
+                noo_targ = targ_tensor[noo_mask].view(N,-1,self.ceillen)
 
-                box_pred = coo_pred[...,0:5].contiguous().view(-1,5)
-                box_targ = coo_targ[...,0:5].contiguous().view(-1,5)
+                box_pred = coo_pred[...,0:5].contiguous().view(N,-1,5)
+                box_targ = coo_targ[...,0:5].contiguous().view(N,-1,5)
                 class_pred = coo_pred[...,5:5+self.clazlen]
                 class_targ = coo_targ[...,5:5+self.clazlen]
 
@@ -455,13 +455,13 @@ def load_voc_data(xmlpath, anchors):
 # 加载数据，生成训练数据的结构，主要需要的三个数据 anchors，class_types，train_data
 # 训练结束后会将 anchors, class_types 信息一并存放，所以预测时无需重新加载数据获取这两项信息
 # 如果存在之前的训练文件，会自动加载进行继续训练，并且保存时会覆盖之前的模型
-# xmlpath = './train_img'
-# anchors = [[40, 80],[80, 40],[60, 60]]
-# train_data, imginfos, class_types = load_voc_data(xmlpath, anchors)
-# train(train_data, anchors, class_types)
-
-
+xmlpath = './train_img'
+anchors = [[40, 80],[80, 40],[60, 60]]
+train_data, imginfos, class_types = load_voc_data(xmlpath, anchors)
+train(train_data, anchors, class_types)
 test(imginfos)
+
+
 test2('./train_img/20200426_00000.png')
 
 
