@@ -47,7 +47,6 @@ def read_voc_xml(file, islist=False):
     npimg_ = np.transpose(npimg, (2,1,0)) # [c,x,y]
     def readobj(obj):
         d = {}
-        obj  = v.getElementsByTagName('object')[0]
         bbox = obj.getElementsByTagName('bndbox')[0]
         d['width']  = int(size.getElementsByTagName('width')[0].firstChild.data)
         d['height'] = int(size.getElementsByTagName('height')[0].firstChild.data)
