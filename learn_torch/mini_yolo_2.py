@@ -264,24 +264,24 @@ class yoloLoss(nn.Module):
             coo_mask = (targ_tensor[:,:,:,4] >  0).unsqueeze(-1).expand_as(targ_tensor)
             noo_mask = (targ_tensor[:,:,:,4] == 0).unsqueeze(-1).expand_as(targ_tensor)
             if not torch.any(coo_mask): 
-                noo_pred = pred_tensor[noo_mask].view(N,-1,self.ceillen)
-                noo_targ = targ_tensor[noo_mask].view(N,-1,self.ceillen)
-                noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4])*1, noo_targ[...,4],reduction='sum')*.1
+                noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen)
+                noo_targ = targ_tensor[noo_mask].view(-1,self.ceillen)
+                noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4]),   noo_targ[...,4],reduction='sum')*.1
             else:
-                coo_pred = pred_tensor[coo_mask].view(N,-1,self.ceillen).to(DEVICE)
-                coo_targ = targ_tensor[coo_mask].view(N,-1,self.ceillen).to(DEVICE)
-                noo_pred = pred_tensor[noo_mask].view(N,-1,self.ceillen)
-                noo_targ = targ_tensor[noo_mask].view(N,-1,self.ceillen)
+                coo_pred = pred_tensor[coo_mask].view(-1,self.ceillen)
+                coo_targ = targ_tensor[coo_mask].view(-1,self.ceillen)
+                noo_pred = pred_tensor[noo_mask].view(-1,self.ceillen)
+                noo_targ = targ_tensor[noo_mask].view(-1,self.ceillen)
 
-                box_pred = coo_pred[...,0:5].contiguous().view(N,-1,5)
-                box_targ = coo_targ[...,0:5].contiguous().view(N,-1,5)
+                box_pred = coo_pred[...,0:5].contiguous().view(-1,5)
+                box_targ = coo_targ[...,0:5].contiguous().view(-1,5)
                 class_pred = coo_pred[...,5:5+self.clazlen]
                 class_targ = coo_targ[...,5:5+self.clazlen]
 
                 box_pred[...,:2] = torch.sigmoid(box_pred[...,:2])
                 ious = self.get_iou(box_pred,box_targ,idx)
                 box_contain_loss += F.mse_loss(torch.sigmoid(box_pred[...,4])*ious, box_targ[...,4],reduction='sum')
-                noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4])*ious, noo_targ[...,4],reduction='sum')*.1
+                noo_contain_loss += F.mse_loss(torch.sigmoid(noo_pred[...,4]),      noo_targ[...,4],reduction='sum')*.1
                 locxy_loss       += F.mse_loss(box_pred[...,0:2], box_targ[...,0:2],reduction='sum')
                 locwh_loss       += F.mse_loss(box_pred[...,2:4], box_targ[...,2:4],reduction='sum')
                 loc_loss         += locxy_loss + locwh_loss
