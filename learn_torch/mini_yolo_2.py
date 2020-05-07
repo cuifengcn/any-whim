@@ -507,6 +507,7 @@ def load_voc_data(xmlpath, anchors):
 # 加载数据，生成训练数据的结构，主要需要的三个数据 anchors，class_types，train_data
 # 训练结束后会将 anchors, class_types 信息一并存放，所以预测时无需重新加载数据获取这两项信息
 # 如果存在之前的训练文件，会自动加载进行继续训练，并且保存时会覆盖之前的模型
+# 另外这里的 anchor 数量可以自由调整，如果所定位的形状没有太大变化，设置成一个 [[60, 60]] 会节约计算资源
 xmlpath = './train_img'
 anchors = [[40, 80],[80, 40],[60, 60]]
 train_data, imginfos, class_types = load_voc_data(xmlpath, anchors)
