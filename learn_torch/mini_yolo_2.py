@@ -143,7 +143,6 @@ def parse_y_pred(ypred, anchors, class_types, islist=False, threshold=0.2):
             pred_xy = pred_xy.detach().numpy()
             pred_wh = pred_wh.detach().numpy()
             pred_clz = pred_clz.detach().numpy()
-        import math
         exp = math.exp
         cx, cy = map(float, pred_xy)
         rx, ry = (cx + x)*gap, (cy + y)*gap
