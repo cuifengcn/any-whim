@@ -39,7 +39,13 @@ def read_voc_xml(file, islist=False):
     v = d.getElementsByTagName('annotation')[0]
     f = v.getElementsByTagName('path')[0].firstChild.data
     if not os.path.isfile(f):
-        raise 'fail load img: {}'.format(f)
+        # 如果读取 xml 内的图片文件地址失败，则会在 xml 地址寻对应名字的图片文件再试一次
+        # 所以打标的图片文件应该尽量和 voc 格式的xml文件地址放在一起，增加便利
+        imgname = os.path.split(f)[-1]
+        xmlpath = os.path.split(file)[0]
+        f = os.path.join(xmlpath, imgname)
+        if not os.path.isfile(f):
+            raise 'fail load img: {}'.format(f)
     size = v.getElementsByTagName('size')[0]
     npimg = cv2.imread(f)
     npimg = cv2.cvtColor(npimg, cv2.COLOR_BGR2RGB) # [y,x,c]
