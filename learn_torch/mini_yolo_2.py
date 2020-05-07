@@ -29,12 +29,8 @@ import math
 import xml.dom.minidom
 from collections import OrderedDict
 
-def read_voc_xml(file, islist=False):
-    # 读取 xml 文件，根据其中的内容读取图片数据，并且获取标注信息
-    # 该类 xml 文件为 python第三方库 labelImg 所标注的数据的结构信息
-    # islist：
-    #   xml 文件是否包含多个标注，如果有，统一返回列表，
-    #   如果只有一个标注，直接返回一个信息字典方便使用
+# 读取voc格式文件
+def read_voc_xml(file, islist=True):
     d = xml.dom.minidom.parse(file)
     v = d.getElementsByTagName('annotation')[0]
     f = v.getElementsByTagName('path')[0].firstChild.data
@@ -113,7 +109,7 @@ def make_y_true(imginfo, S, anchors, class_types):
             z[wi, hi, left:left+ceillen] = v
     return z
 
-# 将经过网络得内容转换成坐标和分类名字
+# 将经过 backbone 的矩阵数据转换成坐标和分类名字
 def parse_y_pred(ypred, anchors, class_types, islist=False, threshold=0.2):
     ceillen = 5+len(class_types)
     sigmoid = lambda x:1/(1+math.exp(-x))
