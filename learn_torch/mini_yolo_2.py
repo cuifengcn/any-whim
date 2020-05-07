@@ -110,7 +110,7 @@ def make_y_true(imginfo, S, anchors, class_types):
     return z
 
 # 将经过 backbone 的矩阵数据转换成坐标和分类名字
-def parse_y_pred(ypred, anchors, class_types, islist=False, threshold=0.2):
+def parse_y_pred(ypred, anchors, class_types, islist=False, threshold=0.2, nms_threshold=0):
     ceillen = 5+len(class_types)
     sigmoid = lambda x:1/(1+math.exp(-x))
     infos = []
@@ -160,8 +160,32 @@ def parse_y_pred(ypred, anchors, class_types, islist=False, threshold=0.2):
                 clz = key
                 break
         return [xx, yy, _x, _y], clz, con, log_cons
+    def nms(infos):
+        if not infos: return infos
+        def iou(xyxyA,xyxyB):
+            ax1,ay1,ax2,ay2 = xyxyA
+            bx1,by1,bx2,by2 = xyxyB
+            minx, miny = max(ax1,bx1), max(ay1, by1)
+            maxx, maxy = min(ax2,bx2), min(ay2, by2)
+            intw, inth = max(maxx-minx, 0), max(maxy-miny, 0)
+            areaA = (ax2-ax1)*(ay2-ay1)
+            areaB = (bx2-bx1)*(by2-by1)
+            areaI = intw*inth
+            return areaI/(areaA+areaB-areaI)
+        rets = []
+        infos = infos[::-1]
+        while infos:
+            curr = infos.pop()
+            if rets and any([iou(r[0], curr[0]) > nms_threshold for r in rets]):
+                continue
+            rets.append(curr)
+        return rets
     if islist:
-        return [get_xyxy_clz_con(i) for i in infos if i[3] > threshold]
+        v = [get_xyxy_clz_con(i) for i in infos if i[3] > threshold]
+        if nms_threshold:
+            return nms(v)
+        else:
+            return v
     else:
         return get_xyxy_clz_con(infos[0])
 
@@ -321,13 +345,13 @@ class yoloLoss(nn.Module):
 
 
 def train(train_data, anchors, class_types):
-    EPOCH = 1
-    BATCH_SIZE = 4
+    EPOCH = 20
+    BATCH_SIZE = 10
     LR = 0.001
     train_loader = Data.DataLoader(
         dataset    = train_data,
         batch_size = BATCH_SIZE,
-        # shuffle    = True,
+        shuffle    = True,
     )
     try:
         state = torch.load('net.pkl')
@@ -346,8 +370,8 @@ def train(train_data, anchors, class_types):
     for epoch in range(epoch, epoch+EPOCH):
         print('epoch', epoch)
         for step, (x_true_, y_true_) in enumerate(train_loader):
-            break                 # for test
-        for step in range(250):   # for test
+        #     break                 # for test
+        # for step in range(250):   # for test
             print('[{:<3}]'.format(step), end='')
             x_true = Variable(x_true_).to(DEVICE)
             y_true = Variable(y_true_).to(DEVICE)
@@ -378,7 +402,7 @@ def train(train_data, anchors, class_types):
 
 
 def drawrect(img, rect, text):
-    cv2.rectangle(img, tuple(rect[:2]), tuple(rect[2:]), (10,10,10), 1, 1)
+    cv2.rectangle(img, tuple(rect[:2]), tuple(rect[2:]), (10,250,10), 2, 1)
     x, y = rect[:2]
     def cv2ImgAddText(img, text, left, top, textColor=(0, 255, 0), textSize=20):
         from PIL import Image, ImageDraw, ImageFont
@@ -389,9 +413,9 @@ def drawrect(img, rect, text):
         return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
     import re
     if re.findall('[\u4e00-\u9fa5]', text):
-        img = cv2ImgAddText(img, text, x, y-12, (10,10,10), 12) # 如果存在中文则使用这种方式绘制文字
+        img = cv2ImgAddText(img, text, x, y-12, (10,10,250), 12) # 如果存在中文则使用这种方式绘制文字
     else:
-        cv2.putText(img, text, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (10,10,10), 1)
+        cv2.putText(img, text, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (10,10,250), 1)
     return img
 def drawrect_and_show(imgfile, rect, text):# 只能写英文
     img = cv2.imread(imgfile)
@@ -451,7 +475,7 @@ def test3(filename):
     npimg_ = np.transpose(npimg, (2,1,0)) # [c,x,y]
     y_pred = net(torch.FloatTensor(npimg_).unsqueeze(0).to(DEVICE))
     img = cv2.imread(filename)
-    v = parse_y_pred(y_pred, anchors, class_types, islist=True, threshold=0.2)
+    v = parse_y_pred(y_pred, anchors, class_types, islist=True, threshold=0.2, nms_threshold=0.4)
     print(len(v))
     for i in v:
         rect, clz, con, log_cons = i
@@ -510,8 +534,13 @@ train_data, imginfos, class_types = load_voc_data(xmlpath, anchors)
 train(train_data, anchors, class_types)
 test(imginfos)
 
-# test2('./train_img/20200426_00000.png') # 单点标注测试
-# test3('./train_img/20200426_00000.png') # 多点标注测试
+# v = [os.path.join(xmlpath, i) for i in os.listdir(xmlpath) if i.endswith('.jpg')]
+# v = v[::-1]
+# print(v[0])
+# test2(v[0])
+# for i in range(20):
+#     print(v[i])
+#     test3(v[i])
 
 
 
