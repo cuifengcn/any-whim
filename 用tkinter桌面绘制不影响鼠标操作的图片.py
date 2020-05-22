@@ -34,30 +34,49 @@ elif platform.architecture()[0] == "64bit":
 # win32api.SetWindowLong(hWindow, win32con.GWL_EXSTYLE, exStyle)
 
 
+class POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_ulong), ("y", ctypes.c_ulong)]
 
+def get_mouse_point():
+    po = POINT()
+    ctypes.windll.user32.GetCursorPos(ctypes.byref(po))
+    return int(po.x), int(po.y)
 
-canvas = tkinter.Canvas(bg='green')
-# canvas.master.overrideredirect(True)
-window_width = 700
-window_height = 700
-canvas.master.geometry(str(window_width) + "x" + str(window_height) + "+400+300")
+canvas = tkinter.Canvas(bg='gray', highlightthickness=0, borderwidth=0)
+canvas.create_rectangle(0,0,0+10,0+10)
 canvas.master.lift()
 canvas.master.wm_attributes("-topmost", True)
 canvas.master.wm_attributes("-disabled", True)
-canvas.master.wm_attributes("-alpha", 0.4)
+canvas.master.wm_attributes("-alpha", 0.2)
 canvas.master.wm_attributes("-fullscreen", True)
+# canvas.master.overrideredirect(True)
 # canvas.master.wm_attributes("-transparentcolor", "black")
 
-canvas.create_rectangle(10,10,110,110)
-
-canvas.pack(fill=tkinter.BOTH)
+canvas.pack(expand=tkinter.YES, fill=tkinter.BOTH)
 SetWindowLong(int(canvas.master.frame(), 16), -20, 168296488)
 def call_back_func():
-    print("call_back_func.")
-    canvas.master.geometry(str(window_width) + "x" + str(window_height) + "+500+600")
-    canvas.master.lift()
-    canvas.after(1000, call_back_func)
-    # canvas.quit()
-    # canvas.destroy()
-canvas.after(1000, call_back_func)
+    # 这里要想办法获取所有窗口的信息，如果窗口信息有变化，就删除全部，重新绘制
+    canvas.delete('all')
+
+    x, y = get_mouse_point()
+    x1,y1,x2,y2 = x,y,x+10,y+10
+    canvas.create_rectangle(x1,y1,x2,y2,fill='black')
+
+    x, y = get_mouse_point()
+    x, y = x+20,y+20
+    x1,y1,x2,y2 = x,y,x+10,y+10
+    canvas.create_rectangle(x1,y1,x2,y2,fill='black')
+
+    x, y = get_mouse_point()
+    x, y = x-20,y-20
+    x1,y1,x2,y2 = x,y,x+10,y+10
+    canvas.create_rectangle(x1,y1,x2,y2,fill='black')
+
+    x, y = get_mouse_point()
+    x, y = x-20,y
+    x1,y1,x2,y2 = x,y,x+10,y+10
+    canvas.create_rectangle(x1,y1,x2,y2,fill='black')
+
+    canvas.after(10, call_back_func)
+canvas.after(10, call_back_func)
 canvas.mainloop()
