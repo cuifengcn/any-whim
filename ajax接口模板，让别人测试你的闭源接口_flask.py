@@ -55,12 +55,14 @@ function formSubmit() {
     }
   }
   function POST(url, headers, file){
-    var formData = new FormData();
     var xml = new XMLHttpRequest();
     xml.onreadystatechange = cback;
     xml.open('POST', url, true);
-    formData.append('file', file)
-    xml.send(formData);
+    var reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = function(e){
+      xml.send(e.target.result);
+    };
     return xml;
   }
   var info = document.getElementById("file_test_interface").files[0]
@@ -96,12 +98,14 @@ function formSubmit() {
     }
   }
   function POST(url, headers, file){
-    var formData = new FormData();
     var xml = new XMLHttpRequest();
     xml.onreadystatechange = cback;
     xml.open('POST', url, true);
-    formData.append('file', file)
-    xml.send(formData);
+    var reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = function(e){
+      xml.send(e.target.result);
+    };
     return xml;
   }
   var info = document.getElementById("img_test_interface").files[0]
@@ -135,6 +139,10 @@ def filetest():
 def imgtest():
     return img_html
 
+# 以下接口，如果是文件或图片接口只需要传递二进制的 base64 编码即可。
+# 如果是字符串 strinfo ，则按照右侧格式化传递字符串即可 "info={}".format(base64.b64encode(strinfo))
+# 总之稍微 chrome 调试以下即知。
+
 @app.route('/str_test_Interface', methods=['POST'])
 def str_test_Interface():
     try:
@@ -146,18 +154,18 @@ def str_test_Interface():
 @app.route('/file_test_interface', methods=['POST'])
 def file_test_interface():
     try:
-        file = request.files['file']
-        filedata = file.read()
+        file = request.get_data().decode().split('base64,')[-1]
+        filedata = base64.b64decode(file)
         # 这里返回的是字符串，通常用于解析二进制内容后返回字符串类型数据
-        return '获取图片二进制成功'
+        return '获取文件二进制成功'
     except:
         return "启动接口失败."
 
 @app.route('/img_test_interface', methods=['POST'])
 def img_test_interface():
     try:
-        file = request.files['file']
-        filedata = file.read()
+        file = request.get_data().decode().split('base64,')[-1]
+        filedata = base64.b64decode(file)
         # 这里返回图片的方式直接用 base64 这种，会更加方便
         # 通常用于返回新绘制的图片数据
         return 'data:;base64,{}'.format(base64.b64encode(filedata).decode())
