@@ -1,8 +1,9 @@
+import base64
 from urllib.parse import unquote
 from flask import Flask, request
 app = Flask(__name__)
 
-mainhtml = r'''
+str_html = r'''
 <html>
 <head>
 <script type="text/javascript">
@@ -12,7 +13,7 @@ function formSubmit() {
     try{
       document.getElementById("decode").value = xml.response;
     }catch{
-      document.getElementById("decode").value = '解混淆失败';
+      document.getElementById("decode").value = '启动接口失败';
     }
   }
   function POST(url, headers, body){
@@ -23,36 +24,145 @@ function formSubmit() {
     xml.send(Object.keys(body).map((eachKey)=>{ return encodeURIComponent(eachKey) + '=' + encodeURIComponent(body[eachKey]); }).join('&'));
     return xml;
   }
-  var info = document.getElementById("cotest").value
-  var href = '/cotest'
+  var info = document.getElementById("str_test_Interface").value
+  var href = '/str_test_Interface'
   var xml = POST(href, {}, {'info':info})
 }
 </script>
 </head>
 
 <body>
-<textarea id="cotest" size="20" style="width:1500px;height:700px"></textarea>
+<textarea id="str_test_Interface" size="20" style="width:1500px;height:300px"></textarea>
 <br />
-<button onclick="formSubmit()">尝试解混肴</button>
+<button onclick="formSubmit()">提交字符串</button>
 <br />
-<textarea id="decode" size="20" style="width:1500px;height:700px"></textarea>
+<textarea id="decode" size="20" style="width:1500px;height:300px"></textarea>
 </body>
 </html>
 '''
 
+file_html = r'''
+<html>
+<head>
+<script type="text/javascript">
 
-@app.route('/')
-def hello_world():
-    return mainhtml
+function formSubmit() {
+  function cback(){
+    try{
+      document.getElementById("decode").value = xml.response;
+    }catch{
+      document.getElementById("decode").value = '启动接口失败';
+    }
+  }
+  function POST(url, headers, file){
+    var formData = new FormData();
+    var xml = new XMLHttpRequest();
+    xml.onreadystatechange = cback;
+    xml.open('POST', url, true);
+    formData.append('file', file)
+    xml.send(formData);
+    return xml;
+  }
+  var info = document.getElementById("file_test_interface").files[0]
+  var href = '/file_test_interface'
+  var xml = POST(href, {}, info)
+}
+</script>
+</head>
 
-@app.route('/cotest', methods=['POST'])
-def cotest():
+<body>
+<form enctype='multipart/form-data' method='POST'>
+    <input type="file" name="file" id="file_test_interface" />
+</form>
+<br />
+<button onclick="formSubmit()">提交文件</button>
+<br />
+<textarea id="decode" size="20" style="width:1500px;height:300px"></textarea>
+</body>
+</html>
+'''
+
+img_html = r'''
+<html>
+<head>
+<script type="text/javascript">
+
+function formSubmit() {
+  function cback(){
+    try{
+      document.getElementById("image").src = xml.response;
+    }catch{
+      console.log('...');
+    }
+  }
+  function POST(url, headers, file){
+    var formData = new FormData();
+    var xml = new XMLHttpRequest();
+    xml.onreadystatechange = cback;
+    xml.open('POST', url, true);
+    formData.append('file', file)
+    xml.send(formData);
+    return xml;
+  }
+  var info = document.getElementById("img_test_interface").files[0]
+  var href = '/img_test_interface'
+  var xml = POST(href, {}, info)
+}
+</script>
+</head>
+
+<body>
+<form enctype='multipart/form-data' method='POST'>
+    <input type="file" name="file" id="img_test_interface" />
+</form>
+<br />
+<button onclick="formSubmit()">提交图片</button>
+<br />
+<img id="image"></img>
+</body>
+</html>
+'''
+
+@app.route('/strtest')
+def strtest():
+    return str_html
+
+@app.route('/filetest')
+def filetest():
+    return file_html
+
+@app.route('/imgtest')
+def imgtest():
+    return img_html
+
+@app.route('/str_test_Interface', methods=['POST'])
+def str_test_Interface():
     try:
         info = unquote(request.data.decode()).split('=',1)[-1]
-        # 对传过来的参数处理后返回
         return info
     except:
-        return "解码失败"
+        return "启动接口失败."
+
+@app.route('/file_test_interface', methods=['POST'])
+def file_test_interface():
+    try:
+        file = request.files['file']
+        filedata = file.read()
+        # 这里返回的是字符串，通常用于解析二进制内容后返回字符串类型数据
+        return '获取图片二进制成功'
+    except:
+        return "启动接口失败."
+
+@app.route('/img_test_interface', methods=['POST'])
+def img_test_interface():
+    try:
+        file = request.files['file']
+        filedata = file.read()
+        # 这里返回图片的方式直接用 base64 这种，会更加方便
+        # 通常用于返回新绘制的图片数据
+        return 'data:;base64,{}'.format(base64.b64encode(filedata).decode())
+    except:
+        return "启动接口失败."
 
 if __name__ == '__main__':
     app.run()
