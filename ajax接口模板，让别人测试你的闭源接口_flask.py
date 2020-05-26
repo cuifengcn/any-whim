@@ -58,6 +58,7 @@ function formSubmit() {
     var xml = new XMLHttpRequest();
     xml.onreadystatechange = cback;
     xml.open('POST', url, true);
+    Object.keys(headers).map((eachKey)=>{ xml.setRequestHeader(eachKey, headers[eachKey]); })
     var reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = function(e){
@@ -101,6 +102,7 @@ function formSubmit() {
     var xml = new XMLHttpRequest();
     xml.onreadystatechange = cback;
     xml.open('POST', url, true);
+    Object.keys(headers).map((eachKey)=>{ xml.setRequestHeader(eachKey, headers[eachKey]); })
     var reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = function(e){
