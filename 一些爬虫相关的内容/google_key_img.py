@@ -19,6 +19,7 @@ from scrapy.pipelines.images import ImagesPipeline
 from scrapy.exceptions import DropItem
 class VImagePipeline(ImagesPipeline):
     def get_media_requests(self, item, info):
+        item['proxy'] = VSpider.proxy
         yield Request(item['src'], meta=item) 
     def file_path(self, request, response=None, info=None):
         url = request if not isinstance(request, Request) else request.url
@@ -29,9 +30,25 @@ class VImagePipeline(ImagesPipeline):
         k, v = results[0]
         # if not k: logging.info('download fail {}'.format(item))
         # else:     logging.info('download success {}'.format(item))
+        item.pop('proxy', None)
         item['image_download_stat'] = 'success' if k else 'fail'
         item['image_path'] = v['path'] if k else None # 保留文件名地址
         return item
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import scrapy
 from scrapy import Request, Selector
@@ -92,7 +109,7 @@ class VSpider(scrapy.Spider):
             }
             return url,headers,body
 
-        keys = ['123']
+        keys = ['狗']
         for key in keys:
             for page in range(1, 80):
                 url,headers,body = mk_url_headers_body(page, key)
@@ -108,22 +125,30 @@ class VSpider(scrapy.Spider):
                         meta     = meta,
                     )
                 yield r
-            #     break
-            # break
+                break
+            break
 
     def parse(self, response):
         key = response.meta.get('key')
         if key not in self.index: self.index[key] = 0
-        v = re.findall(r'https://encrypted[^\[]+\[\\"([^\\"]+)\\"', response.body.decode())
-        for i in v:
+
+        e = r'''(https://encrypted[^"]+)\\[^\[]+\[\\"([^\\"]+)\\".*?rgb\(\d+,\d+,\d+\).*?http[^"]+\\",\\"([^"]+)\\'''
+        s = map(lambda i:(i[0].replace('\\\\', '\\').encode().decode('unicode_escape'), i[1], i[2]), re.findall(e, response.body.decode()))
+
+        for i in s:
+
+            title = i[2] # 图片标题
+            cache = i[0] # 缓存图片地址，下载成功率最高（小图）
+            src   = i[1] # 原始地址，由于有些图片原始网站有问题，所以使用原始地址下载有一定的失败率（大图）
+
             self.index[key] += 1
             d = {}
-            d['src'] = i
+            d['src'] = i[0] # 这里用了缓存地址下载，看你需求是否使用原始地址。
+            d['title'] = i[2]
             d['index'] = self.index[key]
             d['key'] = key
-            d['proxy'] = self.proxy
-            d['download_timeout'] = 50 # 为图片请求设置超时处理
             yield d
+            break
 
 # 配置在单脚本情况也能爬取的脚本的备选方案，使用项目启动则下面的代码无效
 if __name__ == '__main__':
