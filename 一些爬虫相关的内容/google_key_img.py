@@ -25,7 +25,7 @@ class VImagePipeline(ImagesPipeline):
         url = request if not isinstance(request, Request) else request.url
         image_name = request.meta.get('image_name') # 使用 item中的 image_name 字段作为文件名进行存储，没有该字段则使用 url的 md5作为文件名存储
         image_name = re.sub(r'[/\\:\*"<>\|\?]', '_', image_name).strip()[:80] if image_name else hashlib.md5(url.encode()).hexdigest()
-        return '%s/%s_%s.jpg' % (request.meta.get('key'), request.meta.get('index'), image_name) # 生成的图片文件名字，此处可用/符号增加多级分类路径（路径不存在则自动创建），使用 image_name 请注意重名可能性。
+        return '%s/%s.jpg' % (request.meta.get('key'), image_name) # 生成的图片文件名字，此处可用/符号增加多级分类路径（路径不存在则自动创建），使用 image_name 请注意重名可能性。
     def item_completed(self, results, item, info): # 判断下载是否成功
         k, v = results[0]
         # if not k: logging.info('download fail {}'.format(item))
