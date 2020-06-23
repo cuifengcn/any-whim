@@ -131,8 +131,8 @@ if __name__ == '__main__':
         'LOG_LEVEL':                'INFO',       # DEBUG , INFO , WARNING , ERROR , CRITICAL
         # 'JOBDIR':                   jobdir,     # 解开注释则增加断点续爬功能
                                                   # 任务队列、任务去重指纹、任务状态存储空间(简单来说就是一个文件夹)
-        'FEED_URI':                 filename,   # 下载数据到文件
-        'FEED_EXPORT_ENCODING':     'utf-8',    # 在某种程度上，约等于 ensure_ascii=False 的配置选项
+        # 'FEED_URI':                 filename,   # 下载数据到文件
+        # 'FEED_EXPORT_ENCODING':     'utf-8',    # 在某种程度上，约等于 ensure_ascii=False 的配置选项
         # 'FEED_FORMAT':              'json',     # 下载的文件格式，不配置默认以 jsonlines 方式写入文件，
                                                   # 支持的格式 json, jsonlines, csv, xml, pickle, marshal
         # 'DOWNLOAD_TIMEOUT':         8,          # 全局请求超时，默认180。也可以在 meta 中配置单个请求的超时( download_timeout )
