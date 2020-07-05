@@ -25,6 +25,8 @@ def codeline_shell():
         if s == "Python %s on %s\n%s\n%s" % (sys.version, sys.platform, PyShell.COPYRIGHT, '') and FLAG_LOCAL:
             s = '用钩子钩住最开始初始输出的内容一次，用来显示自己的内容'
             FLAG_LOCAL = False
+        # 所有的执行结果都会经过这个函数，如果想要让执行结果在别的地方输出，可以很简单在这里挂钩
+        # 这里的 s 就是执行结果的字符串
         return _bak_write(self, s, tags=tags)
     PyShell.write = _write
     shell = flist.open_shell()
