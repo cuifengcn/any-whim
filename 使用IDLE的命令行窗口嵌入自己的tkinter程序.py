@@ -1,9 +1,5 @@
 import sys
-import code
 import tkinter
-import idlelib.pyshell
-import idlelib.window
-from code import InteractiveInterpreter
 
 
 root = tkinter.Tk()
@@ -13,7 +9,9 @@ fr.pack()
 
 
 
-
+import tkinter
+import idlelib.pyshell
+import idlelib.window
 idlelib.window.ListedToplevel = lambda *a,**k: tkinter._default_root # 这里 root 就是全局的根窗口
 def codeline_shell():
     idlelib.pyshell.use_subprocess = True
