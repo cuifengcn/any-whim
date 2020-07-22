@@ -72,7 +72,7 @@ class VSpider(scrapy.Spider):
             return url,headers
 
         # 
-        keys = ['希望之花连接着羁绊']
+        keys = ['20世纪60年代，日本已经进入高度发达的资本主义社会。经济在快速发展，人们的精神危机也与日俱增。物质生活的丰富与人的欲求膨胀，造成了精神世界的严重失衡。人与人之间的交流减少，心理距离拉大。生活在都市的人们像无根的浮萍，孤独、虚无、失落，却又无力面对强大的社会压力。都市的繁华，掩饰不了人们内心的焦虑。']
         _from = None #'zh' # 这里如果设置为 None，则会自动增加一个请求过程：请求另一个接口先检测传入的 key 是哪国语言，然后再继续后续的翻译操作
         _to = 'en'
 
@@ -172,6 +172,9 @@ class VSpider(scrapy.Spider):
 
     def parse_sign_and_token(self, response):
         def get_sign(gtk, r):
+            if len(r) > 30:
+                _q = int(len(r)/2)-5
+                r = r[:10] + r[_q:_q+10] + r[-10:]
             S = list(r.encode())
             a,b = gtk.split('.')
             m,s = int(a),int(b)
