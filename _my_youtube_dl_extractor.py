@@ -29,17 +29,17 @@ from .common import InfoExtractor
 
 
 # yy视频历史视频下载，适合如下连接格式
-# eg. https://www.yy.com/x/15012_2464989902_22490906_1585798203199
+# eg. https://www.yy.com/x/15012_1101280606_54880976_1595811603845
 class YYRecordIE(InfoExtractor):
     IE_NAME = 'YYRecordIE'
     IE_DESC = 'YYRecordIE video downloader.'
-    _VALID_URL = r'https://www\.yy\.com/x/(\d+_\d+_\d+_\d+)'
+    _VALID_URL = r'https://www\.yy\.com/x/([^/+])'
 
     def _real_extract(self, url):
         def get_real_url_by_simple_url(self, url):
             uid = re.findall(self._VALID_URL, url)[0]
             page = self._download_webpage(url, uid)
-            m3u8 = re.findall(r'video: "(http://record\.vod\.huanjuyun\.com/xcrs/\d+_\d+_\d+_\d+\.m3u8)"', page)[0]
+            m3u8 = re.findall(r'video: *"(http://record\.vod\.huanjuyun\.com/xcrs/[^\.]+\.m3u8)"', page)[0]
             return uid, m3u8
 
         uid, url = get_real_url_by_simple_url(self, url)
@@ -122,7 +122,7 @@ class DouyuShowIE(InfoExtractor):
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36"
             }
             return url,headers
-        def mk_url_headers_body(pbody):
+        def mk_url_headers_body(referer, pbody):
             url = (
                 'https://v.douyu.com/api/stream/getStreamUrl'
             )
@@ -133,27 +133,17 @@ class DouyuShowIE(InfoExtractor):
                 "cache-control": "no-cache",
                 "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "cookie": (
-                    "Hm_lvt_e99aee90ec1b2106afe7ec3b199020a7=1572834143,1572862279; "
-                    "_dys_lastPageCode=page_studio_v,page_studio_v; "
-                    "_dys_refer_action_code=init_page_studio_v; "
-                    "acf_auth=; "
-                    "acf_auth_wl=; "
-                    "acf_did={}; "
-                    "acf_groupid=; "
-                    "acf_nickname=; "
-                    "acf_notification=; "
-                    "acf_own_room=; "
-                    "acf_phonestatus=; "
-                    "acf_uid=; "
-                    "acf_username=; "
-                    "dy_did={}; "
-                    "Hm_lpvt_e99aee90ec1b2106afe7ec3b199020a7=1572862327"
-                ).format(pbody['did'], pbody['did']),
+                    "acf_did=dbbbd666b6681de09151847100001501; "
+                    "dy_did=dbbbd666b6681de09151847100001501; "
+                    "Hm_lvt_e99aee90ec1b2106afe7ec3b199020a7=1589354641,1589354653"
+                ),
                 "origin": "https://v.douyu.com",
                 "pragma": "no-cache",
+                "referer": referer,
+                "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-site": "same-origin",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Safari/537.36",
                 "x-requested-with": "XMLHttpRequest"
             }
             return url,headers,pbody
@@ -161,9 +151,8 @@ class DouyuShowIE(InfoExtractor):
         uid = re.findall(self._VALID_URL, url)[0]
         url, headers = mk_url_headers(url)
         page = self._download_webpage(url, uid, headers=headers)
-        script = re.findall(r'(var \$ROOM.*?)</script>', page, flags=re.S)[0]
-        pbody = self.get_m3u8_pbody(html.unescape(script))
-        url, headers, body = mk_url_headers_body(pbody)
+        pbody = self.get_m3u8_pbody(html.unescape(page))
+        url, headers, body = mk_url_headers_body(url, pbody)
         page = self._download_webpage(url, uid, headers=headers, data=urllib.parse.urlencode(body).encode())
         jsondata = json.loads(page)
         thumb_video = jsondata['data']['thumb_video']
@@ -344,10 +333,10 @@ class DouyuShowIE(InfoExtractor):
         ltime       = re.findall(r'var vdwdae325w_64we = "(\d+)";', script)[0]
         timestamp   = int(time.time())
         vid         = re.findall(r'"vid":"([^"]+)"', script)[0]
-        sign        = get_sign(point_id, ltime, 'a9e8e1b84915288bad2dc11700081501', timestamp, get_hide_funcstring(script))
+        sign        = get_sign(point_id, ltime, 'dbbbd666b6681de09151847100001501', timestamp, get_hide_funcstring(script))
         d = {}
         d['v']    = ltime
-        d['did']  = 'a9e8e1b84915288bad2dc11700081501'
+        d['did']  = 'dbbbd666b6681de09151847100001501'
         d['tt']   = timestamp
         d['sign'] = sign
         d['vid']  = vid
