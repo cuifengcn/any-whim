@@ -186,10 +186,9 @@ class VSpider(scrapy.Spider):
                     meta     = meta,
                 )
             yield r
-            break
 
+        raise '测试代码只翻一页，所以，你如果想使用代码获取全量数据，请注意将该处代码注释掉！！！！'
         pcursor = jsondata['data']['publicFeeds'].get('pcursor')
-        print(pcursor)
         if pcursor != 'no_more':
             def mk_url_headers_body(principalId, pcursor=None):
                 def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
@@ -289,7 +288,7 @@ if __name__ == '__main__':
         # 'FEED_FORMAT':              'json',     # 下载的文件格式，不配置默认以 jsonlines 方式写入文件，
                                                   # 支持的格式 json, jsonlines, csv, xml, pickle, marshal
         # 'DOWNLOAD_TIMEOUT':         8,          # 全局请求超时，默认180。也可以在 meta 中配置单个请求的超时( download_timeout )
-        'DOWNLOAD_DELAY':           1,          # 全局下载延迟，这个配置相较于其他的节流配置要直观很多
+        # 'DOWNLOAD_DELAY':           1,          # 全局下载延迟，这个配置相较于其他的节流配置要直观很多
     })
     p.crawl(VSpider)
     p.start()

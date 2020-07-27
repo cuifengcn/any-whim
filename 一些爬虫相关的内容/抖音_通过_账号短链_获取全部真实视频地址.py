@@ -134,8 +134,7 @@ class VSpider(scrapy.Spider):
                 )
             yield r
 
-        print('如果想直接使用代码，请注意将该处的 return 注释掉！！！！')
-        return
+        raise '测试代码只翻一页，所以，你如果想使用代码获取全量数据，请注意将该处代码注释掉！！！！'
         if jsondata['has_more']:
             uid = response.meta.get('uid')
             cursor = jsondata['cursor']
