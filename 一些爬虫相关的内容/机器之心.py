@@ -30,7 +30,6 @@ class VSpider(scrapy.Spider):
                 "Connection": "keep-alive",
                 "Host": "www.jiqizhixin.com",
                 "Pragma": "no-cache",
-                "Referer": "https://aone.alibaba-inc.com/project/760701/req?akProjectId=760701&akProjectId=760701",
                 "Sec-Fetch-Dest": "document",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "cross-site",
@@ -111,8 +110,6 @@ class VSpider(scrapy.Spider):
         ahoy_visitor = response.meta.get('ahoy_visitor')
         ahoy_visit = re.findall(r'(ahoy_visit=[^; ]+)', set_cookie)[0]
         ncoockie = '{}; {}; {}'.format(ahoy_visitor, ahoy_visit, _Synced_session)
-        # print(ncoockie)
-        # return
         content = response.body.decode("utf-8",errors="strict")
         jsondata = json.loads(content[content.find('{'):content.rfind('}')+1])
         for i in jsondata['data']['category']['edges']:
@@ -149,7 +146,6 @@ class VSpider(scrapy.Spider):
                     meta     = meta,
                 )
             yield r
-            return
 
         cursor = jsondata['data']['category']['pageInfo']['endCursor']
         print('curr page:', response.meta.get('page'), cursor)
