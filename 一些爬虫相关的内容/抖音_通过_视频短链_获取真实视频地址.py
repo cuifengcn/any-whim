@@ -77,7 +77,7 @@ class VSpider(scrapy.Spider):
         def mk_url_headers(vid):
             def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
             url = (
-                'https://aweme.snssdk.com/aweme/v1/playwm/'
+                'https://aweme.snssdk.com/aweme/v1/playwm/' # 如果想要无水印，这行的 playwm 改成 play 就可以拿到无水印视频地址
                 '?video_id={}'
                 '&ratio=720p'
                 '&line=0'
