@@ -6,8 +6,8 @@ class Router:
     def __init__(self, route):
         self.route = route
     def parse(self, environ):
+        pinfo, mthod = environ['PATH_INFO'].rstrip('/'), environ['REQUEST_METHOD']
         for uexp, pobj in self.route:
-            pinfo, mthod = environ['PATH_INFO'], environ['REQUEST_METHOD']
             if uexp == pinfo:
                 f = getattr(pobj, mthod, lambda e:'{} no method {}'.format(pinfo,mthod).encode())
                 return f(environ) or b''
