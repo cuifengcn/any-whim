@@ -1,6 +1,9 @@
 import re, json
 from urllib.parse import parse_qsl
-from wsgiref.simple_server import make_server
+from wsgiref.simple_server import make_server, WSGIServer
+
+import socketserver
+class WS(socketserver.ThreadingMixIn, WSGIServer): pass
 
 class Router:
     def __init__(self, route):
@@ -36,7 +39,7 @@ router = Router([
 ])
 
 def main():
-    my_server = make_server('', 8000, app=lambda e,s:app(e,s,router))
+    my_server = make_server('', 8000, lambda e,s:app(e,s,router), WS)
     my_server.serve_forever()
 
 import threading
