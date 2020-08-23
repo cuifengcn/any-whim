@@ -20,7 +20,7 @@ def response(flow: flow):
 # 使用该库的命令行工具 mitmdump 来创建一个代理端口
 #
 # mitmdump -q -s change_js.py -p 8888
-# # -q 静音模式(仅限制该代码内的打印输出) -s 指定mitm中间件代码(即当前代码脚本) -p 指定端口
+# # -q 静音模式(仅限制该代码内的打印输出) -s 指定mitm中间件代码(即当前代码脚本) -p 指定端口(默认8080)
 # 
 # 使用代理方式打开 chrome ，建议使用 chromedriver 方式来增加代理打开，有时命令行打开代理无效
 # --proxy-server=http://127.0.0.1:8888
@@ -32,7 +32,7 @@ def get_driver():
     option.add_argument("--disable-infobars")                       # 关闭调试信息
     option.add_experimental_option("excludeSwitches", extset)       # 关闭调试信息
     option.add_experimental_option("useAutomationExtension", False) # 关闭调试信息
-    option.add_argument('--proxy-server=http://127.0.0.1:8888')   # 代理端口修改就修改这里
+    option.add_argument('--proxy-server=http://127.0.0.1:8080')   # 代理端口修改就修改这里
     driver_path = 'chromedriver'
     webdriver = webdriver.Chrome(chrome_options=option, executable_path=driver_path)
     import threading, time
@@ -45,6 +45,7 @@ def get_driver():
                 if 'Unable to evaluate script: disconnected: not connected to DevTools' in i.get('message'):
                     chrome_close = True
                     webdriver.quit()
+                    print('webdriver is closed.')
     threading.Thread(target=hook_close_window).start()
     return webdriver
 driver = get_driver()
