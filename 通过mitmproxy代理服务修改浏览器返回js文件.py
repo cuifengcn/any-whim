@@ -11,7 +11,7 @@ def response(flow: flow):
         flow.response.set_text(jscode)
         print('changed.', flow.request.url)
 
-# 功能：使用 mitmproxy 修改浏览器请求返回的文件，用于绕过浏览器返回的js中的某些js代码。
+# 功能：使用 mitmproxy 修改浏览器请求返回的数据，用于绕过浏览器返回的js中的某些反调试js代码。
 #     使用 fiddler 也能做到，不过那种修改起来比较麻烦
 #     使用 mitmproxy 可以使用 python 代码来修改返回信息，对我来说会更加方便一些
 #     这样可以更简单的实现更加复杂的替换操作
