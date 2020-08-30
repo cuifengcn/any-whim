@@ -106,7 +106,7 @@ Mon cœur a tant de peine! '''
             }
             import hashlib
             _from = "auto"
-            _to   = target_lang ############# 要翻译成什么语言，请替换这个参数，例如翻译成英语这里换成 en
+            _to   = target_lang
             text  = response.meta.get('key').strip()
             skey  = str(CONFIG['secretCode'])
             body = {
