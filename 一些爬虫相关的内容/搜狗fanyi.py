@@ -77,7 +77,9 @@ Mon cœur a tant de peine! '''
 
     def parse(self, response):
         SNUID = re.findall('SNUID=[^;]+', response.headers.to_unicode_dict()['set-cookie'])[0]
-        CONFIG = json.loads(re.findall(r'CONFIG[^\{]+(\{[^\}]+\})', response.body.decode())[0])
+        CONFIG = {}
+        CONFIG['secretCode'] = re.findall(r'"secretCode" *: *(\d+)', response.body.decode())[0]
+        CONFIG['uuid'] = re.findall(r'"uuid" *: *"([^"]+)"', response.body.decode())[0]
         target_lang = response.meta.get('target_lang')
         idx = response.meta.get('idx')
         def mk_url_headers_body(SNUID, CONFIG, target_lang):
