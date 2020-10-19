@@ -57,7 +57,8 @@ def get_enc_dec_conf(s):
     conf['decode_aes_v'] = re.findall('const {}="([^"]+)"'.format(e_aes[1]), js)[0]
     conf['decode_des_k'] = re.findall('const {}="([^"]+)"'.format(e_des[0]), js)[0]
     conf['decode_des_v'] = re.findall('const {}="([^"]+)"'.format(e_des[1]), js)[0]
-    d_cry = re.findall(r'([a-zA-Z0-9]+)\.encrypt\(param,([^,\)]+),([^,\)]+)\);', js)
+    # 在解密的代码内找到解密的算法，一共有三种内层加密情况：AES/DES/无 。这里根据js代码分析对算法自动选择。
+    d_cry = re.findall(r'([a-zA-Z0-9]+)\.encrypt\(param,([^,\)]+),([^,\)]+)\);', js) 
     if d_cry:
         d_cry = d_cry[0]
         conf['encode_cry_k'] = re.findall('const {}="([^"]+)"'.format(d_cry[1]), js)[0]
