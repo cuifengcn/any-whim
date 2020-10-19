@@ -26,10 +26,8 @@ def get_encryptor(key, iv=None, mode='aes'):
     f.encrypt = enc
     f.decrypt = dec
     return f
-def decode_alg(data, key, iv, mode):
-    return get_encryptor(key, iv, mode).decrypt(base64.b64decode(data))
-def encode_alg(data, key, iv, mode):
-    return base64.b64encode(get_encryptor(key, iv, mode).encrypt(data))
+def decode_alg(data, key, iv, mode): return get_encryptor(key, iv, mode).decrypt(base64.b64decode(data))
+def encode_alg(data, key, iv, mode): return base64.b64encode(get_encryptor(key, iv, mode).encrypt(data))
 decode_des = lambda data, key, iv: decode_alg(data, key, iv, 'des')
 decode_aes = lambda data, key, iv: decode_alg(data, key, iv, 'aes')
 encode_aes = lambda data, key, iv: encode_alg(data, key, iv, 'aes')
