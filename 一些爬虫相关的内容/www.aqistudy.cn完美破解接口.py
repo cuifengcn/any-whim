@@ -1,5 +1,6 @@
 # python3
 # pip install cryptography scrapy
+# 直接执行本代码即可单脚本运行 scrapy 以测试接口
 
 import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -122,18 +123,6 @@ def encode_postbody(city, conf):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 # -*- coding: utf-8 -*-
 import scrapy
 from scrapy import Request, Selector
@@ -214,7 +203,7 @@ class VSpider(scrapy.Spider):
             }
             body = encode_postbody(city, conf)
             return url,headers,body
-        url,headers,body = mk_url_headers_body('杭州')
+        url,headers,body = mk_url_headers_body('杭州') # 前面的请求是算法参数的收集，这里包装的请求是通过收集到的算法参数 conf 加密请求参数，发起最终请求。
         meta = {}
         meta['proxy'] = self.proxy
         meta['conf'] = conf
