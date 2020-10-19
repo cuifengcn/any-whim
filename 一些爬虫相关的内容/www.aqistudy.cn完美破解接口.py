@@ -1,3 +1,6 @@
+# python3
+# pip install cryptography scrapy
+
 import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
