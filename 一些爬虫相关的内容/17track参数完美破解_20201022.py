@@ -162,7 +162,7 @@ def mypost(url, headers, body):
 if __name__ == '__main__':
     checkid = '123123'
     url, headers, body = mk_url_headers_body(checkid)
-    s = mypost(url, headers, body)
-    content = s.read()
+    content = mypost(url, headers, body).read()
+
     import pprint
     pprint.pprint(json.loads(content))
