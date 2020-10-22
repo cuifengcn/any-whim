@@ -79,21 +79,25 @@ class VSpider(scrapy.Spider):
             }
             return url,headers
 
-        with open('./singer.json', encoding='utf-8') as f:
-            for idx, key in enumerate(f):
-                keydict = json.loads(key.strip())
-                singer_name = keydict.get('singer_name')
-                url,headers = mk_url_headers(singer_name)
-                meta = {}
-                meta['proxy'] = self.proxy
-                r = Request(
-                        url,
-                        headers  = headers,
-                        callback = self.parse,
-                        meta     = meta,
-                    )
-                yield r
-                break
+        # keys = []
+        # with open('./singer.json', encoding='utf-8') as f:
+        #     for i in f:
+        #         if i.strip():
+        #             keys.append(i.strip())
+        keys = ['韩红']
+
+        for idx, key in enumerate(keys):
+            url,headers = mk_url_headers(key)
+            meta = {}
+            meta['proxy'] = self.proxy
+            r = Request(
+                    url,
+                    headers  = headers,
+                    callback = self.parse,
+                    meta     = meta,
+                )
+            yield r
+            break
 
     def parse(self, response):
         # If you need to parse another string in the parsing function.
