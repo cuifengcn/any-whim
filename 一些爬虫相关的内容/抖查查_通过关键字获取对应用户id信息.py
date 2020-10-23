@@ -43,7 +43,6 @@ class VSpider(scrapy.Spider):
         'COOKIES_ENABLED': False,  # Do not use automatic cookie caching(set 'dont_merge_cookies' as True in Request.meta is same)
     }
     proxy = None # 'http://127.0.0.1:8888'
-    proxy = 'http://140.205.171.24:80'
 
     def start_requests(self):
         def mk_url_headers_body(key):
@@ -56,7 +55,6 @@ class VSpider(scrapy.Spider):
             )
             url = quote_val(url)
             headers = {
-                "trpr-client-name": "mit-spider",
                 "Accept": "application/json, text/plain, */*",
                 "Accept-Encoding": "gzip, deflate, ", # auto delete br encoding. cos requests and scrapy can not decode it.
                 "Accept-Language": "zh-CN,zh;q=0.9",
