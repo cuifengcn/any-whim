@@ -107,13 +107,33 @@ int _WindowSwitch( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam ){
 
 
 
-
-
+// 简单的热键处理，这里的示例为 Ctrl+Home 组合键快速切换是否显示窗口，esc 退出程序两个热键。
+DWORD  WINAPI _RegistHotKey( LPARAM lParam ){
+    MSG  msg = { 0 };
+    char str[256];
+    RegisterHotKey(NULL, 0x24, MOD_CONTROL, VK_HOME);
+    RegisterHotKey(NULL, 0x25, 0,           VK_ESCAPE);
+    while (GetMessage(&msg, 0, 0, 0)){
+        if (WM_HOTKEY == msg.message){
+            // 组合热键的判断方式
+            if (VK_HOME == HIWORD(msg.lParam) && MOD_CONTROL == LOWORD(msg.lParam)){
+                if (IsWindowVisible((HANDLE)lParam)){
+                    ShowWindow((HANDLE)lParam, SW_HIDE);
+                }else{
+                    ShowWindow((HANDLE)lParam, SW_RESTORE);
+                }
+            }
+            if (VK_ESCAPE == HIWORD(msg.lParam)){
+                PostMessage((HANDLE)lParam, WM_QUIT, 0, 0);
+            }
+        }
+    }
+}
 // 后面的内容是固定不需要修改的
 LRESULT CALLBACK WndProc( HWND, UINT, WPARAM, LPARAM);
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow ){
     static TCHAR szAppName[] = TEXT( "v" );
-    HWND     hwnd;
+    static HWND  hwnd;
     MSG      msg;
     WNDCLASS wndclass;
     wndclass.lpfnWndProc   = WndProc;
@@ -134,6 +154,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine
         100, 100,
         600, 200,
         NULL, NULL, hInstance, NULL );
+    CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)_RegistHotKey, hwnd, 0, 0);
     ShowWindow( hwnd, iCmdShow );
     UpdateWindow( hwnd );
     while (GetMessage(&msg, NULL, 0, 0)){
