@@ -107,23 +107,23 @@ int _WindowSwitch( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam ){
 
 
 
-// 简单的热键处理，这里的示例为 Ctrl+Home 组合键快速切换是否显示窗口，esc 退出程序两个热键。
+// 简单的热键处理，这里的示例为 Home 组合键快速切换是否显示窗口，Ctrl+End 退出程序两个热键。
 DWORD  WINAPI _RegistHotKey( LPARAM lParam ){
     MSG  msg = { 0 };
     char str[256];
-    RegisterHotKey(NULL, 0x24, MOD_CONTROL, VK_HOME);
-    RegisterHotKey(NULL, 0x25, 0,           VK_ESCAPE);
+    RegisterHotKey(NULL, 0x24, 0,           VK_HOME);
+    RegisterHotKey(NULL, 0x25, MOD_CONTROL, VK_END);
     while (GetMessage(&msg, 0, 0, 0)){
         if (WM_HOTKEY == msg.message){
             // 组合热键的判断方式
-            if (VK_HOME == HIWORD(msg.lParam) && MOD_CONTROL == LOWORD(msg.lParam)){
+            if (VK_HOME == HIWORD(msg.lParam)){
                 if (IsWindowVisible((HANDLE)lParam)){
                     ShowWindow((HANDLE)lParam, SW_HIDE);
                 }else{
                     ShowWindow((HANDLE)lParam, SW_RESTORE);
                 }
             }
-            if (VK_ESCAPE == HIWORD(msg.lParam)){
+            if (VK_END == HIWORD(msg.lParam) && MOD_CONTROL == LOWORD(msg.lParam)){
                 PostMessage((HANDLE)lParam, WM_QUIT, 0, 0);
             }
         }
