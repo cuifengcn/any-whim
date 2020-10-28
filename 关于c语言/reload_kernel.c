@@ -509,7 +509,7 @@ VOID RelocModule(PVOID pNewImage, PVOID pOrigImage){
     uRelocTableSize = ImageDataDirectory.Size;
 
     while (uRelocTableSize){
-        uTypeOffsetArraySize = pImageBaseRelocation->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION) + sizeof(pImageBaseRelocation->TypeOffset)/sizeof(USHORT);
+        uTypeOffsetArraySize = (pImageBaseRelocation->SizeOfBlock - sizeof(ULONG)*2)/sizeof(USHORT);
         pwOffsetArrayAddress = pImageBaseRelocation->TypeOffset;
         for (Index = 0; Index < uTypeOffsetArraySize; Index++) {
             TypeValue = pwOffsetArrayAddress[Index];
