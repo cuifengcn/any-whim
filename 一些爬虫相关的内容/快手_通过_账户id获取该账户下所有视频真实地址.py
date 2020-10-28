@@ -162,7 +162,6 @@ class VSpider(scrapy.Spider):
                 zstring = zlib.decompress(zstring,-15)
                 string = zstring.decode("utf-8")
 
-                body = "{\"operationName\":\"SharePageQuery\",\"variables\":{\"photoId\":\"3x9gpgr3imqmqey\",\"principalId\":\"huaweicorp\"},\"query\":\"query SharePageQuery($principalId: String, $photoId: String) {\\n  feedById(principalId: $principalId, photoId: $photoId) {\\n    currentWork {\\n      playUrl\\n      __typename\\n    }\\n    __typename\\n  }\\n}\\n\"}"
                 body = {
                     "operationName": "SharePageQuery",
                     "variables": {
