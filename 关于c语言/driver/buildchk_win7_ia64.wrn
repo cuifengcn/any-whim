@@ -1,0 +1,6 @@
+1>warnings in directory c:\users\administrator\desktop\driver
+1>c:\users\administrator\desktop\driver\some.c : warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+1>c:\users\administrator\desktop\driver\some.c(475) : warning C4242: '=' : conversion from 'ULONGLONG' to 'ULONG', possible loss of data
+1>c:\users\administrator\desktop\driver\some.c(589) : warning C4996: 'ExAllocatePool': was declared deprecated
+1>c:\users\administrator\desktop\driver\some.c(616) : warning C4996: 'ExAllocatePool': was declared deprecated
+1>c:\users\administrator\desktop\driver\some.c(681) : warning C4022: 'ReadFileToMemory' : pointer mismatch for actual parameter 3
