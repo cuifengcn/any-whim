@@ -44,7 +44,11 @@ ULONG SearchAddress() {
     int i = 0;
     UCHAR *p = (UCHAR *)Address1;
     for (i = 0; i < 100; i++) {
-        if (*p == 0x2b && *(p + 1) == 0xe1 && *(p + 2) == 0xc1 && *(p + 3) == 0xe9 && *(p + 4) == 0x02) {
+        if (*p == 0x2b && 
+            *(p + 1) == 0xe1 && 
+            *(p + 2) == 0xc1 && 
+            *(p + 3) == 0xe9 && 
+            *(p + 4) == 0x02) {
             Address2 = (ULONG)p;
             return (ULONG)p;
         }
