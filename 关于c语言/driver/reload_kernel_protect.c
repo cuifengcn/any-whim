@@ -708,7 +708,7 @@ VOID MyDriverUnload(PDRIVER_OBJECT pDriverObject){
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath){
     NTSTATUS Status;
-    ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe", &g_lpVirtualPointer, 0X83C10000);
+    ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntoskrnl.exe", &g_lpVirtualPointer, 0X83C10000);
     KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
     pDriverObject->DriverUnload = MyDriverUnload;
     return STATUS_SUCCESS;
