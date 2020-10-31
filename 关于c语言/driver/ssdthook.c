@@ -8,7 +8,13 @@ typedef struct ServiceDescriptorEntry{
     unsigned char *ParamTableBase;
 } ServiceDescriptorTableEntry_t, *PServiceDescriptorTable;
 #pragma()
-
+NTKERNELAPI
+NTSTATUS
+NTAPI
+PsLookupProcessByProcessId (
+    IN HANDLE       ProcessId,
+    OUT PEPROCESS   *Process
+);
 __declspec(dllimport)ServiceDescriptorTableEntry_t KeServiceDescriptorTable;
 
 typedef NTSTATUS (*NEWOPENPROCESS) (
@@ -38,6 +44,26 @@ void PageProtectOn(){
 
 ULONG g_ntopenprocess;
 
+BOOLEAN ProtectProcess(HANDLE ProcessId, char *str_ProtectObjName){
+    NTSTATUS  status;
+    PEPROCESS process_obj;
+    status = PsLookupProcessByProcessId(ProcessId, &process_obj);
+    if (!MmIsAddressValid(str_ProtectObjName)){
+        return FALSE;
+    }
+    if (ProcessId == 0){
+        return FALSE;
+    }
+    if (!NT_SUCCESS(status)){
+        KdPrint(("error code:%X", status));
+        return FALSE;
+    }
+    if (strstr((char *)process_obj+0x16c, str_ProtectObjName) != 0){
+        ObDereferenceObject(process_obj);
+        return TRUE;
+    }
+    return FALSE;
+}
 NTSTATUS NewNtOpenProcess (
     __out PHANDLE ProcessHandle,
     __in ACCESS_MASK DesiredAccess,
@@ -45,6 +71,9 @@ NTSTATUS NewNtOpenProcess (
     __in_opt PCLIENT_ID ClientId
 ){
     KdPrint(("NewNtOpenProcess!"));
+    if (ProtectProcess(ClientId->UniqueProcess, "VistaLKD")){
+        return STATUS_UNSUCCESSFUL;
+    }
     return ((NEWOPENPROCESS)g_ntopenprocess)(ProcessHandle,DesiredAccess,ObjectAttributes,ClientId);
 }
 
