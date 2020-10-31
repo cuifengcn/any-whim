@@ -504,8 +504,9 @@ PVOID g_lpVirtualPointer;
 ULONG g_ntcreatefile;
 ULONG g_fastcall_hookpointer;
 ULONG g_goto_origfunc;
-ULONG g_newkernel_inc;
+ULONG g_new_kernel_inc;
 
+ServiceDescriptorTableEntry_t *g_pnew_service_table;
 
 
 
@@ -561,10 +562,15 @@ ULONG SearchHookPointer(ULONG StartAddress) {
     return 0;
 }
 ULONG FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices, ULONG OrigFuncAddress) {
+    ULONG ProcessObj;
+    ProcessObj = *(ULONG*)((ULONG)PsGetCurrentThread()+0x150);
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
-        if (strstr((char *)PsGetCurrentProcess()+0x16c, "VistaLKD") != 0){
-            // KdPrint(("Orig:%X INC:%X plus:%X", OrigFuncAddress, g_newkernel_inc, (OrigFuncAddress + g_newkernel_inc)));
-            return OrigFuncAddress + g_newkernel_inc;
+        if (strstr((char*)ProcessObj+0x16c, "VistaLKD") != 0){
+            KdPrint(("Orig:%X INC:%X plus:%X", OrigFuncAddress, g_new_kernel_inc, (OrigFuncAddress + g_new_kernel_inc)));
+            if (84 == NumberOfServices){
+                return OrigFuncAddress;
+            }
+            return g_pnew_service_table->ServiceTableBase[NumberOfServices];
         }
     }
     return OrigFuncAddress;
@@ -574,16 +580,16 @@ VOID NewKiFastCallEntry() {
     __asm{
         pushad
         pushfd
-        push edx
-        push eax
-        push edi
-        call FilterKiFastCallEntry
-        mov [esp+0x14], eax
+        push    edx
+        push    eax
+        push    edi
+        call    FilterKiFastCallEntry
+        mov     [esp+0x18],eax
         popfd
         popad
-        sub esp, ecx
-        shr ecx, 2
-        jmp g_goto_origfunc
+        sub     esp,ecx
+        shr     ecx,2
+        jmp     g_goto_origfunc
     }
 }
 VOID CoverKiFastCallEntry(ULONG HookPointer) {
@@ -690,23 +696,18 @@ VOID RelocModule(PVOID pNewImage, PVOID pOrigImage){
     USHORT                  TypeValue;
     USHORT                  *pwOffsetArrayAddress;
     ULONG                   uTypeOffsetArraySize;
-
     ULONG                   uRelocOffset;
     ULONG                   uRelocAddress;
-
     PIMAGE_DOS_HEADER       pImageDosHeader;
     PIMAGE_NT_HEADERS       pImageNtHeader;
     IMAGE_DATA_DIRECTORY    ImageDataDirectory;
     IMAGE_BASE_RELOCATION   *pImageBaseRelocation;
-
     pImageDosHeader = (PIMAGE_DOS_HEADER)pNewImage;
     pImageNtHeader = (PIMAGE_NT_HEADERS)((ULONG)pNewImage + pImageDosHeader->e_lfanew);
     uRelocOffset = (ULONG)pOrigImage - pImageNtHeader->OptionalHeader.ImageBase;
-
     ImageDataDirectory = pImageNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
     pImageBaseRelocation = (PIMAGE_BASE_RELOCATION)((ULONG)ImageDataDirectory.VirtualAddress + (ULONG)pNewImage);
     uRelocTableSize = ImageDataDirectory.Size;
-
     while (uRelocTableSize){
         uTypeOffsetArraySize = (pImageBaseRelocation->SizeOfBlock - sizeof(ULONG)*2)/sizeof(USHORT);
         pwOffsetArrayAddress = pImageBaseRelocation->TypeOffset;
@@ -725,6 +726,36 @@ VOID RelocModule(PVOID pNewImage, PVOID pOrigImage){
             (ULONG)pImageBaseRelocation + (ULONG)pImageBaseRelocation->SizeOfBlock);
     }
 }
+VOID SetNewSSDT(PVOID pNewImage, PVOID pOrigImage, ServiceDescriptorTableEntry_t **pNewSeviceTable) {
+    ULONG                           u_index;
+    ULONG                           u_offset;
+    ServiceDescriptorTableEntry_t   *pnew_ssdt;
+    g_new_kernel_inc = (ULONG)pNewImage - (ULONG)pOrigImage;
+    pnew_ssdt = (ServiceDescriptorTableEntry_t *)((ULONG)&KeServiceDescriptorTable + g_new_kernel_inc);
+    if (!MmIsAddressValid(pnew_ssdt)){
+        KdPrint(("pNewSSDT"));
+        return;
+    }
+    pnew_ssdt->NumberOfServices = KeServiceDescriptorTable.NumberOfServices;
+    u_offset = (ULONG)KeServiceDescriptorTable.ServiceTableBase - (ULONG)pOrigImage;
+    pnew_ssdt->ServiceTableBase = (unsigned int*)((ULONG)pNewImage + u_offset);
+    if (!MmIsAddressValid(pnew_ssdt->ServiceTableBase)) {
+        KdPrint(("pNewSSDT->ServiceTableBase:%X",pnew_ssdt->ServiceTableBase));
+        return;
+    }
+    for (u_index = 0;u_index<pnew_ssdt->NumberOfServices;u_index++) {
+        pnew_ssdt->ServiceTableBase[u_index] += g_new_kernel_inc;
+    }
+    u_offset = (ULONG)KeServiceDescriptorTable.ParamTableBase - (ULONG)pOrigImage;
+    pnew_ssdt->ParamTableBase = (unsigned char*)((ULONG)pNewImage + u_offset);
+    if (!MmIsAddressValid(pnew_ssdt->ParamTableBase)) {
+        KdPrint(("pNewSSDT->ParamTableBase"));
+        return;
+    }
+    RtlCopyMemory(pnew_ssdt->ParamTableBase,KeServiceDescriptorTable.ParamTableBase,pnew_ssdt->NumberOfServices*sizeof(char));
+    *pNewSeviceTable = pnew_ssdt;
+    KdPrint(("set new ssdt success."));
+}
 NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpVirtualAddress, PVOID pOrigImage){
     NTSTATUS                status;
     UNICODE_STRING          ufilename;
@@ -732,17 +763,14 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpVirtualAddress, PVOID pOri
     LARGE_INTEGER           FileOffset;
     OBJECT_ATTRIBUTES       ObjAttr;
     IO_STATUS_BLOCK         IoStatusBlock;
-
     IMAGE_DOS_HEADER        ImageDosHeader;
     IMAGE_NT_HEADERS        ImageNtHeader;
     IMAGE_SECTION_HEADER    *pImageSectionHeader;
     IMAGE_DATA_DIRECTORY    ImageDataDirectory;
-
     ULONG                   Index;
     PVOID                   lpVirtualPointer;
     ULONG                   SecVirtualAddress, SizeOfSection;
     ULONG                   PointerToRawData;
-
     if (!MmIsAddressValid(filename)){
         return STATUS_UNSUCCESSFUL;
     }
@@ -771,7 +799,6 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpVirtualAddress, PVOID pOri
         KdPrint(("ZwCreatFile Failed."));
         return status;
     }
-
     // 读取 DOS headers.
     FileOffset.QuadPart = 0;
     status = ZwReadFile(
@@ -808,7 +835,6 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpVirtualAddress, PVOID pOri
         ZwClose(hFile);
         return status;
     }
-
     // 申请区段内存空间，读取区段
     pImageSectionHeader = ExAllocatePool(
         NonPagedPool, 
@@ -890,6 +916,7 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpVirtualAddress, PVOID pOri
         }
     }
     RelocModule(lpVirtualPointer, pOrigImage);
+    SetNewSSDT(lpVirtualPointer, pOrigImage,&g_pnew_service_table);
     ExFreePool(pImageSectionHeader);
     *lpVirtualAddress = lpVirtualPointer;
     ZwClose(hFile);
@@ -936,10 +963,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath)
     pLdrDataTableEntry = SearchDriver(pDriverObject, L"ntoskrnl.exe");
     if (pLdrDataTableEntry){
         ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe", &g_lpVirtualPointer, pLdrDataTableEntry->DllBase);
-        g_newkernel_inc = (ULONG)g_lpVirtualPointer - (ULONG)pLdrDataTableEntry->DllBase;
+        g_new_kernel_inc = (ULONG)g_lpVirtualPointer - (ULONG)pLdrDataTableEntry->DllBase;
         KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
         KdPrint(("pLdrDataTableEntry->DllBase:%X", pLdrDataTableEntry->DllBase));
-        KdPrint(("g_newkernel_inc:%X", g_newkernel_inc));
+        KdPrint(("g_new_kernel_inc:%X", g_new_kernel_inc));
         HookKiFastCallEntry();
     }
     pDriverObject->DriverUnload = MyDriverUnload;
