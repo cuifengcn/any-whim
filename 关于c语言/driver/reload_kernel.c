@@ -670,7 +670,7 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpFileVirtualAddress, PVOID 
     for (Index = 0; Index < ImageNtHeader.FileHeader.NumberOfSections; Index++) {
         SecVirtualAddress = pImageSectionHeader[Index].VirtualAddress;
         SizeOfSection = __Max(  pImageSectionHeader[Index].SizeOfRawData,
-                                pImageSectionHeader[Index].PointerToRawData );
+                                pImageSectionHeader[Index].Misc.VirtualSize );
         PointerToRawData = pImageSectionHeader[Index].PointerToRawData;
         FileOffset.QuadPart = PointerToRawData;
         status = ZwReadFile(

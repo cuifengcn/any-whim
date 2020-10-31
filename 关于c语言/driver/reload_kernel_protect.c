@@ -449,8 +449,34 @@ typedef PIMAGE_TLS_DIRECTORY32          PIMAGE_TLS_DIRECTORY;
 #define IMAGE_REL_BASED_IA64_IMM64 9
 #define IMAGE_REL_BASED_DIR64 10
 
-
-
+typedef struct _LDR_DATA_TABLE_ENTRY {
+    LIST_ENTRY InLoadOrderLinks;
+    LIST_ENTRY InMemoryOrderLinks;
+    LIST_ENTRY InInitializationOrderLinks;
+    PVOID DllBase;
+    PVOID EntryPoint;
+    ULONG SizeOfImage;
+    UNICODE_STRING FullDllName;
+    UNICODE_STRING BaseDllName;
+    ULONG Flags;
+    USHORT LoadCount;
+    USHORT TlsIndex;
+    union {
+        LIST_ENTRY HashLinks;
+        struct {
+            PVOID SectionPointer;
+            ULONG CheckSum;
+        };
+    };
+    union {
+        struct {
+            ULONG TimeDateStamp;
+        };
+        struct {
+            PVOID LoadedImports;
+        };
+    };
+} LDR_DATA_TABLE_ENTRY,*PLDR_DATA_TABLE_ENTRY;
 
 
 
@@ -670,7 +696,7 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpFileVirtualAddress, PVOID 
     for (Index = 0; Index < ImageNtHeader.FileHeader.NumberOfSections; Index++) {
         SecVirtualAddress = pImageSectionHeader[Index].VirtualAddress;
         SizeOfSection = __Max(  pImageSectionHeader[Index].SizeOfRawData,
-                                pImageSectionHeader[Index].PointerToRawData );
+                                pImageSectionHeader[Index].Misc.VirtualSize );
         PointerToRawData = pImageSectionHeader[Index].PointerToRawData;
         FileOffset.QuadPart = PointerToRawData;
         status = ZwReadFile(
@@ -693,11 +719,32 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpFileVirtualAddress, PVOID 
         }
     }
     RelocModule(lpVirtualPointer, pOrigImage);
-    KdPrint(("ok."));
     ExFreePool(pImageSectionHeader);
     *lpFileVirtualAddress = lpVirtualPointer;
     ZwClose(hFile);
     return status;
+}
+
+PLDR_DATA_TABLE_ENTRY SearchDriver(PDRIVER_OBJECT pDriverObject, wchar_t *strDriverName){
+    LDR_DATA_TABLE_ENTRY *pDataTableEntry;
+    LDR_DATA_TABLE_ENTRY *pCheckTableEntry;
+    UNICODE_STRING       usMuduleName;
+    PLIST_ENTRY          pList;
+    pDataTableEntry = (LDR_DATA_TABLE_ENTRY *)pDriverObject->DriverSection;
+    if (!pDataTableEntry){
+        return 0;
+    }
+    RtlInitUnicodeString(&usMuduleName, strDriverName);
+    pList = pDataTableEntry->InLoadOrderLinks.Flink;
+    while (pList != &pDataTableEntry->InLoadOrderLinks){
+        pCheckTableEntry = (LDR_DATA_TABLE_ENTRY *)pList;
+        if (0 == RtlCompareUnicodeString(&usMuduleName, &pCheckTableEntry->BaseDllName, FALSE)){
+            KdPrint(("find table entry: %wZ", &pCheckTableEntry->FullDllName));
+            return pCheckTableEntry;
+        }
+        pList = pList->Flink;
+    }
+    return 0;
 }
 
 VOID MyDriverUnload(PDRIVER_OBJECT pDriverObject){
@@ -707,9 +754,12 @@ VOID MyDriverUnload(PDRIVER_OBJECT pDriverObject){
 }
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath){
-    NTSTATUS Status;
-    ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntoskrnl.exe", &g_lpVirtualPointer, 0X83C10000);
-    KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
+    LDR_DATA_TABLE_ENTRY   *pLdrDataTableEntry;
+    pLdrDataTableEntry = SearchDriver(pDriverObject, L"ntoskrnl.exe");
+    if (pLdrDataTableEntry){
+        ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe", &g_lpVirtualPointer, pLdrDataTableEntry->DllBase);
+        KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
+    }
     pDriverObject->DriverUnload = MyDriverUnload;
     return STATUS_SUCCESS;
 }
