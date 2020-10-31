@@ -562,8 +562,9 @@ ULONG SearchHookPointer(ULONG StartAddress) {
 }
 ULONG FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices, ULONG OrigFuncAddress) {
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
-        if (strstr((char *)PsGetCurrentProcess()+0x16c, "OllyDbg") != 0){
-            return (OrigFuncAddress + g_newkernel_inc);
+        if (strstr((char *)PsGetCurrentProcess()+0x16c, "VistaLKD") != 0){
+            // KdPrint(("Orig:%X INC:%X plus:%X", OrigFuncAddress, g_newkernel_inc, (OrigFuncAddress + g_newkernel_inc)));
+            return OrigFuncAddress + g_newkernel_inc;
         }
     }
     return OrigFuncAddress;
@@ -577,7 +578,7 @@ VOID NewKiFastCallEntry() {
         push eax
         push edi
         call FilterKiFastCallEntry
-        mov [esp+0x18], eax
+        mov [esp+0x14], eax
         popfd
         popad
         sub esp, ecx
@@ -724,7 +725,7 @@ VOID RelocModule(PVOID pNewImage, PVOID pOrigImage){
             (ULONG)pImageBaseRelocation + (ULONG)pImageBaseRelocation->SizeOfBlock);
     }
 }
-NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpFileVirtualAddress, PVOID pOrigImage){
+NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpVirtualAddress, PVOID pOrigImage){
     NTSTATUS                status;
     UNICODE_STRING          ufilename;
     HANDLE                  hFile;
@@ -890,7 +891,7 @@ NTSTATUS ReadFileToMemory(wchar_t* filename, PVOID* lpFileVirtualAddress, PVOID 
     }
     RelocModule(lpVirtualPointer, pOrigImage);
     ExFreePool(pImageSectionHeader);
-    *lpFileVirtualAddress = lpVirtualPointer;
+    *lpVirtualAddress = lpVirtualPointer;
     ZwClose(hFile);
     return status;
 }
@@ -937,6 +938,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath)
         ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe", &g_lpVirtualPointer, pLdrDataTableEntry->DllBase);
         g_newkernel_inc = (ULONG)g_lpVirtualPointer - (ULONG)pLdrDataTableEntry->DllBase;
         KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
+        KdPrint(("pLdrDataTableEntry->DllBase:%X", pLdrDataTableEntry->DllBase));
         KdPrint(("g_newkernel_inc:%X", g_newkernel_inc));
         HookKiFastCallEntry();
     }
