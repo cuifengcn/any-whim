@@ -77,7 +77,7 @@ VOID NewKiFastCallEntry() {
         jmp g_goto_origfunc
     }
 }
-VOID HookKiFastCallEntry(ULONG HookPointer) {
+VOID CoverKiFastCallEntry(ULONG HookPointer) {
     ULONG u_temp;
     UCHAR str_jmp_code[5];
     str_jmp_code[0] = 0xE9;
@@ -114,7 +114,7 @@ NTSTATUS NewCreateFile(
         KdPrint(("SearchHookPointer success."));
     }
     g_goto_origfunc = g_fastcall_hookpointer + 5;
-    HookKiFastCallEntry(g_fastcall_hookpointer);
+    CoverKiFastCallEntry(g_fastcall_hookpointer);
     PageProtectOff();
     KeServiceDescriptorTable.ServiceTableBase[66] = (unsigned int)g_ntcreatefile;
     PageProtectOn();
@@ -133,11 +133,39 @@ NTSTATUS NewCreateFile(
     );
 }
 
-VOID SearchKiFastCallEntry() {
+VOID HookKiFastCallEntry() {
+    HANDLE              hFile;
+    OBJECT_ATTRIBUTES   ObjAttr;
+    IO_STATUS_BLOCK     IoStatusBlock;
+    UNICODE_STRING      usFileName;
+    RtlInitUnicodeString(&usFileName, L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe");
+    InitializeObjectAttributes(
+        &ObjAttr,
+        &usFileName,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+    );
     g_ntcreatefile = KeServiceDescriptorTable.ServiceTableBase[66];
     PageProtectOff();
     KeServiceDescriptorTable.ServiceTableBase[66] = (unsigned int)NewCreateFile;
     PageProtectOn();
+    ZwCreateFile(
+        &hFile,
+        FILE_ALL_ACCESS,
+        &ObjAttr,
+        &IoStatusBlock,
+        NULL,
+        FILE_ATTRIBUTE_NORMAL,
+        FILE_SHARE_READ,
+        FILE_OPEN,
+        FILE_NON_DIRECTORY_FILE,
+        NULL,
+        0
+    );
+    if (NT_SUCCESS(hFile)){
+        ZwClose(hFile);
+    }
 }
 VOID UnHookKiFastCallEntry() {
     UCHAR str_origfuncode[5] = { 0x2b, 0xe1, 0xc1, 0xe9, 0x02 };
@@ -153,7 +181,7 @@ VOID DriverUnload(IN PDRIVER_OBJECT pDriverObject) {
     UnHookKiFastCallEntry();
 }
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT pDriverObject, IN PUNICODE_STRING RegistryPath) {
-    SearchKiFastCallEntry();
+    HookKiFastCallEntry();
     pDriverObject->DriverUnload = DriverUnload;
     return STATUS_SUCCESS;
 }

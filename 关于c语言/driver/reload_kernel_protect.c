@@ -1,5 +1,9 @@
 // 快速开发 windows 内核驱动，一个脚本即可开发驱动。
 // 该处代码的主要功能为重载内核，主要是绕过一些内核态的函数检测功能。
+// 使用重载内核后实现的新内核空间的函数，让执行程序执行时走自己创建的内核空间的代码
+// 防止一些已经被挂钩住的内核函数的检测，
+// 主要的过滤逻辑在 FilterKiFastCallEntry 函数处，注意修改即可。
+
 
 // 准备1：
 // 在当前脚本路径内创建两个文件，配置完这两个固定的文件后续就无需再修改了。文件名字固定为 makefile 和 sources
@@ -25,8 +29,6 @@
 // 
 // 执行后，环境配置完毕，请跳转到当前路径位置。使用配置好环境的命令行进行编译。
 // 执行命令 build 即可编译。这样你的驱动就编译好了。
-
-
 
 #include "ntddk.h"
 
@@ -476,11 +478,6 @@ typedef struct _LDR_DATA_TABLE_ENTRY {
         };
     };
 } LDR_DATA_TABLE_ENTRY,*PLDR_DATA_TABLE_ENTRY;
-#define __Max(a,b)  a>b?a:b
-PVOID g_lpVirtualPointer;
-ULONG g_ntcreatefile;
-ULONG g_fastcall_hookpointer;
-ULONG g_goto_origfunc;
 #pragma pack(1)
 typedef struct ServiceDescriptorEntry {
     unsigned int *ServiceTableBase;
@@ -502,6 +499,35 @@ typedef NTSTATUS (*NTCREATEFILE)(
     IN PVOID  EaBuffer  OPTIONAL,
     IN ULONG  EaLength
     );
+#define __Max(a,b)  a>b?a:b
+PVOID g_lpVirtualPointer;
+ULONG g_ntcreatefile;
+ULONG g_fastcall_hookpointer;
+ULONG g_goto_origfunc;
+ULONG g_newkernel_inc;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 __declspec(dllimport) ServiceDescriptorTableEntry_t KeServiceDescriptorTable;
 void PageProtectOn() {
     __asm {
@@ -534,21 +560,24 @@ ULONG SearchHookPointer(ULONG StartAddress) {
     }
     return 0;
 }
-VOID FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices) {
+ULONG FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices, ULONG OrigFuncAddress) {
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
-        if (NumberOfServices == 190) {
-            KdPrint(("%s", (char*)PsGetCurrentProcess() + 0x16c));
+        if (strstr((char *)PsGetCurrentProcess()+0x16c, "OllyDbg") != 0){
+            return (OrigFuncAddress + g_newkernel_inc);
         }
     }
+    return OrigFuncAddress;
 }
 __declspec(naked)
 VOID NewKiFastCallEntry() {
     __asm{
         pushad
         pushfd
+        push edx
         push eax
         push edi
         call FilterKiFastCallEntry
+        mov [esp+0x18], eax
         popfd
         popad
         sub esp, ecx
@@ -612,10 +641,38 @@ NTSTATUS NewCreateFile(
     );
 }
 VOID HookKiFastCallEntry() {
+    HANDLE              hFile;
+    OBJECT_ATTRIBUTES   ObjAttr;
+    IO_STATUS_BLOCK     IoStatusBlock;
+    UNICODE_STRING      usFileName;
+    RtlInitUnicodeString(&usFileName, L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe");
+    InitializeObjectAttributes(
+        &ObjAttr,
+        &usFileName,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+    );
     g_ntcreatefile = KeServiceDescriptorTable.ServiceTableBase[66];
     PageProtectOff();
     KeServiceDescriptorTable.ServiceTableBase[66] = (unsigned int)NewCreateFile;
     PageProtectOn();
+    ZwCreateFile(
+        &hFile,
+        FILE_ALL_ACCESS,
+        &ObjAttr,
+        &IoStatusBlock,
+        NULL,
+        FILE_ATTRIBUTE_NORMAL,
+        FILE_SHARE_READ,
+        FILE_OPEN,
+        FILE_NON_DIRECTORY_FILE,
+        NULL,
+        0
+    );
+    if (NT_SUCCESS(hFile)){
+        ZwClose(hFile);
+    }
 }
 VOID UnHookKiFastCallEntry() {
     UCHAR str_origfuncode[5] = { 0x2b, 0xe1, 0xc1, 0xe9, 0x02 };
@@ -869,6 +926,7 @@ PLDR_DATA_TABLE_ENTRY SearchDriver(PDRIVER_OBJECT pDriverObject, wchar_t *strDri
 VOID MyDriverUnload(PDRIVER_OBJECT pDriverObject){
     if (g_lpVirtualPointer){
         ExFreePool(g_lpVirtualPointer);
+        UnHookKiFastCallEntry();
     }
 }
 
@@ -877,7 +935,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath)
     pLdrDataTableEntry = SearchDriver(pDriverObject, L"ntoskrnl.exe");
     if (pLdrDataTableEntry){
         ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe", &g_lpVirtualPointer, pLdrDataTableEntry->DllBase);
+        g_newkernel_inc = (ULONG)g_lpVirtualPointer - (ULONG)pLdrDataTableEntry->DllBase;
         KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
+        KdPrint(("g_newkernel_inc:%X", g_newkernel_inc));
+        HookKiFastCallEntry();
     }
     pDriverObject->DriverUnload = MyDriverUnload;
     return STATUS_SUCCESS;
