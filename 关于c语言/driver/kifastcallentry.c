@@ -1,4 +1,4 @@
-#include <ntddk.h>
+#include "ntddk.h"
 #pragma pack(1)
 typedef struct ServiceDescriptorEntry {
     unsigned int *ServiceTableBase;
@@ -8,10 +8,10 @@ typedef struct ServiceDescriptorEntry {
 } ServiceDescriptorTableEntry_t, *PServiceDescriptorTableEntry_t;
 #pragma pack()
 __declspec(dllimport) ServiceDescriptorTableEntry_t KeServiceDescriptorTable;
-ULONG Old_NtCreateFile = 0;
-ULONG Address1 = 0;
-ULONG Address2 = 0;
-typedef NTSTATUS  (*PNEWNTCREATEFILE)(
+ULONG g_ntcreatefile;
+ULONG g_fastcall_hookpointer;
+ULONG g_goto_origfunc;
+typedef NTSTATUS (*NTCREATEFILE)(
     OUT PHANDLE  FileHandle,
     IN ACCESS_MASK  DesiredAccess,
     IN POBJECT_ATTRIBUTES  ObjectAttributes,
@@ -40,26 +40,25 @@ void PageProtectOff() {
         mov  cr0, eax
     }
 }
-ULONG SearchAddress() {
-    int i = 0;
-    UCHAR *p = (UCHAR *)Address1;
-    for (i = 0; i < 100; i++) {
+ULONG SearchHookPointer(ULONG StartAddress) {
+    ULONG i = 0;
+    UCHAR *p = (UCHAR *)StartAddress;
+    for (i = 0; i < 200; i++) {
         if (*p == 0x2b && 
             *(p + 1) == 0xe1 && 
             *(p + 2) == 0xc1 && 
             *(p + 3) == 0xe9 && 
             *(p + 4) == 0x02) {
-            Address2 = (ULONG)p;
             return (ULONG)p;
         }
         p--;
     }
     return 0;
 }
-VOID File_HOOKAPI(ULONG ServiceTableBase, ULONG NumberOfServices) {
+VOID FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices) {
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
-        if (NumberOfServices == 119) {
-            KdPrint(("看那些进入KiFasetCallEntry调用ntopenkey进程名是%s\n", (char*)PsGetCurrentProcess() + 0x174));
+        if (NumberOfServices == 190) {
+            KdPrint(("%s", (char*)PsGetCurrentProcess() + 0x16c));
         }
     }
 }
@@ -70,26 +69,25 @@ VOID NewKiFastCallEntry() {
         pushfd
         push eax
         push edi
-        call File_HOOKAPI
+        call FilterKiFastCallEntry
         popfd
         popad
-        pop eax
         sub esp, ecx
         shr ecx, 2
-        jmp eax
+        jmp g_goto_origfunc
     }
 }
-VOID Hook_KiFastCallEntry() {
-    ULONG AwayAddress = 0;
-    UCHAR TraitCode[5];
-    TraitCode[0] = 0xE8;
-    AwayAddress = (ULONG)NewKiFastCallEntry - 5 - Address2;
-    *(ULONG*)&TraitCode[1] = AwayAddress;
+VOID HookKiFastCallEntry(ULONG HookPointer) {
+    ULONG u_temp;
+    UCHAR str_jmp_code[5];
+    str_jmp_code[0] = 0xE9;
+    u_temp = (ULONG)NewKiFastCallEntry - 5 - HookPointer;
+    *(ULONG*)&str_jmp_code[1] = u_temp;
     PageProtectOff();
-    RtlCopyMemory((PVOID)Address2, TraitCode, 5);
+    RtlCopyMemory((PVOID)HookPointer, str_jmp_code, 5);
     PageProtectOn();
 }
-NTSTATUS  NewCreateFile(
+NTSTATUS NewCreateFile(
     OUT PHANDLE  FileHandle,
     IN ACCESS_MASK  DesiredAccess,
     IN POBJECT_ATTRIBUTES  ObjectAttributes,
@@ -102,34 +100,60 @@ NTSTATUS  NewCreateFile(
     IN PVOID  EaBuffer  OPTIONAL,
     IN ULONG  EaLength
     ) {
+    ULONG u_call_retaddr;
     __asm{
         pushad
         mov eax, [ebp + 0x4]
-        mov Address1, eax
+        mov u_call_retaddr, eax
         popad
     }
-    SearchAddress();
-    Hook_KiFastCallEntry();
-    return (((PNEWNTCREATEFILE)Old_NtCreateFile)(FileHandle, DesiredAccess, ObjectAttributes,
-        IoStatusBlock, AllocationSize, FileAttributes, ShareAccess, CreateDisposition, CreateOptions,
-        EaBuffer, EaLength));
+    g_fastcall_hookpointer = SearchHookPointer(u_call_retaddr);
+    if (0 == g_fastcall_hookpointer){
+        KdPrint(("SearchHookPointer failed."));
+    }else{
+        KdPrint(("SearchHookPointer success."));
+    }
+    g_goto_origfunc = g_fastcall_hookpointer + 5;
+    HookKiFastCallEntry(g_fastcall_hookpointer);
+    PageProtectOff();
+    KeServiceDescriptorTable.ServiceTableBase[66] = (unsigned int)g_ntcreatefile;
+    PageProtectOn();
+    return ((NTCREATEFILE)g_ntcreatefile)(
+        FileHandle, 
+        DesiredAccess, 
+        ObjectAttributes,
+        IoStatusBlock, 
+        AllocationSize, 
+        FileAttributes, 
+        ShareAccess, 
+        CreateDisposition, 
+        CreateOptions,
+        EaBuffer, 
+        EaLength
+    );
 }
+
+VOID SearchKiFastCallEntry() {
+    g_ntcreatefile = KeServiceDescriptorTable.ServiceTableBase[66];
+    PageProtectOff();
+    KeServiceDescriptorTable.ServiceTableBase[66] = (unsigned int)NewCreateFile;
+    PageProtectOn();
+}
+VOID UnHookKiFastCallEntry() {
+    UCHAR str_origfuncode[5] = { 0x2b, 0xe1, 0xc1, 0xe9, 0x02 };
+    if (g_fastcall_hookpointer == 0 ){
+        return;
+    }
+    PageProtectOff();
+    RtlCopyMemory((PVOID)g_fastcall_hookpointer, str_origfuncode, 5);
+    PageProtectOn();
+}
+
 VOID DriverUnload(IN PDRIVER_OBJECT pDriverObject) {
-    UCHAR tezhengma[5] = { 0x2b, 0xe1, 0xc1, 0xe9, 0x02 };
-    PageProtectOff();
-    KeServiceDescriptorTable.ServiceTableBase[37] = (unsigned int)Old_NtCreateFile;
-    PageProtectOn();
-    PageProtectOff();
-    RtlCopyMemory((PVOID)Address2, tezhengma, 5);
-    PageProtectOn();
-    KdPrint(("已经执行到驱动卸载历程\n"));
+    UnHookKiFastCallEntry();
 }
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT pDriverObject, IN PUNICODE_STRING RegistryPath) {
-    Old_NtCreateFile = KeServiceDescriptorTable.ServiceTableBase[37];
-    PageProtectOff();
-    KeServiceDescriptorTable.ServiceTableBase[37] = (unsigned int)NewCreateFile;
-    PageProtectOn();
+    SearchKiFastCallEntry();
     pDriverObject->DriverUnload = DriverUnload;
-    DbgPrint("DriverEntry");
     return STATUS_SUCCESS;
 }
