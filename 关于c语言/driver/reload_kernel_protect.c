@@ -957,7 +957,7 @@ VOID MyDriverUnload(PDRIVER_OBJECT pDriverObject){
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath){
     LDR_DATA_TABLE_ENTRY   *pLdrDataTableEntry;
-    pLdrDataTableEntry = SearchDriver(pDriverObject, L"ntoskrnl.exe");
+    pLdrDataTableEntry = SearchDriver(pDriverObject, L"ntoskrnl.exe"); // 这里不跟随下面的注释修改，固定即可。
     if (pLdrDataTableEntry){
         // 一个十分重要的点就是在这里的读取的程序需要考虑该电脑是否支持 PAE 模式，选则错了模式基本距离蓝屏不远了。
         // 如果没使用 PAE 模式则加载文件 L"\\??\\C:\\Windows\\System32\\ntoskrnl.exe"
