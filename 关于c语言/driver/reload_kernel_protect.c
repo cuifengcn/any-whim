@@ -566,7 +566,7 @@ ULONG FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices, ULON
     ULONG ProcessObj;
     ProcessObj = *(ULONG*)((ULONG)PsGetCurrentThread()+0x150);
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
-        if (strstr((char*)ProcessObj+0x16c, "VistaLKD") != 0){
+        if (strstr((char*)ProcessObj+0x16c, "llydbg") != 0){
             KdPrint(("Numb:%X Orig:%X INC:%X plus:%X", NumberOfServices, OrigFuncAddress, g_new_kernel_inc, (OrigFuncAddress + g_new_kernel_inc)));
             return g_pnew_service_table->ServiceTableBase[NumberOfServices];
         }
