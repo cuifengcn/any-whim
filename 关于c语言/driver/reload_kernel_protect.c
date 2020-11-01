@@ -3,6 +3,7 @@
 // 使用重载内核后实现的新内核空间的函数，让执行程序执行时走自己创建的内核空间的代码
 // 防止一些已经被挂钩住的内核函数的检测，
 // 主要的过滤逻辑在 FilterKiFastCallEntry 函数处，注意修改即可。
+// 另外还需要注意最底部的 DriverEntry 函数内的注释，注意修改即可。
 
 
 // 准备1：
@@ -566,17 +567,13 @@ ULONG FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices, ULON
     ProcessObj = *(ULONG*)((ULONG)PsGetCurrentThread()+0x150);
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
         if (strstr((char*)ProcessObj+0x16c, "VistaLKD") != 0){
-            KdPrint(("Orig:%X INC:%X plus:%X", OrigFuncAddress, g_new_kernel_inc, (OrigFuncAddress + g_new_kernel_inc)));
-            if (84 == NumberOfServices){
-                return OrigFuncAddress;
-            }
+            KdPrint(("Numb:%X Orig:%X INC:%X plus:%X", NumberOfServices, OrigFuncAddress, g_new_kernel_inc, (OrigFuncAddress + g_new_kernel_inc)));
             return g_pnew_service_table->ServiceTableBase[NumberOfServices];
         }
     }
     return OrigFuncAddress;
 }
-__declspec(naked)
-VOID NewKiFastCallEntry() {
+__declspec(naked) VOID NewKiFastCallEntry() {
     __asm{
         pushad
         pushfd
@@ -652,7 +649,7 @@ VOID HookKiFastCallEntry() {
     OBJECT_ATTRIBUTES   ObjAttr;
     IO_STATUS_BLOCK     IoStatusBlock;
     UNICODE_STRING      usFileName;
-    RtlInitUnicodeString(&usFileName, L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe");
+    RtlInitUnicodeString(&usFileName, L"\\??\\C:\\Windows\\System32\\ntoskrnl.exe");
     InitializeObjectAttributes(
         &ObjAttr,
         &usFileName,
@@ -962,7 +959,15 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject,PUNICODE_STRING pRegistryPath)
     LDR_DATA_TABLE_ENTRY   *pLdrDataTableEntry;
     pLdrDataTableEntry = SearchDriver(pDriverObject, L"ntoskrnl.exe");
     if (pLdrDataTableEntry){
-        ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe", &g_lpVirtualPointer, pLdrDataTableEntry->DllBase);
+        // 一个十分重要的点就是在这里的读取的程序需要考虑该电脑是否支持 PAE 模式，选则错了模式基本距离蓝屏不远了。
+        // 如果没使用 PAE 模式则加载文件 L"\\??\\C:\\Windows\\System32\\ntoskrnl.exe"
+        // 如果使用了 PAE 模式则加载文件 L"\\??\\C:\\Windows\\System32\\ntkrnlpa.exe"
+        // 多核情况不太清楚，这里给出一点描述用于后续开发，简单来说是同一套源代码根据编译选项的不同而编译出四个可执行文件，看机器选择：
+        // ntoskrnl - 单处理器，不支持PAE
+        // ntkrnlpa - 单处理器，支持PAE
+        // ntkrnlmp - 多处理器，不支持PAE
+        // ntkrpamp - 多处理器，支持PAE
+        ReadFileToMemory(L"\\??\\C:\\Windows\\System32\\ntoskrnl.exe", &g_lpVirtualPointer, pLdrDataTableEntry->DllBase);
         g_new_kernel_inc = (ULONG)g_lpVirtualPointer - (ULONG)pLdrDataTableEntry->DllBase;
         KdPrint(("g_lpVirtualPointer:%X", g_lpVirtualPointer));
         KdPrint(("pLdrDataTableEntry->DllBase:%X", pLdrDataTableEntry->DllBase));
