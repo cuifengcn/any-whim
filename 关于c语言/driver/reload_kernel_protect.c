@@ -567,7 +567,9 @@ ULONG FilterKiFastCallEntry(ULONG ServiceTableBase, ULONG NumberOfServices, ULON
     ProcessObj = *(ULONG*)((ULONG)PsGetCurrentThread()+0x150);
     if (ServiceTableBase == (ULONG)KeServiceDescriptorTable.ServiceTableBase) {
         if (strstr((char*)ProcessObj+0x16c, "llydbg") != 0){
-            KdPrint(("Numb:%X Orig:%X INC:%X plus:%X", NumberOfServices, OrigFuncAddress, g_new_kernel_inc, (OrigFuncAddress + g_new_kernel_inc)));
+            // 让自己用来调试的软件走新的通道，使得能够轻松绕过各种 hook 反调试
+            // 另外需要注意的是，该驱动要早于 ssdt 被修改前加载，这样新的 ssdt 表地址才会准确，否则可能会导致蓝屏
+            // KdPrint(("Numb:%X Orig:%X INC:%X plus:%X", NumberOfServices, OrigFuncAddress, g_new_kernel_inc, (OrigFuncAddress + g_new_kernel_inc)));
             return g_pnew_service_table->ServiceTableBase[NumberOfServices];
         }
     }
