@@ -1,7 +1,8 @@
 // 32位与64位 通用的 windows she11code 生成工具。
 // cmd> tcc tcc_autocreate_she11code.c
 // cmd> gcc tcc_autocreate_she11code.c
-// 编译及其简单，带有简单的自动生带有加解密的 shellcode 防止指纹探测。可在编译前设置自己加解密的密码串。
+// 编译及其简单，带有简单的自动生带有加解密的 shellcode 防止指纹探测。
+//   可在编译前设置自己加解密的密码串，让你的 shellcode 变得更加多样，“防指纹探测”功能的增强。
 // 按照中间那一块的代码规则即可开发属于自己的 shellcode。
 
 // 语法依 at&t 语法，
