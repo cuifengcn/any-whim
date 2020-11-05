@@ -136,10 +136,27 @@ void ShellcodeStart(){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////
 // 在中间这一块代码内开发你自己的 shellcode 的功能吧
 // 1 定义你使用的系统函数，从各种地方抄一份按下列相同方式修改即可
-//   1.1 用一个结构管理所有的函数使得开发不会变得很乱
+//   例如：   WINBASEAPI FARPROC  WINAPI  GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
+//   修改：      typedef FARPROC (WINAPI* FN_GetProcAddress)( HMODULE hModule, LPCSTR lpProcName );
+//   同理修改其他的函数。
+// 1.1 用一个结构管理所有的函数，使得初始化只要一次，并且开发也会变得更加清晰
 // 2 在 InitFunctions 函数内初始化你按照里面的格式初始化你要使用的系统函数
 // 3 在 InitFunctions 后面定义你自己想要实现的功能函数，参数都是 (PFUNCTION pFn)
 // 4 在整个 shellcode 的函数入口点 ShellcodeEntry 函数内按照下面示例执行你的功能函数即可
@@ -147,19 +164,9 @@ void ShellcodeStart(){
 
 // 1 先定义需要使用到的系统函数，方便模块化开发，所有函数的初始化都放在一个结构里面会更方便使用。
 // 定义结构并不会在 shellcode 的代码内体现，只会在编译时期有用。
-typedef FARPROC (WINAPI* FN_GetProcAddress)(
-    HMODULE hModule,
-    LPCSTR lpProcName
-);
-typedef HMODULE (WINAPI* FN_LoadLibraryA)(
-    LPCSTR lpLibFileName
-);
-typedef int (WINAPI* FN_MessageBoxA)(
-    HWND hWnd ,
-    LPCSTR lpText,
-    LPCSTR lpCaption,
-    UINT uType
-);
+typedef FARPROC (WINAPI* FN_GetProcAddress)( HMODULE hModule, LPCSTR lpProcName );
+typedef HMODULE (WINAPI* FN_LoadLibraryA)( LPCSTR lpLibFileName );
+typedef int (WINAPI* FN_MessageBoxA)( HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType );
 typedef HANDLE (WINAPI* FN_CreateFileA)(
     LPCSTR lpFileName,
     DWORD dwDesiredAccess,
@@ -194,7 +201,7 @@ void InitFunctions(PFUNCTION pFn){
     pFn->fn_CreateFileA     = (FN_CreateFileA)pFn->fn_GetProcAddress(pFn->fn_LoadLibraryA(szKernel32), szCreateFileA);
 }
 // 3 所有你需要实现的功能使用函数装起来，并且都用 PFUNCTION 接收初始化参数，方便使用。
-//   这里给了两个函数示例。
+//   这里给了两个函数示例。（一个在目标程序路径下创建1.txt文件，一个是直接弹窗）
 void WKCreateFile(PFUNCTION pFn){
     char szFileName[] = {'.','/','1','.','t','x','t','\0'};
     pFn->fn_CreateFileA(szFileName,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,0,NULL);
