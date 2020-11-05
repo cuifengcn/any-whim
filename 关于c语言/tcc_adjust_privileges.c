@@ -1,9 +1,10 @@
 // 使用 tcc 编译时需要注意添加特定的 lib 链接库，因为 tcc 自动会链接库只有少数几个。
 // cmd> gcc ./tcc_adjust_privileges.c
-// cmd> tcc ./tcc_adjust_privileges.c -lAdvapi32
+// cmd> tcc ./tcc_adjust_privileges.c
 
 #include <stdio.h>
 #include <windows.h>
+#pragma comment(lib, "Advapi32")
 
 BOOL AdjustPrivileges() {
     HANDLE hToken = NULL;

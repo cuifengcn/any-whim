@@ -1,6 +1,6 @@
 // 如果用gcc，<shellapi.h> 和 <winnetwk.h> 是不需要引入的，并且不需要 -lshell32
 // cmd> gcc tcc_copy_and_delete.c
-// cmd> tcc tcc_copy_and_delete.c -lshell32
+// cmd> tcc tcc_copy_and_delete.c
 
 // 拷贝自身到某个地址，并将自身删除
 #include <stdio.h>
@@ -8,6 +8,7 @@
 #include <shellapi.h>
 #include <winnetwk.h>
 #include <shlobj.h>
+#pragma comment(lib, "shell32")
 
 // 拷贝文件到某地址
 char TARGET_PATHFILE[MAX_PATH] = {0};

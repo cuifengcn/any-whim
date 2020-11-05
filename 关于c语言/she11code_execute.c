@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <windows.h>
+#pragma comment(lib, "user32")
 
 int main(int argc, char const *argv[]) {
     HANDLE hFile = CreateFileA(argv[1], GENERIC_READ, 0, NULL, OPEN_ALWAYS, 0, NULL);
