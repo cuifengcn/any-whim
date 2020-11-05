@@ -177,7 +177,7 @@ typedef HANDLE (WINAPI* FN_CreateFileA)(
     DWORD dwFlagsAndAttributes,
     HANDLE hTemplateFile
 );
-// 1.1 用来存放 shellcode 内获取到的 windows 函数的结构，统一管理会很方便开发。前两个函数是必须的。
+// 1.1 用来存放 shellcode 内获取到的 windows 函数的结构，统一管理会很方便开发。结构内的前两个函数是必须的。
 typedef struct _FUNCTION {
     FN_GetProcAddress   fn_GetProcAddress;
     FN_LoadLibraryA     fn_LoadLibraryA;
