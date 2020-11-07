@@ -30,15 +30,14 @@ class Mat:
         if pidx >= (num if num else len(self.pos)):
             print('cost:', self.cnt)
             return self.mx
-        for x, y in self.pos[pidx:]:
-            for key in self.get_rest_list(x, y, self.dct):
-                self.mx[y][x] = key
-                ret = self.get9x9(num=num, pidx=pidx+1)
-                if ret:
-                    return ret
-                else:
-                    self.mx[y][x] = 0
-            return
+        x, y = self.pos[pidx]
+        for key in self.get_rest_list(x, y, self.dct):
+            self.mx[y][x] = key
+            ret = self.get9x9(num=num, pidx=pidx+1)
+            if ret:
+                return ret
+            else:
+                self.mx[y][x] = 0
     def get_rest_list(self, x, y, dct=None):
         anum = []
         for i in self.mx[y]:
