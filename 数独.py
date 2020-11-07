@@ -28,7 +28,7 @@ class Mat:
     def get9x9(self, num=None, pidx=0):
         self.cnt += 1
         if pidx >= (num if num else len(self.pos)):
-            print('coust:', self.cnt)
+            print('cost:', self.cnt)
             return self.mx
         for x, y in self.pos[pidx:]:
             for key in self.get_rest_list(x, y, self.dct):
