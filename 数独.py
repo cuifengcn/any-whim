@@ -1,7 +1,6 @@
 class Mat:
     def __init__(self, mx):
         self.mx = mx
-        self.ret = None
         self.dct = self._init9x9pos()
         self.pos = self._get9x9pos()
         self.cnt = 0
