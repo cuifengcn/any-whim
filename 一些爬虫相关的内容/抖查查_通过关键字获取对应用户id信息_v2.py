@@ -114,7 +114,7 @@ class VSpider(scrapy.Spider):
     proxy = None # 'http://127.0.0.1:8888'
 
     def start_requests(self):
-        def mk_url_headers_body(ts, he, sign, hi):
+        def mk_url_headers_body(key, ts, he, sign, hi):
             url = (
                 'https://api.douchacha.com/api/tiktok/search/user'
                 '?ts={}'
@@ -140,15 +140,15 @@ class VSpider(scrapy.Spider):
                 "Sec-Fetch-Site": "same-site",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36"
             }
-            body = "{\"page_no\":1,\"page_size\":10,\"params_data\":{\"keyword\":\"你好\",\"sort\":\"FOLLOWER\"}}"
+            body = "{\"page_no\":1,\"page_size\":10,\"params_data\":{\"keyword\":\""+str(key).strip()+"\",\"sort\":\"SCORE\"}}"
             return url,headers,body
 
         import time
 
-        v = str(int(time.time()*1000))
-        ts, he, sign, hi = get_sign(v)
-        print(ts, he, sign, hi)
-        url,headers,body = mk_url_headers_body(ts, he, sign, hi)
+        ts, he, sign, hi = get_sign(str(int(time.time()*1000)))
+
+        key = '你好啊'
+        url,headers,body = mk_url_headers_body(key, ts, he, sign, hi)
         meta = {}
         meta['proxy'] = self.proxy
         r = Request(
