@@ -27,9 +27,6 @@
 #include <stdio.h>
 #include <windows.h>
 
-
-
-
 // ENCRYPT 是否添加 shellcode 自动加解密，默认添加
 // 也是为了防止 shellcode 内一些固定的函数产生的指纹被探测到使用的
 #define ENCRYPT TRUE
