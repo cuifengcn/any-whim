@@ -187,10 +187,10 @@ typedef struct _FUNCTION {
 }FUNCTION, *PFUNCTION;
 // 2 在 InitFunctions 函数内初始化你按照里面的格式初始化你要使用的系统函数
 void InitFunctions(PFUNCTION pFn){
-    char szLoadLibraryA[]   = {'L','o','a','d','L','i','b','r','a','r','y','A','\0'};
     char szUser32[]         = {'u','s','e','r','3','2','\0'};
-    char szMessageBoxA[]    = {'M','e','s','s','a','g','e','B','o','x','A','\0'};
     char szKernel32[]       = {'k','e','r','n','e','l','3','2','\0'};
+    char szLoadLibraryA[]   = {'L','o','a','d','L','i','b','r','a','r','y','A','\0'};
+    char szMessageBoxA[]    = {'M','e','s','s','a','g','e','B','o','x','A','\0'};
     char szCreateFileA[]    = {'C','r','e','a','t','e','F','i','l','e','A','\0'};
     pFn->fn_GetProcAddress  = (FN_GetProcAddress)getProcAddress((HMODULE)getKernel32());
     pFn->fn_LoadLibraryA    = (FN_LoadLibraryA)pFn->fn_GetProcAddress((HMODULE)getKernel32(), szLoadLibraryA);
