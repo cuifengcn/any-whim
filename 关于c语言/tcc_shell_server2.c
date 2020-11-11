@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <process.h>
 #pragma comment(lib, "ws2_32")
+#define CMDBUF 1024*40
 
 // 定义接收反弹 shell 的端口
 #define HOOK_PORT 6000
@@ -10,7 +11,7 @@
 void ReceiveThread(LPVOID lPvoid) {
     SOCKET socketNew = (SOCKET)lPvoid;
     while(1) {
-        char receiveBuf[1024 * 40]; // 这里定义大一点否则回传的日志过大会出现问题。
+        char receiveBuf[CMDBUF]; // 这里定义大一点否则回传的日志过大会出现问题。
         int len = recv(socketNew, receiveBuf, sizeof(receiveBuf), 0);
         if(len <= 0) {
             closesocket(socketNew);
@@ -23,7 +24,7 @@ void ReceiveThread(LPVOID lPvoid) {
 }
 void SendThread(LPVOID lPvoid) {
     SOCKET socketNew = (SOCKET)lPvoid;
-    char sendBuf[1024];
+    char sendBuf[CMDBUF];
     while(1) {
         gets(sendBuf);
         if(SOCKET_ERROR == send(socketNew,sendBuf,strlen(sendBuf),0)) {
