@@ -2,10 +2,15 @@
 安装EPEL和IUS软件源
 
 ```bash
+# 旧的下载链接
+# https://centos7.iuscommunity.org/ius-release.rpm
+# 最新的下载链接
+# https://repo.ius.io/ius-release-el7.rpm
+
 # 这里是多行处理(不覆盖原来python2的python和pip名字，以python3,pip3使用python3)
 # 安装 python36u-devel 是为了处理某些安装异常，例如 twisted。
 yum install epel-release -y
-yum install https://centos7.iuscommunity.org/ius-release.rpm -y
+yum install https://repo.ius.io/ius-release-el7.rpm -y
 yum install python36u -y
 yum install python36u-pip -y
 yum install gcc -y
