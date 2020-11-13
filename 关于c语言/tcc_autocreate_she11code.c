@@ -169,15 +169,7 @@ void ShellcodeStart(){
 typedef FARPROC (WINAPI* FN_GetProcAddress)( HMODULE hModule, LPCSTR lpProcName );
 typedef HMODULE (WINAPI* FN_LoadLibraryA)( LPCSTR lpLibFileName );
 typedef int (WINAPI* FN_MessageBoxA)( HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType );
-typedef HANDLE (WINAPI* FN_CreateFileA)(
-    LPCSTR lpFileName,
-    DWORD dwDesiredAccess,
-    DWORD dwShareMode,
-    LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-    DWORD dwCreationDisposition,
-    DWORD dwFlagsAndAttributes,
-    HANDLE hTemplateFile
-);
+typedef HANDLE (WINAPI* FN_CreateFileA)(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,LPSECURITY_ATTRIBUTES lpSecurityAttributes,DWORD dwCreationDisposition,DWORD dwFlagsAndAttributes,HANDLE hTemplateFile);
 // 1.1 用来存放 shellcode 内获取到的 windows 函数的结构，统一管理会很方便开发。结构内的前两个函数是必须的。
 typedef struct _FUNCTION {
     FN_GetProcAddress   fn_GetProcAddress;
