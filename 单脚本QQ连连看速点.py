@@ -266,7 +266,7 @@ register(clear_temppath) # 让程序在结束时删除临时文件夹
 
 # QQ连连看算法实现，直接运行该脚本即可快速实现连点
 # 注意，该脚本运用的是截图获取算法，使用时候不要遮盖到连连看的窗口，否则会出现算法错误
-# 使用时需要安装 opencv ，该库依赖 numpy 本身也挺大的，所以安装时候最后添加一个国内的源进行安装
+# 使用时需要安装 opencv ，该库依赖 numpy 本身也挺大的，所以安装时候最好添加一个国内的源进行安装
 # pip install opencv-contrib-python -i https://pypi.douban.com/simple/
 
 # 连连看算法
@@ -537,7 +537,7 @@ def get_pred_s_map(gridh,gridw,cuter,preder):
 
 import ctypes
 def click(pos):
-    # 一直处于点击状态
+    # 一直处于点击状态，保留当前的坐标信息，感觉意义不大，有时候还会造成点击失效的问题
     # class POINT(ctypes.Structure):
     #     _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]    
     # def get_curr_pos():
@@ -568,4 +568,4 @@ for cpoc in chain:
     c2 = cuter.get_point(pb, top, left)
     click(c1)
     click(c2)
-    import time; time.sleep(.08)
+    import time; time.sleep(.05)
