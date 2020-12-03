@@ -560,6 +560,55 @@ preder = predictor(picpath)
 smap   = get_pred_s_map(h, w, cuter, preder)
 chain  = get_chain(smap)
 
+# 一个功能，注册快捷键回调，让你按下ESC就能控制某些运行时的参数，方便快捷键跳出程序循环
+import ctypes
+import ctypes.wintypes
+import threading
+import traceback
+user32 = ctypes.windll.user32
+class HotkeyHooker:
+    EXIT = False
+    regdict = {}
+    combins = set()
+    tempids = list(range(1000))
+    EXIT_ID = 1000
+    def run(self):
+        for tid in self.regdict:
+            if not user32.RegisterHotKey(None, tid, self.regdict[tid]['combine'], self.regdict[tid]['key']):
+                print("rebind register id", self.regdict[tid]['key'])
+                user32.UnregisterHotKey(None, self.regdict[tid]['key'])
+        try:  
+            msg = ctypes.wintypes.MSG()
+            while True:
+                for modkey in self.combins:
+                    if user32.GetMessageA(ctypes.byref(msg), None, modkey, 0) != 0:
+                        if msg.message == 786: # WM_HOTKEY
+                            if msg.wParam in self.regdict:
+                                try:
+                                    self.regdict[msg.wParam]['callback']()
+                                except:
+                                    traceback.print_exc()
+                                if msg.wParam == self.EXIT_ID:
+                                    return
+                        user32.TranslateMessage(ctypes.byref(msg))
+                        user32.DispatchMessageA(ctypes.byref(msg))
+        finally:
+            for key in self.regdict:
+                user32.UnregisterHotKey(None, key)
+    def start(self, ensure_exit=True):
+        if ensure_exit:
+            if self.EXIT_ID not in self.regdict:
+                raise KeyError('exit callback not included, pls use "HotkeyHooker.regexit" func reg it.')
+        threading.Thread(target=self.run).start()
+    def regexit(self, key, callback=lambda:None, combine=0):
+        self.combins.add(combine)
+        self.regdict[self.EXIT_ID] = { 'key': key, 'callback': callback, 'combine': combine }
+
+toggle = {'esc': False}
+hotkey = HotkeyHooker()
+hotkey.regexit(27, lambda: toggle.update({'esc': True})) # 注册快捷键回调
+hotkey.start()
+
 print(smap)
 import ctypes
 for cpoc in chain:
@@ -568,4 +617,7 @@ for cpoc in chain:
     c2 = cuter.get_point(pb, top, left)
     click(c1)
     click(c2)
-    import time; time.sleep(.05)
+    import time; time.sleep(1)
+    if toggle['esc']: # 按下ESC键自动停止程序，防止出问题
+    	print('press esc. break loop. exit.')
+    	break
