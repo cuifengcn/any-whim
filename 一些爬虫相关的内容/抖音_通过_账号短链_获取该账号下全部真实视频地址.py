@@ -194,6 +194,7 @@ class VSpider(scrapy.Spider):
         meta['dont_redirect'] = True,
         meta['handle_httpstatus_list'] = [302]
         meta['_plusmeta'] = response.meta.get('_plusmeta')
+        meta['url_video_id'] = url
         r = Request(
                 url,
                 headers  = headers,
@@ -203,9 +204,11 @@ class VSpider(scrapy.Spider):
         yield r
 
     def parse_video_url(self, response):
+        middle_url = response.meta.get('url_video_id')
         video_url = response.xpath('//a/@href')[0].extract()
         d = response.meta.get('_plusmeta', {})
         d['video_url'] = video_url
+        d['video_id_url'] = middle_url
         print('------------------------------ split ------------------------------')
         import pprint
         pprint.pprint(d)
