@@ -173,7 +173,7 @@ class VSpider(scrapy.Spider):
         def mk_url_headers(vid):
             def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
             url = (
-                'https://aweme.snssdk.com/aweme/v1/playwm/' # 如果想要无水印，这行的 playwm 改成 play 就可以拿到无水印视频地址
+                'https://aweme.snssdk.com/aweme/v1/play/' # 如果想要无水印，这行的 playwm 改成 play 就可以拿到无水印视频地址
                 '?video_id={}'
                 '&ratio=720p'
                 '&line=0'
@@ -183,7 +183,9 @@ class VSpider(scrapy.Spider):
                 "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
                 "accept-language": "zh-CN,zh;q=0.9",
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36"
+                # 如果想要使用无水印的地址直接观看，那么就必须使用手机的 headers 才能在浏览器上直接播放
+                # 这里使用的是 chrome 手机模式获取到的 headers 。
+                "user-agent": "User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36"
             }
             return url,headers
         url,headers = mk_url_headers(vid)
