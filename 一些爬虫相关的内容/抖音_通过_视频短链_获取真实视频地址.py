@@ -17,11 +17,9 @@ class VSpider(scrapy.Spider):
 
     def start_requests(self):
         def mk_url_headers():
-            def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
             url = (
-                'https://v.douyin.com/J22g7LN/'
+                'https://v.douyin.com/Jecfuhe/'
             )
-            url = quote_val(url)
             headers = {
                 "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
                 "accept-language": "zh-CN,zh;q=0.9",
@@ -46,12 +44,10 @@ class VSpider(scrapy.Spider):
         u = response.xpath('//a/@href')[0].extract() if response.status == 302 else response.url
         vid = re.findall(r'video/(\d+)/', u)[0]
         def mk_url_headers(vid):
-            def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
             url = (
                 'https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/'
                 '?item_ids={}'
             ).format(vid)
-            url = quote_val(url)
             headers = {
                 "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
                 "accept-language": "zh-CN,zh;q=0.9",
@@ -75,19 +71,19 @@ class VSpider(scrapy.Spider):
         jsondata = json.loads(content[content.find('{'):content.rfind('}')+1])
         vid = jsondata['item_list'][0]['video']['vid']
         def mk_url_headers(vid):
-            def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
             url = (
-                'https://aweme.snssdk.com/aweme/v1/playwm/' # 如果想要无水印，这行的 playwm 改成 play 就可以拿到无水印视频地址
+                'https://aweme.snssdk.com/aweme/v1/play/' # 如果想要无水印，这行的 playwm 改成 play 就可以拿到无水印视频地址
                 '?video_id={}'
                 '&ratio=720p'
                 '&line=0'
             ).format(vid)
-            url = quote_val(url)
             headers = {
                 "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
                 "accept-language": "zh-CN,zh;q=0.9",
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36"
+                # 如果想要使用无水印的地址直接观看，那么就必须使用手机的 headers 才能在浏览器上直接播放
+                # 这里使用的是 chrome 手机模式获取到的 headers 。
+                "user-agent": "User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36"
             }
             return url,headers
         url,headers = mk_url_headers(vid)
@@ -95,6 +91,7 @@ class VSpider(scrapy.Spider):
         meta['proxy'] = self.proxy
         meta['dont_redirect'] = True,
         meta['handle_httpstatus_list'] = [302]
+        meta['url_video_id'] = url
         r = Request(
                 url,
                 headers  = headers,
@@ -104,7 +101,16 @@ class VSpider(scrapy.Spider):
         yield r
 
     def parse_video_url(self, response):
+        # middle_url 虽然直接就能下载了，不过会有两种情况，如果这个 url 里面带有 playwm 那么可以直接下载（浏览器直接观看）
+        # 如果 url 里面的 playwm 换成了 play 那么就需要在下载头里面增加一个手机模式的 headers 信息才能下载
+        # video_url 能直接下载，不过每次通过 middle_url 跳转到的 video_url 都是不定的，该地址可能会过期。
+
+        # 简单说：
+        # middle_url 固定，不过下载无水印视频有点麻烦。
+        # video_url 不固定，不过在一段时间内就是真实视频地址。
+        middle_url = response.meta.get('url_video_id')
         video_url = response.xpath('//a/@href')[0].extract()
+        print(middle_url)
         print(video_url)
 
 
