@@ -954,7 +954,7 @@ zstring = zlib.decompress(zstring,-15)
 mjs = zstring.decode("utf-8")
 # print(mjs)
 # with open('./m.js', encoding='utf-8') as f:
-#     jscode = f.read()
+#     mjs = f.read()
 
 
 
