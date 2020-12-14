@@ -1003,3 +1003,57 @@ session.cookies.update(ncookie)
 url = 'http://match.yuanrenxue.com/api/match/14?page=2'
 s = session.get(url)
 print(s.content[:100])
+
+
+
+
+
+
+
+
+
+
+
+
+def show_info(s):
+    # 美化输出函数
+    def show_info_by_response(s):
+        print('\n')
+        def header_fprint(headers_dict):
+            maxklen = len(repr(max(headers_dict,key=len)))
+            for keystring in sorted(headers_dict):
+                valuestring = headers_dict[keystring]
+                if 'cookie' in keystring.lower():
+                    vlist = sorted(valuestring.split('; '))
+                    for idx,value in enumerate(vlist):
+                        endsp = ('; ' if idx != len(vlist)-1 else '')
+                        lstring = ('{:<'+str(maxklen)+'}:({}').format(repr(keystring), repr(value+endsp)) if idx == 0 else \
+                                  ('{:<'+str(maxklen)+'}  {}').format('', repr(value+endsp))
+                        if idx == len(vlist)-1: lstring += '),'
+                        print(lstring)
+                else:
+                    print(('{:<'+str(maxklen)+'}: {},').format(repr(keystring), repr(valuestring)))
+        # 请求信息
+        print('===========\n| request |\n===========')
+        print('request method: {}\nrequest url: {}'.format(s.request.method, s.url))
+        print('------------------- request headers ---------------------')
+        header_fprint(s.request.headers)
+        print('------------------- request body ------------------------')
+        print(s.request.body, end='\n')
+        # 返回信息
+        print('============\n| response |\n============')
+        print('status:', s.status_code, '\nresponse length: {}'.format(len(s.content)))
+        print('------------------- response headers --------------------')
+        header_fprint(s.headers)
+        print('------------------- response content[:1000] ----------------')
+        print('response content[:1000]:\n {}'.format(s.content[:1000]))
+        print('=========================================================')
+    if s.history:
+        chains = s.history + [s]
+        for i in chains: show_info_by_response(i)
+        print('redirect chain:')
+        for i in chains: print('{} <-- ({})'.format(i, i.url))
+    else: show_info_by_response(s)
+    print('\n')
+
+show_info(s)
