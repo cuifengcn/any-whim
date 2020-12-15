@@ -1,7 +1,6 @@
 #coding=utf-8
 jscode = r'''
 var window = global;
-var document = {};
 
 function oo0O0(mw) {
     // var U = ['W5r5W6VdIHZcT8kU', 'WQ8CWRaxWQirAW=='];
