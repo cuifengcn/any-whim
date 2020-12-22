@@ -2878,6 +2878,7 @@ ctx = execjs.compile(jscode)
 
 import re
 import json
+import urllib.parse
 import requests
 
 def get_info(page):
@@ -2888,11 +2889,8 @@ def get_info(page):
             return m, q
         m, q = get_m_q()
         url = 'http://match.yuanrenxue.com/api/match/6'
-        params = {
-        'page': page,
-        'm': m,
-        'q': q,
-        }
+        params = { 'page': page, 'm': m, 'q': q, }
+        url = url + '?' + urllib.parse.urlencode(params)
         headers = {
             "Accept": "application/json, text/javascript, */*; q=0.01",
             "Accept-Encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
@@ -2905,10 +2903,9 @@ def get_info(page):
             "User-Agent": "yuanrenxue.project",
             "X-Requested-With": "XMLHttpRequest"
         }
-        return url,headers,params
-
-    url,headers,params = mk_url_headers(page)
-    s = requests.get(url,headers=headers,params=params)
+        return url,headers
+    url,headers = mk_url_headers(page)
+    s = requests.get(url,headers=headers)
     return json.loads(s.text)
 
 allvalues = []
