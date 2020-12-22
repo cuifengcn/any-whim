@@ -242,17 +242,22 @@ def get_page_sum(page):
 
     content = s.text
     jsondata = json.loads(content[content.find('{'):content.rfind('}')+1])
-    return sum([i["value"] for i in jsondata['data']])
+    return [i["value"] for i in jsondata['data']]
 
-ret = 0
+allvalues = []
 for page in range(1, 6):
-    pagesum = get_page_sum(page)
-    print('page:{} --> sum:{}'.format(page, pagesum))
-    ret += pagesum
+    values = get_page_sum(page)
+    print('page:{} --> values:{}'.format(page, values))
+    allvalues.extend(values)
+print('sum:{}'.format(sum(allvalues)))
 
-print('allsum:{}'.format(ret))
-
-
+# 正常输出结果
+# page:1 --> values:[132, 478, 1962, 4723, 2419, 3535, 580, 7955, 350, 3306]
+# page:2 --> values:[6231, 3101, 1823, 5823, 4293, 9009, 8344, 5615, 3761, 3091]
+# page:3 --> values:[7722, 4547, 4563, 9150, 66, 4062, 8758, 4588, 1317, 7142]
+# page:4 --> values:[9331, 5978, 5396, 4096, 4434, 4330, 1946, 6056, 6120, 2544]
+# page:5 --> values:[9299, 3888, 7732, 8488, 9127, 8156, 8491, 6981, 2559, 4588]
+# sum:247986
 
 
 
