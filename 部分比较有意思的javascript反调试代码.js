@@ -44,8 +44,8 @@ setTimeout(function adbg() {
 
 // 挂钩一些 constructor 形式的调用
 Function.prototype.__defineGetter__('constructor', function() {
-    return function(...args) {
-        console.log('code:', ...args);
-        return Function(...args);
-    };
+  return function(...args) {
+    console.log('code:', ...args);
+    return Function(...args);
+  };
 });
