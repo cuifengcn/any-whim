@@ -59,9 +59,7 @@ def get_info(page):
     e = etree.HTML(xmlstring)
     number_map = {}
     for i in e.xpath('//ttglyph[contains(@name, "uni")]'):
-        v = i.xpath('./contour')
-        v = tuple([len(j.xpath('./pt')) for j in v])
-        number = finger[v]
+        number = finger[tuple([len(j.xpath('./pt')) for j in i.xpath('./contour')])]
         name = i.xpath('./@name')[0].replace('uni', '&#x')
         number_map[name] = number
     def get_number(fontstr):
