@@ -225,14 +225,6 @@ function get_f_m_md5m_RM4hZBv0dDon443M(){
 // get_f_m_md5m_RM4hZBv0dDon443M()
 '''
 
-# 如果出现编码异常，可以尝试解开下面注释中的代码以处理 execjs 执行时期的编码问题。
-# import subprocess
-# _bak_Popen = subprocess.Popen
-# def _Popen(*a, **kw):
-#     kw['encoding'] = 'utf-8'
-#     return _bak_Popen(*a, **kw)
-# subprocess.Popen = _Popen
-
 import execjs
 ctx = execjs.compile(jscode)
 # result = ctx.call('get_f_m_md5m_RM4hZBv0dDon443M')
@@ -279,8 +271,6 @@ def get_info(page):
             "X-Requested-With": "XMLHttpRequest"
         }
         return url,headers
-
-    
     url,headers = mk_url_headers(page)
     s = requests.get(url,headers=headers)
     jsondata = json.loads(s.text)['data']
