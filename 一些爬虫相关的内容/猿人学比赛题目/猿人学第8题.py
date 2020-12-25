@@ -47,7 +47,7 @@ def get_word_by_baiduapi(_imapath):
     # h;OJJf)?TQOMM=F5&VQ}re##7LLP}?>z#`&ANmD(rs1gcF7a8cw4m^|VqQ=aU1;7>=LdGLo!e6LkhH2kVDVqxU%I4F0z1LI*9`U*r|R=Z&ToS5TK(fiLb87*AKC;^jzc^x!^qK))^SFf
     client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
     # info = client.basicGeneral(image) # 通用版本，这个识别率低到无法使用
-    info = client.basicAccurate(image)
+    info = client.basicAccurate(image) # 高精度版本，大部分能识别，勉强能用
     if info.get('error_msg') == 'IAM Certification failed':
         raise Exception('请申请一个能用的百度文字识别的API，然后配置 APP_ID,API_KEY,SECRET_KEY')
     word = info.get('words_result') # 高精度版本
