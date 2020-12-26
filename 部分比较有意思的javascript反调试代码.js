@@ -49,3 +49,14 @@ Function.prototype.__defineGetter__('constructor', function() {
     return Function(...args);
   };
 });
+
+
+window.btoa = function btoa(str) {
+  var buffer;
+  if (str instanceof Buffer) {
+    buffer = str;
+  } else {
+    buffer = Buffer.from(str.toString(), 'binary');
+  }
+  return buffer.toString('base64');
+}
