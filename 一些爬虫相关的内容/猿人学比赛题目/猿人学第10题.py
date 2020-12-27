@@ -7146,11 +7146,9 @@ def get_info(page):
     sessionid = re.findall('sessionid=[^;]+; ', s.headers['Set-Cookie'])[0]
     enc_int = int(re.findall(r'_\$uf *= *(\d+)', s.text)[0])
     def mk_url_headers(sessionid):
-        def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
         url = (
             'http://match.yuanrenxue.com/stati/mu/rsnkw2ksph'
         )
-        url = quote_val(url) # 解决部分网页需要请求参数中的 param 保持编码状态，如有异常考虑注释
         headers = {
             "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
             "accept-language": "zh-CN,zh;q=0.9",
@@ -7170,11 +7168,9 @@ def get_info(page):
     v2 = int(re.findall(r"_yrxmbl=(\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
     v3 = int(re.findall(r"return (\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
     def mk_url_headers(sessionid):
-        def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
         url = (
             'http://match.yuanrenxue.com/api/offset'
         )
-        url = quote_val(url) # 解决部分网页需要请求参数中的 param 保持编码状态，如有异常考虑注释
         headers = {
             "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
             "accept-language": "zh-CN,zh;q=0.9",
