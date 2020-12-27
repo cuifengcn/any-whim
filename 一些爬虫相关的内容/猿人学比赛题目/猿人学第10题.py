@@ -1,10 +1,15 @@
+#coding=utf-8
+jscode = r'''
 var print = console.log;
-var window = global;
+var window=typeof global == 'undefined'?window:global;
 window.document = {};
-window.location = {
-  'href': "http://match.yuanrenxue.com/match/10",
-};
-window.btoa = function btoa(str) {
+if (!window.location){
+  window.location = {
+    'href': "http://match.yuanrenxue.com/match/10",
+  };
+}
+
+window.btoa = window.btoa?window.btoa:function btoa(str) {
   var buffer;
   if (str instanceof Buffer) {
     buffer = str;
@@ -516,7 +521,7 @@ function _yrxznI(_yrxtJ1, _yrxDnL) {
     return [_yrxtJ1[0] ^ _yrxDnL[0], _yrxtJ1[1] ^ _yrxDnL[1], _yrxtJ1[2] ^ _yrxDnL[2], _yrxtJ1[3] ^ _yrxDnL[3]]
 }
 function _yrxVhD(_yrxtJ1) {
-    return 1608970078 + _yrxCxm['A' + 'G' + 'e' + 'D']
+    return _yrxCxm['myset_now'] + _yrxCxm['A' + 'G' + 'e' + 'D']
 }
 function _yrxqge() {
     return [_yrxVhD(4294967295), _yrxVhD(4294967295), _yrxVhD(4294967295), _yrxVhD(4294967295)]
@@ -1349,7 +1354,7 @@ var _yrxAzP;
 var _yrxxmZ;
 var _yrx47y = _yrxY1C;
 var _yrxtvI = [];
-_yrxPhB();
+// _yrxPhB();
 _yrxBXT(174);
 _yrxBXT(517);
 _yrxBXT(513);
@@ -7099,18 +7104,118 @@ function _yrxBXT(_yrx4Aj, _yrx7jl, _yrxcze, _yrxyqC) {
     }
 }
 
-function get_m(key){
-  // 经过测试，这里是没有问题的
+function get_m(key, offset){
+  window['myset_now'] = parseInt(Date.now()/1000)
+  window['A' + 'G' + 'e' + 'D'] = offset;
   var k = _yrxWKg(_yrxyHJ(_yrx5XG(key)))
-  print(k)
-
-  // 主要的问题还是在这个函数里面，这个函数生产的 m 参数用不了
-  // 水品有限，实在是找不到哪里出问题了。
-  var v = _yrxBXT(779, key, k).match(/undefined(.*)/)[1]
+  var v = _yrxBXT(779, key, k, undefined).match(/undefined(.*)/)[1]
   return v
 }
 
-var v = get_m("/api/match/10?page=3")
-print(v)
+// 如果你需要自行调试，你一定要非常注意这个函数里面的参数，如果没有设置，执行出来的结果是不能使用的。
+// _yrxVhD(_yrxtJ1)
+// 这里面的参数是需要通过其他接口请求到的数据进行设置的
+// offset 需要通过 http://match.yuanrenxue.com/api/offset 这个接口请求到
+// 请求这个接口的时候需要先请求 http://match.yuanrenxue.com/match/10 获取 sessionid 放进 cookie 里面才能获取正确的参数。
+// 另外请求接口的数据也是需要使用这个 sessionid 才能请求到结果。
+'''
+
+import execjs
+ctx = execjs.compile(jscode)
 
 
+
+
+
+
+
+
+
+import re
+import json
+import requests
+
+def get_info(page):
+    def mk_url_headers():
+        url = (
+            'http://match.yuanrenxue.com/match/10'
+        )
+        headers = {
+            "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
+            "accept-language": "zh-CN,zh;q=0.9",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "user-agent": "yuanrenxue.project"
+        }
+        return url,headers
+    url,headers = mk_url_headers()
+    s = requests.get(url,headers=headers)
+    sessionid = re.findall('sessionid=[^;]+; ', s.headers['Set-Cookie'])[0]
+    def mk_url_headers(sessionid):
+        def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
+        url = (
+            'http://match.yuanrenxue.com/api/offset'
+        )
+        url = quote_val(url) # 解决部分网页需要请求参数中的 param 保持编码状态，如有异常考虑注释
+        headers = {
+            "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
+            "accept-language": "zh-CN,zh;q=0.9",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Cookie": (
+                sessionid
+            ),
+            "user-agent": "yuanrenxue.project"
+        }
+        return url,headers
+    url,headers = mk_url_headers(sessionid)
+    s = requests.get(url,headers=headers)
+    offset = int(re.findall(r'= *(\d+)', s.text)[0])
+    def mk_url_headers(page, sessionid, offset):
+        m = ctx.call("get_m", "/api/match/10?page={}".format(page), offset)
+        url = (
+            'http://match.yuanrenxue.com/api/match/10'
+            '?page={}'
+            '&m={}'
+        ).format(page, m)
+        headers = {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
+            "Accept-Language": "zh-CN,zh;q=0.9",
+            "Cache-Control": "no-cache",
+            "Cookie": (
+                sessionid + "m=pua"
+            ),
+            "Host": "match.yuanrenxue.com",
+            "Pragma": "no-cache",
+            "Proxy-Connection": "keep-alive",
+            "Referer": "http://match.yuanrenxue.com/match/10",
+            "User-Agent": "yuanrenxue.project",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+        return url,headers
+    url,headers = mk_url_headers(page, sessionid, offset)
+    s = requests.get(url,headers=headers)
+    jsondata = json.loads(s.text)
+    return jsondata
+
+def retry_get_info(page, times=5):
+    jdata = get_info(page)
+    if jdata.get('message') == 'token_failed':
+        return retry_get_info(page, times-1)
+    return jdata
+
+allvalues = []
+for page in range(1, 6):
+    jdata = retry_get_info(page)
+    values = [i['value']for i in jdata['data']]
+    print('page:{} --> values:{} k:{}'.format(page, values, jdata['k']))
+    allvalues.extend(values)
+
+print('sum:{}'.format(sum(allvalues)))
+
+# 正常执行结果 // 接口有一定失败率，不过失败率能接受，直接用简单的重试接口的逻辑就能解决。
+# page:1 --> values:[304, 2207, 6182, 1548, 22, 1115, 5666, 2970, 7077, 2068] k:{'k': 'fabc|1311'}
+# page:2 --> values:[5928, 6210, 1670, 8328, 3227, 5868, 5019, 9421, 469, 1153] k:{'k': 'CGeb|831'}
+# page:3 --> values:[6184, 9462, 7467, 9555, 6369, 6293, 562, 1905, 5833, 1164] k:{'k': 'aebF|149'}
+# page:4 --> values:[1770, 2055, 6957, 9495, 369, 6264, 2114, 4148, 3133, 7612] k:{'k': 'Dcea|387'}
+# page:5 --> values:[3929, 3628, 4423, 9256, 675, 451, 8930, 6445, 5705, 3314] k:{'k': 'BGDe|1320'}
+# sum:221919
