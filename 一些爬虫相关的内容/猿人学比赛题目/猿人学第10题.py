@@ -8,7 +8,6 @@ if (!window.location){
     'href': "http://match.yuanrenxue.com/match/10",
   };
 }
-
 window.btoa = window.btoa?window.btoa:function btoa(str) {
   var buffer;
   if (str instanceof Buffer) {
@@ -18,14 +17,12 @@ window.btoa = window.btoa?window.btoa:function btoa(str) {
   }
   return buffer.toString('base64');
 }
-
 var navigator = {
     'appName': "Netscape",
     'appCodeName': "Mozilla",
     'userAgent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.66 Safari/537.36",
     'cookieEnabled': true,
 };
-
 $_ts = {
     "scj": [],
     "_yrxON$": ["_yrxQ9C", "_yrx4JB", "_yrxhy4", "_yrxY1C", "_yrxWeF", "_yrx9i0", "_yrx1SZ", "_yrxWOo", "_yrxKni", "_yrxCiX", "_yrxQZs", "_yrxtO7", "_yrxiv8", "_yrx5XG", "_yrxzgZ", "_yrxQXc", "_yrxAmM", "_yrxcFt", "_yrxOod", "_yrx2ad", "_yrxnRH", "_yrxCcG", "_yrxP_N", "_yrxDkc", "_yrxS27", "_yrxScf", "_yrxp7X", "_yrxndl", "_yrxTxA", "_yrx4r0", "_yrxa9O", "_yrxNj0", "_yrx2tg", "_yrxS63", "_yrxXPb", "_yrx6qu", "_yrxE7d", "_yrx7Nr", "_yrxaXW", "_yrxQXy", "_yrxTny", "_yrxxkm", "_yrxD1q", "_yrxK$4", "_yrxCBk", "_yrxJP3", "_yrxYKr", "_yrxhH1", "_yrxjOb", "_yrxYSk", "_yrxykQ", "_yrxJYn", "_yrx4C0", "_yrxhLZ", "_yrxu8d", "_yrx4z0", "_yrxeLg", "_yrx6b7", "_yrxqhv", "_yrxCs9", "_yrxiYD", "_yrxa0s", "_yrxXOl", "_yrx7z2", "_yrxR2F", "_yrxMKL", "_yrxWxt", "_yrxgRf", "_yrxE3a", "_yrxyHJ", "_yrxCIP", "_yrxsK7", "_yrxYFR", "_yrxwbi", "_yrxjDw", "_yrxHad", "_yrxlo_", "_yrxdBF", "_yrxeh1", "_yrxgri", "_yrx1_p", "_yrxgAD", "_yrxYUx", "_yrx3ZR", "_yrxlX0", "_yrxgjq", "_yrxnyc", "_yrxVoE", "_yrxvhy", "_yrxi6Z", "_yrx7S_", "_yrxaG7", "_yrx7UO", "_yrxWK7", "_yrxFf_", "_yrxvEu", "_yrx2CN", "_yrxhY7", "_yrxi7r", "_yrxNYk", "_yrxK2M", "_yrx7VG", "_yrxFs6", "_yrxPtU", "_yrxtSa", "_yrxQ$v", "_yrxpce", "_yrxUyu", "_yrxtY2", "_yrx5HO", "_yrxb5C", "_yrxt_D", "_yrx5ox", "_yrxQeG", "_yrxJy5", "_yrxQN$", "_yrxE28", "_yrxBJk", "_yrxdce", "_yrxHzo", "_yrxrEG", "_yrxM6v", "_yrx1dz", "_yrxGIT", "_yrx16k", "_yrxlIn", "_yrxGac", "_yrxklM", "_yrxTw_", "_yrxW73", "_yrxUF0", "_yrxeN4", "_yrxQRc", "_yrxFpG", "_yrxZeO", "_yrxHR8", "_yrxTZR", "_yrxwu8", "_yrxNbx", "_yrx0z8", "_yrxHOT", "_yrxjgf", "_yrxped", "_yrxwVk", "_yrx8Je", "_yrxULK", "_yrxanj", "_yrxt0D", "_yrxzwG", "_yrxY2F", "_yrxVt7", "_yrxIqW", "_yrxhwL", "_yrx391", "_yrx1Y0", "_yrxpZF", "_yrxrfm", "_yrxuMq", "_yrxtfj", "_yrxwQp", "_yrxH$g", "_yrxX09", "_yrxON$", "_yrxWyc", "_yrxgF3", "_yrxO8d", "_yrxHCZ", "_yrxK5U", "_yrxx1M", "_yrxBz7", "_yrxSVn", "_yrx03s", "_yrxWKg", "_yrxM5F", "_yrxj$3", "_yrxQlz", "_yrxSt$", "_yrxoDZ", "_yrxgbS", "_yrxs4o", "_yrxq8F", "_yrxqDb", "_yrxnQe", "_yrxAzP", "_yrxxmZ", "_yrx47y", "_yrxtvI", "_yrxi3g", "_yrxw0P", "_yrxeMT", "_yrxUtN", "_yrxr1i", "_yrxRKW", "_yrxbMd", "_yrxt5M", "_yrxC_9", "_yrxq5B", "_yrxVpS", "_yrxFh5", "_yrxoGf", "_yrxBeg", "_yrxByS", "_yrx5IK", "_yrxDEH", "_yrxhd8", "_yrx8TP", "_yrxKMd", "_yrx2FU", "_yrxQKU", "_yrxAl_", "_yrxJrG", "_yrxJvD", "_yrxxo9", "_yrxJTK", "_yrxIlS", "_yrxXdb", "_yrxMfC", "_yrxtjC", "_yrxuQ1", "_yrxX5q", "_yrxHJc", "_yrx1qc", "_yrxegL", "_yrxDtK", "_yrxBMv", "_yrxzK0", "_yrx_fZ", "_yrx0FH", "_yrxe_l", "_yrxgtM", "_yrxUAR", "_yrx1IN", "_yrxxM0", "_yrxFcM", "_yrxOkc", "_yrxopZ", "_yrx6mx", "_yrxq89", "_yrxOMz", "_yrx$E9", "_yrxqkc", "_yrxgwY", "_yrxiHI", "_yrxpam", "_yrxxND", "_yrxZwz", "_yrxZGV", "_yrxIpb", "_yrxsA$", "_yrxNqj", "_yrxpmc", "_yrxOgu", "_yrx9IF", "_yrxVjH", "_yrxQUh", "_yrxxCJ", "_yrxLPY", "_yrxxZD", "_yrxvzQ", "_yrxyA$", "_yrxSaY", "_yrx2De", "_yrxT_o", "_yrxUit", "_yrxWFt", "_yrx4Tg", "_yrxItP", "_yrx742", "_yrx_pa", "_yrxEc_", "_yrxSrT", "_yrxo5H", "_yrxBrx", "_yrxoku", "_yrxLiF", "_yrxKVv", "_yrxDnr", "_yrx_6$", "_yrx9TU", "_yrx7qu", "_yrxz9Y", "_yrx07o", "_yrxB97", "_yrxqhc", "_yrxs7K", "_yrxl5K", "_yrxyfu", "_yrxxIs", "_yrxlt5", "_yrxCJw", "_yrxmp2", "_yrxp$y", "_yrx1yN", "_yrxnqi", "_yrxAB$", "_yrxWBQ", "_yrxT6v", "_yrxvXc", "_yrx1HE", "_yrxfrN", "_yrx4Lp", "_yrxjR8", "_yrxut4", "_yrx_Ed", "_yrxYqz", "_yrxSm8", "_yrx2yJ", "_yrxn0C", "_yrxn3A", "_yrxfi4", "_yrxi3$", "_yrxm24", "_yrxSyP", "_yrxogG", "_yrxjOH", "_yrxqHY", "_yrxC8f", "_yrx3LY", "_yrxfJ3", "_yrx6dT", "_yrx0se", "_yrx7jl", "_yrxcze", "_yrxyqC", "_yrx8ve", "_yrx$Tk", "_yrx0UJ", "_yrxSrn", "_yrxVYS", "_yrx7iu", "_yrxNtJ", "_yrxiTU", "_yrxU3z", "_yrx5lT", "_yrxzsX", "_yrxoRu", "_yrx$eF", "_yrxJDQ", "_yrxaxO", "_yrx16S", "_yrxJG4", "_yrxlJc", "_yrxtwr", "_yrxHq6", "_yrxUZ2", "_yrxs2P", "_yrxZ8u", "_yrxpjH", "_yrxDS9", "_yrxI6a", "_yrx2aP", "_yrxE8L", "_yrxxy4", "_yrxnZw", "_yrxYoP", "_yrxdlp", "_yrxcE$", "_yrxBxq", "_yrxfr0", "_yrxMqS", "_yrxDQj", "_yrxX3n", "_yrxLBK", "_yrxXmF", "_yrxhEs", "_yrxjaz", "_yrxp4J", "_yrx3r_", "_yrxNAM", "_yrx$ZV", "_yrxOmz", "_yrxa8F", "_yrxibY", "_yrxryl", "_yrxoVK", "_yrx4E7", "_yrxRV1", "_yrxrRv", "_yrx$aj", "_yrxZcK", "_yrxZGc", "_yrxotO", "_yrxkYo", "_yrxpSe", "_yrxprc", "_yrx0qb", "_yrxhFQ", "_yrxrRn", "_yrxmA6", "_yrxuFY", "_yrxpJ$", "_yrxO$P", "_yrxRaW", "_yrxj6p", "_yrxzEp", "_yrxhko", "_yrxMpW", "_yrxj0t", "_yrxK2N", "_yrxc5O", "_yrx_cw", "_yrxnI_", "_yrxRXb", "_yrx9NW", "_yrxbcB", "_yrxaG8", "_yrxfTl", "_yrxnS1", "_yrxWM8", "_yrxAKl", "_yrxESj", "_yrxx7a", "_yrx40P", "_yrxswx", "_yrxqf5", "_yrxTUS", "_yrxLq1", "_yrx0of", "_yrxmU8", "_yrxz2H", "_yrxmiy", "_yrxF$k", "_yrxufz", "_yrxt4s", "_yrx13M", "_yrxK$r", "_yrxzEs", "_yrxR08", "_yrxSox", "_yrxp82", "_yrxxyo", "_yrxFzI", "_yrxp3i", "_yrxBXT", "_yrxvFU", "_yrxVXx", "_yrxsiP", "_yrxrqQ", "_yrx$Kn", "_yrxmEu", "_yrx2LR", "_yrx3il", "_yrxTXe", "_yrxxj7", "_yrxUSw", "_yrxWfm", "_yrx7ea", "_yrxG5u", "_yrx4Sf", "_yrxxIM", "_yrxWxp", "_yrxPhB", "_yrxCTG", "_yrxSlE", "_yrxdrW", "_yrxXmh", "_yrxoua", "_yrxilu", "_yrxiwe", "_yrx4Aj", "_yrxnhf", "_yrxTY4", "_yrx3kb", "_yrxaij", "_yrxYfZ", "_yrxWB5", "_yrxpa8", "_yrxQ52", "_yrx4S5", "_yrxmkI", "_yrxs6z", "_yrx7Q6", "_yrxYbk", "_yrx$ZC", "_yrx_Nm", "_yrxyAw", "_yrxakM", "_yrx0s1", "_yrxgDl", "_yrxsSN", "_yrxpvD", "_yrxs8E", "_yrx7rZ", "_yrx5t1", "_yrxyZI", "_yrxAJ6", "_yrxynV", "_yrxQJn", "_yrx_IL", "_yrxSnk", "_yrxIMU", "_yrxxWG", "_yrxHB8", "_yrx3BZ", "_yrx2Ag", "_yrx3Bc", "_yrxwDH", "_yrxqER", "_yrxWeB"],
@@ -58,7 +55,6 @@ $_ts = {
     "_yrx6qu": -9,
     "aebi": [[], [176, 261, 19, 232, 212, 92, 55, 383, 212, 340, 232, 470, 326, 161, 84, 161, 353, 308, 344, 7, 380, 66, 22, 533, 257, 486, 282, 384, 397, 118, 13, 27, 7, 165, 482, 202, 66, 235, 409, 137, 124, 131, 407, 232, 353, 325, 353, 186, 232, 0, 163, 353, 280, 233, 161, 188, 388, 263, 353, 218, 353, 161, 172, 116, 461, 209, 241, 407, 232, 256, 408, 491, 416, 232, 269, 517, 281, 295, 39, 462, 58, 444, 205, 370, 232, 505, 301, 370, 232, 505, 251, 370, 232, 505, 161, 327, 218, 353, 95, 353, 501, 291, 406, 411, 14, 200, 421, 353, 221, 333, 232, 358, 69, 353, 161, 331, 187, 270, 353, 372, 219, 232, 390, 353, 23, 232, 145, 353, 501, 220, 232, 126, 440, 503, 353, 471, 335, 353, 466, 232, 134, 530, 353, 322, 353, 400, 423, 98, 406, 353, 14, 506, 353, 308, 80, 196, 406, 439, 314, 353, 298, 521, 333, 406, 439, 314, 353, 169, 153, 353, 310, 133, 228, 353, 21, 81, 406, 254, 511, 83, 406, 267, 191, 337, 406, 398, 90, 268, 406, 265, 74, 6, 406, 197, 449, 321, 80, 119, 232, 14, 410, 40, 194, 406, 314, 320, 185, 406, 448, 89, 536, 406, 303, 329, 454, 406, 245, 180, 446, 406, 178, 429, 534, 232, 3, 275, 353, 223, 70, 353, 501, 317, 366, 184, 353, 399, 141, 447, 532, 113, 406, 272, 14, 456, 9, 232, 181, 69, 353, 399, 464, 353, 157, 232, 130, 24, 353, 12, 311, 232, 162, 391, 353, 161, 161, 262, 353, 107, 288, 418, 309, 139, 108, 395, 302, 293, 433, 239, 189, 161, 147, 306, 377, 85, 9, 406, 230, 94, 1, 9, 406, 413, 71, 250, 401, 143, 425, 16, 334, 86, 435, 493, 109, 502, 296, 352, 389, 214, 9, 406, 413, 42, 485, 9, 406, 413, 499, 519, 257, 28, 224, 170, 91, 237, 246, 164, 369, 232, 48, 427, 305, 392, 406, 480, 417, 323, 257, 252, 266, 319, 524, 416, 406, 136, 510, 101, 257, 167, 132, 112, 208, 351, 232, 364, 289, 129, 232, 507, 15, 257, 195, 215, 32, 348, 406, 207, 459, 234, 484, 406, 226, 467, 283, 247, 406, 299, 103, 495, 247, 406, 299, 79, 375, 278, 520, 232, 300, 161, 381, 353, 179, 232, 60, 121, 144, 353, 120, 80, 93, 316, 279, 354, 161, 353, 501, 140, 472, 237, 463, 73, 257, 513, 59, 161, 465, 179, 232, 105, 198, 312, 97, 232, 475, 353, 494, 232, 160, 2, 353, 179, 232, 44, 479, 353, 244, 356, 63, 353, 396, 63, 353, 478, 257, 350, 216, 284, 353, 38, 17, 213, 406, 376, 14, 34, 353, 341, 159, 177, 54, 229, 353, 477, 115, 35, 259, 236, 349, 529, 393, 528, 33, 367, 419, 151, 11, 257, 31, 287, 378, 441, 286, 225, 174, 222, 61, 240, 49, 368, 26, 515, 489, 452, 386, 353, 76, 45, 353, 150, 353, 4, 420, 68, 353, 29, 406, 210, 110, 353, 29, 406, 346, 78, 353, 29, 232, 455, 353, 107, 72, 67, 273, 453, 360, 257, 47, 476, 403, 347, 504, 353, 155, 203, 353, 29, 401, 307, 431, 339, 406, 192, 82, 142, 509, 257, 531, 232, 175, 353, 161, 457, 518, 353, 492, 353, 29, 232, 285, 353, 161, 468, 232, 114, 253, 166, 353, 304, 232, 362, 353, 242, 135, 106, 243, 526, 277, 512, 353, 5, 106, 64, 276, 345, 297, 353, 501, 231, 199, 370, 442, 41, 406, 238, 171, 363, 406, 387, 371, 434, 406, 149, 99, 43, 406, 274, 124, 201, 406, 426, 14, 258, 421, 353, 122, 77, 353, 473, 353, 412, 255, 353, 315, 353, 156, 406, 161, 353, 336, 373, 365, 353, 128, 25, 353, 111, 138, 9, 257, 248, 294, 117, 20, 460, 9, 27, 497, 313, 330, 406, 104, 429, 522, 232, 422, 70, 353, 501, 537, 57, 257, 359, 415, 451, 353, 514, 353, 51, 353, 424, 161, 88, 353, 428, 430, 404, 10, 249, 257, 227, 260, 148, 168, 37, 75, 353, 206, 271, 158, 527, 451, 353, 65, 292, 232, 46, 173, 353, 490, 190, 450, 56, 154, 406, 487, 14, 438, 353, 535, 353, 405, 8, 50, 102, 406, 161, 87, 182, 237, 318, 324, 343, 342, 445, 474, 379, 193, 353, 217, 353, 469, 338, 211, 18, 36, 414, 152, 232, 436, 355, 123, 290, 508, 204, 232, 436, 328, 353, 469, 338, 264, 500, 232, 353, 30, 498, 406, 53, 161, 523, 382, 443, 183, 394, 62, 332, 437, 488, 353, 52, 125, 406, 361, 481, 353, 127, 353, 501, 458, 421, 353, 496, 8, 432, 370, 257, 357, 402, 516, 146, 353, 469, 374, 353, 525, 100, 483, 96, 232, 385, 353], [119, 100, 118, 94, 32, 39, 101, 3, 104, 125, 90, 97, 17, 37, 49, 17, 102, 17, 92, 15, 84, 114, 17, 34, 17, 17, 9, 17, 17, 65, 17, 117, 101, 98, 17, 18, 17, 42, 17, 48, 17, 29, 51, 88, 7, 101, 1, 78, 17, 60, 17, 91, 62, 17, 52, 2, 17, 0, 67, 72, 82, 106, 115, 17, 116, 43, 70, 72, 57, 53, 46, 17, 77, 17, 47, 17, 47, 17, 79, 17, 108, 117, 94, 25, 23, 101, 61, 38, 20, 121, 101, 66, 12, 113, 4, 110, 71, 28, 8, 30, 16, 96, 59, 69, 74, 94, 55, 4, 19, 53, 55, 17, 10, 17, 13, 28, 101, 44, 122, 101, 17, 83, 81, 99, 85, 6, 89, 50, 72, 120, 112, 73, 113, 31, 101, 120, 90, 93, 22, 24, 75, 109, 89, 111, 72, 68, 112, 14, 113, 56, 101, 68, 17, 41, 101, 27, 17, 103, 17, 17, 86, 5, 101, 17, 124, 40, 113, 55, 51, 63, 55, 80, 17, 33, 21, 76, 105, 17, 45, 72, 58, 53, 64, 17, 45, 101, 17, 54, 87, 95, 26, 107, 11, 36, 35, 123, 17], [12, 26, 8, 19, 19, 22, 19, 23, 19, 41, 45, 10, 44, 19, 42, 46, 11, 13, 1, 39, 38, 15, 7, 39, 40, 3, 19, 19, 19, 4, 39, 37, 32, 19, 0, 17, 35, 34, 29, 25, 18, 31, 16, 5, 36, 30, 39, 14, 9, 24, 33, 19, 2, 27, 6, 19, 43, 21, 39, 20, 28, 19], [2, 1, 3, 0]]
 };
-
 var _yrx3BZ = 0
   , _yrxxyo = $_ts.scj
   , _yrxFzI = $_ts.aebi;
@@ -280,7 +276,7 @@ function _yrx6Vr(_yrxtJ1) {
     return _yrx6um
 }
 function _yrxa$o(_yrxtJ1) {
-    var _yrxmbl = 93 + _yrxCxm['A' + 'G' + 'e' + 'D'];
+    var _yrxmbl = _yrxCxm['v222'] + _yrxCxm['A' + 'G' + 'e' + 'D'];
     _yrxtJ1 = _yrxtJ1["concat"](_yrxSth(_yrxdJZ()));
     for (var _yrx9mg = 0; _yrx9mg < _yrxtJ1.length; _yrx9mg++) {
         _yrxtJ1[_yrx9mg] ^= _yrxmbl
@@ -521,7 +517,7 @@ function _yrxznI(_yrxtJ1, _yrxDnL) {
     return [_yrxtJ1[0] ^ _yrxDnL[0], _yrxtJ1[1] ^ _yrxDnL[1], _yrxtJ1[2] ^ _yrxDnL[2], _yrxtJ1[3] ^ _yrxDnL[3]]
 }
 function _yrxVhD(_yrxtJ1) {
-    return _yrxCxm['myset_now'] + _yrxCxm['A' + 'G' + 'e' + 'D']
+    return _yrxCxm['v333'] + _yrxCxm['A' + 'G' + 'e' + 'D']
 }
 function _yrxqge() {
     return [_yrxVhD(4294967295), _yrxVhD(4294967295), _yrxVhD(4294967295), _yrxVhD(4294967295)]
@@ -832,7 +828,7 @@ function _yrxr_F() {
     return _yrxC2_._yrx5nv()["slice"](0, 16)
 }
 function _yrxM3E(_yrxvAM) {
-    var _yrxC2_ = 154 + _yrxCxm['A' + 'G' + 'e' + 'D'];
+    var _yrxC2_ = _yrxCxm['v111'] + _yrxCxm['A' + 'G' + 'e' + 'D'];
     function _yrxHnj() {
         _yrxdtn = Date;
         return window.Math["ceil"]((new _yrxdtn()["getTime"]() / 1000))
@@ -1336,8 +1332,6 @@ var _yrxGac = 0
 var _yrxiwe = false;
 _yrxWeF._yrxP_N = _yrx4Aj;
 var _yrxwVk, _yrx8Je;
-
-
 _yrxTY4(_yrxnhf());
 _yrx3kb();
 var _yrxzwG;
@@ -7104,20 +7098,19 @@ function _yrxBXT(_yrx4Aj, _yrx7jl, _yrxcze, _yrxyqC) {
     }
 }
 
-function get_m(key, offset){
-  window['myset_now'] = parseInt(Date.now()/1000)
+// 注意，后面每一个接口都需要请求主页面时获取到的 sessionid 进行 cookie 设置后再请求，
+// 否则这些接口请求到的数据都是有问题的
+// 抠出来的脚本里面有几个参数需要非常注意
+// 这里的 v1,v2,v3 都是在脚本内部生成的，offset 是通过额外接口再次请求到的
+function get_m(key, offset, v1, v2, v3){
+  window['v111'] = v1
+  window['v222'] = v2
+  window['v333'] = v3
   window['A' + 'G' + 'e' + 'D'] = offset;
   var k = _yrxWKg(_yrxyHJ(_yrx5XG(key)))
   var v = _yrxBXT(779, key, k, undefined).match(/undefined(.*)/)[1]
   return v
 }
-
-// 如果你需要自行调试，你一定要非常注意这个函数里面的参数，如果没有设置，执行出来的结果是不能使用的。
-// _yrxVhD(_yrxtJ1)
-// 这里面的参数是需要通过其他接口请求到的数据进行设置的
-// offset 需要通过 http://match.yuanrenxue.com/api/offset 这个接口请求到
-// 请求这个接口的时候需要先请求 http://match.yuanrenxue.com/match/10 获取 sessionid 放进 cookie 里面才能获取正确的参数。
-// 另外请求接口的数据也是需要使用这个 sessionid 才能请求到结果。
 '''
 
 import execjs
@@ -7133,6 +7126,7 @@ ctx = execjs.compile(jscode)
 
 import re
 import json
+import base64
 import requests
 
 def get_info(page):
@@ -7150,6 +7144,31 @@ def get_info(page):
     url,headers = mk_url_headers()
     s = requests.get(url,headers=headers)
     sessionid = re.findall('sessionid=[^;]+; ', s.headers['Set-Cookie'])[0]
+    enc_int = int(re.findall(r'_\$uf *= *(\d+)', s.text)[0])
+    def mk_url_headers(sessionid):
+        def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
+        url = (
+            'http://match.yuanrenxue.com/stati/mu/rsnkw2ksph'
+        )
+        url = quote_val(url) # 解决部分网页需要请求参数中的 param 保持编码状态，如有异常考虑注释
+        headers = {
+            "accept-encoding": "gzip, deflate", # auto delete br encoding. cos requests and scrapy can not decode it.
+            "accept-language": "zh-CN,zh;q=0.9",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Cookie": (
+                sessionid
+            ),
+            "user-agent": "yuanrenxue.project"
+        }
+        return url,headers
+    url,headers = mk_url_headers(sessionid)
+    s = requests.get(url,headers=headers)
+    b64eval = ''.join([chr(ord(i)-idx%enc_int-0x32) for idx, i in enumerate(s.text.replace("$_ts['dfe1683']=", '')[1:-1])])
+    evalstr = base64.b64decode(b64eval.encode()).decode()
+    code = re.findall(r"_yrxC2_=\d+ \+ _yrxCxm\[('.'\+'.'\+'.'\+'.')\]", evalstr)[0]
+    v1 = int(re.findall(r"_yrxC2_=(\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
+    v2 = int(re.findall(r"_yrxmbl=(\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
+    v3 = int(re.findall(r"return (\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
     def mk_url_headers(sessionid):
         def quote_val(url): return re.sub(r'([\?&][^=&]*=)([^&]*)', lambda i:i.group(1)+quote(unquote(i.group(2),encoding='utf-8'),encoding='utf-8'), url)
         url = (
@@ -7168,9 +7187,10 @@ def get_info(page):
         return url,headers
     url,headers = mk_url_headers(sessionid)
     s = requests.get(url,headers=headers)
-    offset = int(re.findall(r'= *(\d+)', s.text)[0])
+    code, offset = re.findall(r'\.(.*) *= *(\d+)', s.text)[0]
+    offset = int(offset)
     def mk_url_headers(page, sessionid, offset):
-        m = ctx.call("get_m", "/api/match/10?page={}".format(page), offset)
+        m = ctx.call("get_m", "/api/match/10?page={}".format(page), offset, v1, v2, v3)
         url = (
             'http://match.yuanrenxue.com/api/match/10'
             '?page={}'
@@ -7197,22 +7217,16 @@ def get_info(page):
     jsondata = json.loads(s.text)
     return jsondata
 
-def retry_get_info(page, times=5):
-    jdata = get_info(page)
-    if jdata.get('message') == 'token_failed':
-        return retry_get_info(page, times-1)
-    return jdata
-
 allvalues = []
 for page in range(1, 6):
-    jdata = retry_get_info(page)
+    jdata = get_info(page)
     values = [i['value']for i in jdata['data']]
     print('page:{} --> values:{} k:{}'.format(page, values, jdata['k']))
     allvalues.extend(values)
 
 print('sum:{}'.format(sum(allvalues)))
 
-# 正常执行结果 // 接口有一定失败率，不过失败率能接受，直接用简单的重试接口的逻辑就能解决。
+# 正常执行结果
 # page:1 --> values:[304, 2207, 6182, 1548, 22, 1115, 5666, 2970, 7077, 2068] k:{'k': 'fabc|1311'}
 # page:2 --> values:[5928, 6210, 1670, 8328, 3227, 5868, 5019, 9421, 469, 1153] k:{'k': 'CGeb|831'}
 # page:3 --> values:[6184, 9462, 7467, 9555, 6369, 6293, 562, 1905, 5833, 1164] k:{'k': 'aebF|149'}
