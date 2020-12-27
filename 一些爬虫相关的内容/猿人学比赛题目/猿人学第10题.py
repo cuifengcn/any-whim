@@ -7163,7 +7163,7 @@ def get_info(page):
     s = requests.get(url,headers=headers)
     b64eval = ''.join([chr(ord(i)-idx%enc_int-0x32) for idx, i in enumerate(s.text.replace("$_ts['dfe1683']=", '')[1:-1])])
     evalstr = base64.b64decode(b64eval.encode()).decode()
-    code = re.findall(r"_yrxC2_=\d+ \+ _yrxCxm\[('.'\+'.'\+'.'\+'.')\]", evalstr)[0]
+    # _ = eval(re.findall(r"_yrxC2_=\d+ \+ _yrxCxm\[('.'\+'.'\+'.'\+'.')\]", evalstr)[0])
     v1 = int(re.findall(r"_yrxC2_=(\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
     v2 = int(re.findall(r"_yrxmbl=(\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
     v3 = int(re.findall(r"return (\d+) \+ _yrxCxm\['.'\+'.'\+'.'\+'.'\]", evalstr)[0])
@@ -7183,8 +7183,8 @@ def get_info(page):
         return url,headers
     url,headers = mk_url_headers(sessionid)
     s = requests.get(url,headers=headers)
-    code, offset = re.findall(r'\.(.*) *= *(\d+)', s.text)[0]
-    offset = int(offset)
+    # _ = re.findall(r'\.(.*) *= *\d+', s.text)[0]
+    offset = int(re.findall(r'= *(\d+)', s.text)[0])
     def mk_url_headers(page, sessionid, offset):
         m = ctx.call("get_m", "/api/match/10?page={}".format(page), offset, v1, v2, v3)
         url = (
