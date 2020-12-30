@@ -93,6 +93,9 @@ window.btoa = function btoa(str) {
 (function(){
   var _cookie = document.__lookupSetter__('cookie');
   var _cookie_set = function(c) {
+    if (/RM4hZBv0dDon443M/.test(c)){
+      // debugger;
+    }
     console.log('----- cookie.set -----\n', c);
     _cookie = c;
     return _cookie;
@@ -100,9 +103,12 @@ window.btoa = function btoa(str) {
   var mycookie = document.cookie;
   document.__defineSetter__("cookie", _cookie_set);
   document.__defineGetter__("cookie", function() {return _cookie;} );
-  Object.keys(Object.getOwnPropertyDescriptors(document.cookie.__proto__)).map(function(a){
-    document.cookie[a] = mycookie[a];
+  Object.getOwnPropertyNames(String.prototype).filter(k => !!String.prototype[k].call).map(function(a){
+    if (!/^caller$|^callee$|^arguments$/.test(a)){
+      document.cookie[a] = mycookie[a];
+    }
   });
+  document.cookie.toString = function (){ return mycookie.toString() };
 })();
 
 // 挂钩一些对象的参数，可以快速定位参数赋值点，快速调试
