@@ -46,9 +46,11 @@ Function.prototype.__defineGetter__('constructor', function() { return function(
 
 
 // nodejs 下的 btoa
+window = typeof global=='undefined'?window:global;
 window.btoa = window.btoa?window.btoa:function btoa(str) {
-  return ((str instanceof Buffer)?str:Buffer.from(str.toString(), 'binary')).toString('base64');
-}
+  return ((str instanceof Buffer)?str:Buffer.from(str.toString(), 'binary')).toString('base64'); }
+window.atob = window.atob?window.atob:function atob(str) {
+  return Buffer.from(str, 'base64').toString('binary'); }
 
 
 
