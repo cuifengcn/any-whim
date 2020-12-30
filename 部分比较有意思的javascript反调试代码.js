@@ -60,3 +60,70 @@ window.btoa = function btoa(str) {
   }
   return buffer.toString('base64');
 }
+
+
+
+
+
+
+
+// 挂钩 XMLHttpRequest. 设置请求头和发起请求的时机
+(function(){
+  XMLHttpRequest_prototype_open_str = XMLHttpRequest.prototype.open.toString()
+  const handler = { apply: function (target, thisArg, args){
+      // debugger;
+      console.log("----- XMLHttpRequest_open -----\n", args)
+      return target.apply(thisArg, args) } }
+  const handler_tostring = { apply: function (target, thisArg, args){ return XMLHttpRequest_prototype_open_str; } }
+  XMLHttpRequest.prototype.open = new Proxy(XMLHttpRequest.prototype.open, handler);
+  XMLHttpRequest.prototype.open.toString = new Proxy(XMLHttpRequest.prototype.open.toString, handler_tostring);
+})();
+(function(){
+  XMLHttpRequest_prototype_setRequestHeader_str = XMLHttpRequest.prototype.setRequestHeader.toString()
+  const handler = { apply: function (target, thisArg, args){
+      // debugger;
+      console.log("----- XMLHttpRequest_setRequestHeader -----\n", args)
+      return target.apply(thisArg, args) } }
+  const handler_tostring = { apply: function (target, thisArg, args){ return XMLHttpRequest_prototype_setRequestHeader_str; } }
+  XMLHttpRequest.prototype.setRequestHeader = new Proxy(XMLHttpRequest.prototype.setRequestHeader, handler);
+  XMLHttpRequest.prototype.setRequestHeader.toString = new Proxy(XMLHttpRequest.prototype.setRequestHeader.toString, handler_tostring);
+})();
+
+// 挂钩生成cookie设置时机
+(function(){
+  var _cookie = document.__lookupSetter__('cookie');
+  var _cookie_set = function(c) {
+    console.log('----- cookie.set -----\n', c);
+    _cookie = c;
+    return _cookie;
+  }
+  var mycookie = document.cookie;
+  document.__defineSetter__("cookie", _cookie_set);
+  document.__defineGetter__("cookie", function() {return _cookie;} );
+  document.cookie.indexOf = mycookie.indexOf;
+  document.cookie.valueOf = mycookie.valueOf;
+  document.cookie.match = mycookie.match;
+  document.cookie.split = mycookie.split;
+})();
+
+// 挂钩一些全局参数，可以方便调试
+(function(){
+  var pname = '_$ss'
+  var win_param = window.__lookupSetter__(pname);
+  var win_param_set = function(c) {
+    console.log('----- ' + pname + '.set -----\n', c);
+    win_param = c;
+    return win_param;
+  }
+  window.__defineSetter__(pname, win_param_set);
+  window.__defineGetter__(pname, function() {return win_param;} );
+})();
+
+// 挂钩打印函数
+_console_log = console.log;
+console.log = function(...args){
+  if (args && args[0] == '有时候控制台输出太多无意义内容会影响性能，可以hook对部分字符串进行不打印'){
+    return 
+  }
+  _console_log(...args);
+}
