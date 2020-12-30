@@ -100,10 +100,9 @@ window.btoa = function btoa(str) {
   var mycookie = document.cookie;
   document.__defineSetter__("cookie", _cookie_set);
   document.__defineGetter__("cookie", function() {return _cookie;} );
-  document.cookie.indexOf = mycookie.indexOf;
-  document.cookie.valueOf = mycookie.valueOf;
-  document.cookie.match = mycookie.match;
-  document.cookie.split = mycookie.split;
+  Object.keys(Object.getOwnPropertyDescriptors(document.cookie.__proto__)).map(function(a){
+    document.cookie[a] = mycookie[a];
+  });
 })();
 
 // 挂钩一些对象的参数，可以快速定位参数赋值点，快速调试
@@ -128,3 +127,33 @@ console.log = function(...args){
   }
   _console_log(...args);
 }
+
+
+// 挂钩一些对象的参数，特别是该值为列表，也会挂钩该列表对象的push函数
+var hook_set = (function(pname, pobject){
+  var pname = '_$pr';
+  var pobject = window;
+  var win_param = pobject.__lookupSetter__(pname);
+  var hookpush = false;
+  var win_param_set = function(c) {
+    console.log('----- ' + pname + '.set -----\n', c);
+    win_param = c;
+    if (!hookpush && win_param instanceof Array){
+      (function(){
+        pobject_push_str = win_param.push.toString()
+        const handler = { apply: function (target, thisArg, args){
+            debugger;
+            console.log("----- Array.push -----\n", args)
+            return target.apply(thisArg, args) } }
+        const handler_tostring = { apply: function (target, thisArg, args){ return pobject_push_str; } }
+        win_param.push = new Proxy(win_param.push, handler);
+        win_param.push.toString = new Proxy(win_param.push.toString, handler_tostring);
+      })();
+      hookpush=true;
+    }
+    return win_param;
+  }
+  pobject.__defineSetter__(pname, win_param_set);
+  pobject.__defineGetter__(pname, function() {return win_param;} );
+});
+// hook_set('_$ss', window)
