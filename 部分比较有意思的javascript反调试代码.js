@@ -7,58 +7,47 @@ setTimeout(function adbg() {
   console.log(d);
   console.clear();
   setTimeout(adbg, 200);
-}, 200)
+}, 200);
 
-// 挂钩内置函数 window.eval
-// 如果想挂钩别的，可以将 window.eval 直接替换成别的即可，例如 document.createElement
+
+
+
+
+
+// eval Function Function.constructor 三种执行字符串脚本的挂钩
 (function(){
   eval_string = window.eval.toString()
-  const handler = {
-    apply: function (target, thisArg, args){
-      console.log("Intercepted a call eval with args: " + args);
-      return target.apply(thisArg, args)
-    }
-  }
-  const handler_tostring = {
-    apply: function (target, thisArg, args){
-      return eval_string;
-    }
-  }
+  const handler = { apply: function (target, thisArg, args){
+      // debugger;
+      console.log("----- eval(*) -----\n" + args);
+      return target.apply(thisArg, args) } }
+  const handler_tostring = { apply: function (target, thisArg, args){ return eval_string; } }
   window.eval = new Proxy(window.eval, handler);
   window.eval.toString = new Proxy(window.eval.toString, handler_tostring);
 })();
-
-// 挂钩 cookie 生成的时机。
 (function(){
-  'use strict';
-  Object.defineProperty(
-    document, 'cookie', {
-      set: function(cookie){
-        // if (cookie.indexOf('RM4hZBv0dDon443M') != -1){ debugger; }
-        debugger;
-        return cookie;
-      }
-    }
-  )
+  Function_string = window.Function.toString()
+  const handler = { apply: function (target, thisArg, args){
+      // debugger;
+      console.log("----- Function(*) -----\n" + args);
+      return target.apply(thisArg, args) } }
+  const handler_tostring = { apply: function (target, thisArg, args){ return Function_string; } }
+  window.Function = new Proxy(window.Function, handler);
+  window.Function.toString = new Proxy(window.Function.toString, handler_tostring);
 })();
-
-// 挂钩一些 constructor 形式的调用
-Function.prototype.__defineGetter__('constructor', function() {
-  return function(...args) {
-    console.log('code:', ...args);
-    return Function(...args);
-  };
-});
+Function.prototype.__defineGetter__('constructor', function() { return function(...args) {
+    // debugger;
+    console.log('----- Function constructor(*) -----\n', ...args); 
+    return Function(...args); }; });
 
 
-window.btoa = function btoa(str) {
-  var buffer;
-  if (str instanceof Buffer) {
-    buffer = str;
-  } else {
-    buffer = Buffer.from(str.toString(), 'binary');
-  }
-  return buffer.toString('base64');
+
+
+
+
+// nodejs 下的 btoa
+window.btoa = window.btoa?window.btoa:function btoa(str) {
+  return ((str instanceof Buffer)?str:Buffer.from(str.toString(), 'binary')).toString('base64');
 }
 
 
@@ -89,7 +78,13 @@ window.btoa = function btoa(str) {
   XMLHttpRequest.prototype.setRequestHeader.toString = new Proxy(XMLHttpRequest.prototype.setRequestHeader.toString, handler_tostring);
 })();
 
-// 挂钩生成cookie设置时机
+
+
+
+
+
+
+// 挂钩生成cookie设置时机，但是这里是有问题的，这里如果挂钩，之后都将无法设置真实的 cookie 键值
 (function(){
   var _cookie = document.__lookupSetter__('cookie');
   var _cookie_set = function(c) {
@@ -111,19 +106,47 @@ window.btoa = function btoa(str) {
   document.cookie.toString = function (){ return mycookie.toString() };
 })();
 
-// 挂钩一些对象的参数，可以快速定位参数赋值点，快速调试
-(function(){
-  var pname = '_$ss';
-  var pobject = window;
+
+
+
+
+
+
+
+// 挂钩一些对象的参数，特别是该值为列表，也会挂钩该列表对象的push函数
+var hook_set = (function(pname, pobject){
   var win_param = pobject.__lookupSetter__(pname);
   var win_param_set = function(c) {
     console.log('----- ' + pname + '.set -----\n', c);
     win_param = c;
+    if (win_param instanceof Array){
+      (function(){
+        pobject_push_str = win_param.push.toString()
+        const handler = { apply: function (target, thisArg, args){
+          // debugger;
+          console.log("----- " + pname + " Array.push -----\n", args)
+          return target.apply(thisArg, args) } }
+        const handler_tostring = { apply: function (target, thisArg, args){ return pobject_push_str; } }
+        win_param.push = new Proxy(win_param.push, handler);
+        win_param.push.toString = new Proxy(win_param.push.toString, handler_tostring);
+      })();
+    }
     return win_param;
   }
   pobject.__defineSetter__(pname, win_param_set);
   pobject.__defineGetter__(pname, function() {return win_param;} );
-})();
+});
+hook_set('_$ss', window)
+hook_set('_$pr', window)
+
+
+
+
+
+
+
+
+
 
 // 挂钩打印函数
 _console_log = console.log;
@@ -134,32 +157,3 @@ console.log = function(...args){
   _console_log(...args);
 }
 
-
-// 挂钩一些对象的参数，特别是该值为列表，也会挂钩该列表对象的push函数
-var hook_set = (function(pname, pobject){
-  var pname = '_$pr';
-  var pobject = window;
-  var win_param = pobject.__lookupSetter__(pname);
-  var hookpush = false;
-  var win_param_set = function(c) {
-    console.log('----- ' + pname + '.set -----\n', c);
-    win_param = c;
-    if (!hookpush && win_param instanceof Array){
-      (function(){
-        pobject_push_str = win_param.push.toString()
-        const handler = { apply: function (target, thisArg, args){
-            debugger;
-            console.log("----- Array.push -----\n", args)
-            return target.apply(thisArg, args) } }
-        const handler_tostring = { apply: function (target, thisArg, args){ return pobject_push_str; } }
-        win_param.push = new Proxy(win_param.push, handler);
-        win_param.push.toString = new Proxy(win_param.push.toString, handler_tostring);
-      })();
-      hookpush=true;
-    }
-    return win_param;
-  }
-  pobject.__defineSetter__(pname, win_param_set);
-  pobject.__defineGetter__(pname, function() {return win_param;} );
-});
-// hook_set('_$ss', window)
