@@ -106,17 +106,18 @@ window.btoa = function btoa(str) {
   document.cookie.split = mycookie.split;
 })();
 
-// 挂钩一些全局参数，可以方便调试
+// 挂钩一些对象的参数，可以快速定位参数赋值点，快速调试
 (function(){
-  var pname = '_$ss'
-  var win_param = window.__lookupSetter__(pname);
+  var pname = '_$ss';
+  var pobject = window;
+  var win_param = pobject.__lookupSetter__(pname);
   var win_param_set = function(c) {
     console.log('----- ' + pname + '.set -----\n', c);
     win_param = c;
     return win_param;
   }
-  window.__defineSetter__(pname, win_param_set);
-  window.__defineGetter__(pname, function() {return win_param;} );
+  pobject.__defineSetter__(pname, win_param_set);
+  pobject.__defineGetter__(pname, function() {return win_param;} );
 })();
 
 // 挂钩打印函数
