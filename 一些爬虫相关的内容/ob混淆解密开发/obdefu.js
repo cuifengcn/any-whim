@@ -23921,33 +23921,25 @@ function step2(ast) {
     if (config.only_decrypt) {
         var { code } = generator(ast, {
             jsescOption: {
-                // 自动转义
                 minimal: true,
             }
         });
         code = (atob_code + code).replace(/\n\n/g, "\n")
-        fs.writeFileSync(config.file2generate, code, {
-            encoding: "utf-8"
-        })
-        console.log("全部还原完成！")
+        console.log(code)
     } else {
         return ast
     }
     function funToStr(path) {
         var node = path.node;
-        // 判断节点类型及函数名，不是则返回
         if (!t.isIdentifier(node.callee, {name: decryptStr})) 
             return;
-        // 调用解密函数
         let value = eval(path.toString())
-        if (config.debug) {
-            // 是否打印
+        if (true) {
             console.log("还原前：" + path.toString(), "还原后：" + value);
         }
         path.replaceWith(t.valueToNode(value));
     }
-    function delExtra(path) {     
-        // 十六进制文本还原
+    function delExtra(path) {
         delete path.node.extra; 
     }
 }
