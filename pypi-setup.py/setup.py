@@ -30,7 +30,7 @@ setup(
     # 在该脚本下执行下面的命令行指令（该命令需预先安装 wheel 库，pip install wheel 即可）：
     # python setup.py bdist_wheel upload
     name = "vv",
-    version = "0.0.6",
+    version = "0.0.7",
     
 
     # ==== 用于描述该库信息的参数 ====
