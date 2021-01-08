@@ -7,7 +7,7 @@ from setuptools import setup
 # 使用pypi作为你的工具库的前提有两个
 # 1 你得有一个 pypi 的账号，并且用户路径配置了 .pypirc
 #   [ 用户路径通常情况会是右边的这个 ]: C:\Users\Administrator
-#   不过有时你不是管理员用户的话，
+#   不过有时你不是管理员用户的话，（快捷键win+r后输入cmd时弹出的默认路径）
 #   那么 Administrator 这个名字就应该变成你进入电脑的账号
 #   并且这个 .pypirc 文件（文件前面带.符号可能在windows下不能直接生成）
 #   用py脚本生成一个这个名字的文件即可
@@ -27,7 +27,7 @@ setup(
     # ==== 必要参数就这两个 ====
     # 其他参数甚至不填都能进行上传
     # 注意同一 version 版本不能 upload 两次
-    # 命令行指令（该命令需预先安装 wheel 库，pip install wheel 即可）：
+    # 在该脚本下执行下面的命令行指令（该命令需预先安装 wheel 库，pip install wheel 即可）：
     # python setup.py bdist_wheel upload
     name = "vv",
     version = "0.0.6",
