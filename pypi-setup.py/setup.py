@@ -10,7 +10,7 @@ from setuptools import setup
 #   不过有时你不是管理员用户的话，（快捷键win+r后输入cmd时弹出的默认路径）
 #   那么 Administrator 这个名字就应该变成你进入电脑的账号
 #   并且这个 .pypirc 文件（文件前面带.符号可能在windows下不能直接生成）
-#   用py脚本生成一个这个名字的文件即可
+#   用py脚本 open(".pypirc","w") 生成一个这个名字的文件即可
 #   然后用文本编辑器编辑该文件内容成下面的样子：
 #       [distutils]
 #       index-servers=pypi
