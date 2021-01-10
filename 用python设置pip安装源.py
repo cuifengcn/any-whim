@@ -22,7 +22,7 @@ def read_setting():
         }
         return dic.get(mirrors)
 
-def write_setting(name):
+def write_setting(name=None):
     setting = '''[global]\nindex-url = {}\n[install]\nuse-mirrors = true\nmirrors = {}\ntrusted-host = {}'''.strip()
     dic = {
         '豆瓣': 'http://pypi.douban.com/simple/',
@@ -30,6 +30,10 @@ def write_setting(name):
         '清华大学': 'http://pypi.tuna.tsinghua.edu.cn/simple/',
         '中国科学技术大学': 'http://pypi.mirrors.ustc.edu.cn/simple/',
     }
+    if name is None:
+        if os.path.isfile(pipfile):
+            os.remove(pipfile)
+        return
     if name not in dic:
         raise Exception("{} must in {}".format(name, list(dic)))
     mirrors = dic.get(name)
@@ -39,6 +43,6 @@ def write_setting(name):
         f.write(setting.format(index_url, mirrors, trusted_host))
 
 if __name__ == '__main__':
-    write_setting('华中科技大学')
+    write_setting()
     v = read_setting()
     print(v)
