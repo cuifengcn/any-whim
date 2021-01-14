@@ -678,11 +678,6 @@ function get_s_v_web_id() {
     return "verify_" + n + "_" + r.join("")
 };
 
-// a = "/api/pc/feed/?max_behot_time=1609757479&category=__all__&utm_source=toutiao&widen=1&tadrequire=true";
-// a = arguments[0];
-// e = {};
-// v = I(a, e);
-// console.log(v);
 window.hookfunc = I;
 window.get_s_v_web_id = get_s_v_web_id;
 '''
@@ -818,7 +813,7 @@ def get_hot_info_toutiao(max_behot_time):
             "accept-language": "zh-CN,zh;q=0.9",
             "cookie": (
                 "s_v_web_id={}; "
-            ).format(s_v_web_id),
+            ).format(s_v_web_id), # 请求过快后后续会补充校验这个参数，生成就行。
             "referer": "https://www.toutiao.com/",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
