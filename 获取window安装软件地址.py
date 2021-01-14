@@ -1,5 +1,4 @@
 import os
-import socket
 import winreg
 sub_key = [
     'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall', 
