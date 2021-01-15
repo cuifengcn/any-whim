@@ -17,13 +17,16 @@ setTimeout(function adbg() {
 // eval Function Function.constructor 三种执行字符串脚本的挂钩
 (function(){
   eval_string = window.eval.toString()
+  eval_tostring = window.eval.toString.toString()
   const handler = { apply: function (target, thisArg, args){
       // debugger;
       console.log("----- eval(*) -----\n" + args);
       return target.apply(thisArg, args) } }
   const handler_tostring = { apply: function (target, thisArg, args){ return eval_string; } }
+  const handler_totostring = { apply: function (target, thisArg, args){ return eval_tostring; } }
   window.eval = new Proxy(window.eval, handler);
   window.eval.toString = new Proxy(window.eval.toString, handler_tostring);
+  window.eval.toString.toString = new Proxy(window.eval.toString.toString, handler_totostring);
 })();
 (function(){
   Function_string = window.Function.toString()
