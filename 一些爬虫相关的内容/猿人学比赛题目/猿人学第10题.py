@@ -7144,7 +7144,8 @@ def get_info(page):
     url,headers = mk_url_headers()
     s = requests.get(url,headers=headers)
     sessionid = re.findall('sessionid=[^;]+; ', s.headers['Set-Cookie'])[0]
-    enc_int = int(re.findall(r'_\$uf *= *(\d+)', s.text)[0])
+    # enc_int = int(re.findall(r'_\$uf *= *(\d+)', s.text)[0]) # 之前是用这行定位抑或加密的数字，后面修改成下面这行代码进行定位了
+    enc_int = int(re.findall(r'yuanrenxue_59 *= *(\d+)', s.text)[0])
     def mk_url_headers(sessionid):
         url = (
             'http://match.yuanrenxue.com/stati/mu/rsnkw2ksph'
@@ -7222,6 +7223,8 @@ for page in range(1, 6):
 
 print('sum:{}'.format(sum(allvalues)))
 
+# 从网页执行的逻辑来看，实际上并不需要每次请求时候都请求主页面获取抑或加密参数以获取 eval 执行时的三个随机变量
+# 所以实际上 get_info 函数内部的前两个请求或许可以只执行一次，这里懒得处理了。
 # 正常执行结果
 # page:1 --> values:[304, 2207, 6182, 1548, 22, 1115, 5666, 2970, 7077, 2068] k:{'k': 'fabc|1311'}
 # page:2 --> values:[5928, 6210, 1670, 8328, 3227, 5868, 5019, 9421, 469, 1153] k:{'k': 'CGeb|831'}
