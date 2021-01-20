@@ -6663,9 +6663,14 @@ var types = {
     'ExpressionStatement': 8,
     'SequenceExpression': 9,
     'AssignmentExpression': 10,
+    'operator': 16,
+
     'FunctionDeclaration': 11,
     'BlockStatement': 12,
     'ReturnStatement': 13,
+    'IfStatement': 14,
+    'MemberExpression': 15,
+    'BinaryExpression': 17,
     'Program': 0xff,
 }
 
@@ -6674,6 +6679,10 @@ function pack_node(node){
         var v = node.body.map(function(e){
             return pack_node(e)
         }).join('')
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'operator'){
+        var v = str2hex(node.name)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'Identifier'){
@@ -6689,17 +6698,13 @@ function pack_node(node){
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'CallExpression'){
-        if (node.callee.type == 'Identifier'){
-            let name = node.callee.name;
-            let args = node.arguments
-            let v = str2hex(name)
-            v = int2str(types['CallExpression_name'], 2) + int2str(v.length, 4) + v
-            s = args.map(function(e){
-                return pack_node(e)
-            })
-            v = v + s.join('')
-            return int2str(types[node.type], 2) + int2str(v.length, 4) + v
-        }
+        let call = node.callee
+        let args = node.arguments
+        args = args.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = pack_node(call) + args
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'VariableDeclaration'){
         var v = node.declarations.map(function(e){
@@ -6708,9 +6713,8 @@ function pack_node(node){
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'VariableDeclarator'){
-        let name = node.id.name;
         let init = node.init;
-        var v = str2hex(name) + (init?pack_node(init):pack_node({name:'undefined', type:'Identifier'}))
+        var v = pack_node(node.id) + (init?pack_node(init):pack_node({name:'undefined', type:'Identifier'}))
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'ExpressionStatement'){
@@ -6718,9 +6722,9 @@ function pack_node(node){
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'AssignmentExpression'){
-        let name = node.left.name;
         let init = node.right
-        var v = str2hex(name) + pack_node(init)
+        let oper = node.operator
+        var v = pack_node({name:oper, type:'operator'}) + pack_node(node.left) + pack_node(init)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'SequenceExpression'){
@@ -6730,9 +6734,10 @@ function pack_node(node){
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v;
     }
     if (node.type == 'FunctionDeclaration'){
-        let name = node.id.name;
-        let body = node.body;
-        var v = str2hex(name) + pack_node(body)
+        var params = node.params.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = pack_node(node.id) + params + pack_node(node.body)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'BlockStatement'){
@@ -6743,6 +6748,24 @@ function pack_node(node){
     }
     if (node.type == 'ReturnStatement'){
         var v = pack_node(node.argument)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'IfStatement'){
+        let test = node.test
+        let cons = node.consequent
+        let alte = node.alternate
+        var v = pack_node(test) + pack_node(cons) + (alte?pack_node(alte):'')
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'MemberExpression'){
+        let obje = node.object
+        let prop = node.property
+        var v = pack_node(obje) + pack_node(prop)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'BinaryExpression'){
+        let oper = node.operator
+        var v = pack_node({name:oper, type:'operator'}) + pack_node(node.left) + pack_node(node.right)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
 }
