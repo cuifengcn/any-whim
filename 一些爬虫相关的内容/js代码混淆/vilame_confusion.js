@@ -6663,14 +6663,15 @@ var types = {
     'ExpressionStatement': 8,
     'SequenceExpression': 9,
     'AssignmentExpression': 10,
-    'operator': 16,
+    'operator': 11,
 
-    'FunctionDeclaration': 11,
-    'BlockStatement': 12,
-    'ReturnStatement': 13,
-    'IfStatement': 14,
-    'MemberExpression': 15,
+    'FunctionDeclaration': 12,
+    'BlockStatement': 13,
+    'ReturnStatement': 14,
+    'IfStatement': 15,
+    'MemberExpression': 16,
     'BinaryExpression': 17,
+    'ForStatement': 18,
     'Program': 0xff,
 }
 
@@ -6766,6 +6767,14 @@ function pack_node(node){
     if (node.type == 'BinaryExpression'){
         let oper = node.operator
         var v = pack_node({name:oper, type:'operator'}) + pack_node(node.left) + pack_node(node.right)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'ForStatement'){
+        let init = node.init
+        let test = node.test
+        let upda = node.update
+        let body = node.body
+        var v = pack_node(init) + pack_node(test) + pack_node(upda) + pack_node(body)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
 }
