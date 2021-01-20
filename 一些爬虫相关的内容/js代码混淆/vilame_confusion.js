@@ -6663,22 +6663,32 @@ var types = {
     'ExpressionStatement': 8,
     'SequenceExpression': 9,
     'AssignmentExpression': 10,
+    'FunctionDeclaration': 11,
+    'BlockStatement': 12,
+    'ReturnStatement': 13,
+    'Program': 0xff,
 }
 
 function pack_node(node){
-    if(node.type == 'Identifier'){
+    if (node.type == 'Program'){
+        var v = node.body.map(function(e){
+            return pack_node(e)
+        }).join('')
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'Identifier'){
         var v = str2hex(node.name)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
-    if(node.type == 'StringLiteral'){
+    if (node.type == 'StringLiteral'){
         var v = str2hex(node.value)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
-    if(node.type == 'NumericLiteral'){
+    if (node.type == 'NumericLiteral'){
         var v = num2hex(node.value)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
-    if(node.type == 'CallExpression'){
+    if (node.type == 'CallExpression'){
         if (node.callee.type == 'Identifier'){
             let name = node.callee.name;
             let args = node.arguments
@@ -6691,7 +6701,6 @@ function pack_node(node){
             return int2str(types[node.type], 2) + int2str(v.length, 4) + v
         }
     }
-
     if (node.type == 'VariableDeclaration'){
         var v = node.declarations.map(function(e){
             return pack_node(e)
@@ -6720,20 +6729,34 @@ function pack_node(node){
         }).join('')
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v;
     }
+    if (node.type == 'FunctionDeclaration'){
+        let name = node.id.name;
+        let body = node.body;
+        var v = str2hex(name) + pack_node(body)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'BlockStatement'){
+        var v = node.body.map(function(e){
+            return pack_node(e)
+        }).join('')
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'ReturnStatement'){
+        var v = pack_node(node.argument)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
 }
 
 
 
 function vilame_confusion(jscode){
     var ast = parser.parse(jscode);
-    var ret = ast.program.body.map(function(e){
-        return pack_node(e)
-    })
+    var ret = pack_node(ast.program)
     console.log(ret)
 }
 const fs = require('fs');
 var jscode = fs.readFileSync("./src.js", {
     encoding: "utf-8"
 });
-console.log(jscode);
 code = vilame_confusion(jscode);
+console.log(jscode);
