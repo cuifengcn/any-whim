@@ -6718,6 +6718,7 @@ var types = {
     'SwitchCase': 23,
     'WhileStatement': 24,
     'UnaryExpression': 25,
+    'NewExpression': 26,
     'Program': 0xff,
 }
 
@@ -6865,6 +6866,15 @@ function pack_node(node){
         var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.argument)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
+    if (node.type == 'NewExpression'){
+        let call = node.callee
+        let args = node.arguments
+        args = args.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = pack_node(call) + args
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
 }
 
 function parse_encjs(encjs){
@@ -6921,6 +6931,7 @@ function parse_encjs(encjs){
         if (type == types['ConditionalExpression']){parse_one(encjs, type)}
         if (type == types['SwitchCase']){parse_one(encjs, type)}
         if (type == types['UnaryExpression']){parse_one(encjs, type)}
+        if (type == types['NewExpression']){parse_one(encjs, type)}
         if (type == types['Program']){parse_one(encjs, type)}
     }
     parse_node(encjs)
