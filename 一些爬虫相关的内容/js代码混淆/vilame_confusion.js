@@ -6719,31 +6719,39 @@ var types = {
     'WhileStatement': 24,
     'UnaryExpression': 25,
     'NewExpression': 26,
+    'ArrayExpression': 27,
+    'ObjectExpression': 28,
+    'ObjectProperty': 29,
     'Program': 0xff,
 }
 
 function pack_node(node){
+    function pack_length(length){
+        strleng = length.toString(16)
+        return strleng.length.toString(16) + strleng
+        // return int2str(v.length, 4)
+    }
     if (node.type == 'Program'){
         var v = node.body.map(function(e){
             return pack_node(e)
         }).join('')
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'operator'){
         var v = istr2hex(node.name)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'Identifier'){
         var v = istr2hex(node.name)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'StringLiteral'){
         var v = str2hex(node.value)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'NumericLiteral'){
         var v = num2hex(node.value)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'CallExpression'){
         let call = node.callee
@@ -6752,74 +6760,74 @@ function pack_node(node){
             return pack_node(e)
         }).join('')
         var v = pack_node(call) + args
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'VariableDeclaration'){
         var v = node.declarations.map(function(e){
             return pack_node(e)
         }).join('')
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'VariableDeclarator'){
         let init = node.init;
         var v = pack_node(node.id) + (init?pack_node(init):pack_node({name:'undefined', type:'Identifier'}))
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ExpressionStatement'){
         var v = pack_node(node.expression)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'AssignmentExpression'){
         let init = node.right
         var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.left) + pack_node(init)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'SequenceExpression'){
         var v = node.expressions.map(function(e){
             return pack_node(e)
         }).join('')
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v;
+        return int2str(types[node.type], 2) + pack_length(v.length) + v;
     }
     if (node.type == 'FunctionDeclaration'){
         var params = node.params.map(function(e){
             return pack_node(e)
         }).join('')
         var v = pack_node(node.id) + params + pack_node(node.body)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'FunctionExpression'){
         var params = node.params.map(function(e){
             return pack_node(e)
         }).join('')
         var v = (node.id?pack_node(node.id):pack_node({name:'null', type:'Identifier'})) + params + pack_node(node.body)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'BlockStatement'){
         var v = node.body.map(function(e){
             return pack_node(e)
         }).join('')
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ReturnStatement'){
         var v = pack_node(node.argument)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'IfStatement'){
         let test = node.test
         let cons = node.consequent
         let alte = node.alternate
         var v = pack_node(test) + pack_node(cons) + (alte?pack_node(alte):pack_node({name:'null', type:'Identifier'}))
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'MemberExpression'){
         let obje = node.object
         let prop = node.property
         var v = pack_node(obje) + pack_node(prop)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'BinaryExpression'){
         var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.left) + pack_node(node.right)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ForStatement'){
         let init = pack_node(node.init)
@@ -6827,18 +6835,18 @@ function pack_node(node){
         let upda = pack_node(node.update)
         let body = pack_node(node.body)
         var v = init + test + upda + body
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'UpdateExpression'){
         var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.argument)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ConditionalExpression'){
         let test = pack_node(node.test)
         let cons = pack_node(node.consequent)
         let alte = pack_node(node.alternate)
         var v = test + cons + alte
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'SwitchStatement'){
         let discr = pack_node(node.discriminant)
@@ -6846,7 +6854,7 @@ function pack_node(node){
             return pack_node(e)
         }).join('')
         var v = discr + cases
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'SwitchCase'){
         let test = node.test?pack_node(node.test):pack_node({name:'null', type:'Identifier'})
@@ -6854,17 +6862,17 @@ function pack_node(node){
             return pack_node(e)
         }).join('')
         var v = test + cons
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'WhileStatement'){
         let test = pack_node(node.test)
         let body = pack_node(node.body)
         var v = test + body
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'UnaryExpression'){
         var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.argument)
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'NewExpression'){
         let call = node.callee
@@ -6873,18 +6881,41 @@ function pack_node(node){
             return pack_node(e)
         }).join('')
         var v = pack_node(call) + args
-        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
+    if (node.type == 'ArrayExpression'){
+        let eles = node.elements
+        eles = eles.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = eles
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'ObjectExpression'){
+        let props = node.properties
+        props = props.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = props
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'ObjectProperty'){
+        var v = pack_node(node.key) + pack_node(node.value)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    console.log(node)
 }
 
 function parse_encjs(encjs){
     function parse_one(encjs, type){
-        let length = str2int(encjs.slice(2, 6))
-        let restda = encjs.slice(6, 6 + length)
+        let lenlen = str2int(encjs.slice(2, 3))
+        let length = str2int(encjs.slice(3, 3 + lenlen))
+        let restda = encjs.slice(3 + lenlen, 3 + lenlen + length)
         while (restda.length){
             let type = str2int(restda.slice(0, 2))
-            let leng = str2int(restda.slice(2, 6))
-            let rest = restda.slice(6, 6 + leng)
+            let lenl = str2int(restda.slice(2, 3))
+            let leng = str2int(restda.slice(3, 3 + lenl))
+            let rest = restda.slice(3 + lenl, 3 + lenl + leng)
             if (type == types['StringLiteral']){
                 console.log(rest, hex2str(rest))
             }
@@ -6898,7 +6929,7 @@ function parse_encjs(encjs){
                 console.log(rest, hex2istr(rest))
             }
             parse_node(restda)
-            restda = restda.slice(6 + leng)
+            restda = restda.slice(3 + lenl + leng)
         }
     }
     function parse_node(encjs){
@@ -6932,6 +6963,9 @@ function parse_encjs(encjs){
         if (type == types['SwitchCase']){parse_one(encjs, type)}
         if (type == types['UnaryExpression']){parse_one(encjs, type)}
         if (type == types['NewExpression']){parse_one(encjs, type)}
+        if (type == types['ArrayExpression']){parse_one(encjs, type)}
+        if (type == types['ObjectExpression']){parse_one(encjs, type)}
+        if (type == types['ObjectProperty']){parse_one(encjs, type)}
         if (type == types['Program']){parse_one(encjs, type)}
     }
     parse_node(encjs)
