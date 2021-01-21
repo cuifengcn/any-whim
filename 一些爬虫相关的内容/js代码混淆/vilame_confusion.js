@@ -6635,12 +6635,15 @@ function str2hex(str){
   }
   return v
 }
-function hex2str(hex){
+function _hex2str(hex, gap){
   var v = "";
-  for (var i = 0; i < hex.length/4; i++) {
-    v += String.fromCharCode(parseInt(hex.slice(i*4, (i+1)*4), 16))
+  for (var i = 0; i < hex.length/gap; i++) {
+    v += String.fromCharCode(parseInt(hex.slice(i*gap, (i+1)*gap), 16))
   }
   return v;
+}
+function hex2str(hex){
+  return _hex2str(hex, 4)
 }
 function istr2hex(str){
   var v = "";
@@ -6650,11 +6653,7 @@ function istr2hex(str){
   return v
 }
 function hex2istr(hex){
-  var v = "";
-  for (var i = 0; i < hex.length/2; i++) {
-    v += String.fromCharCode(parseInt(hex.slice(i*2, (i+1)*2), 16))
-  }
-  return v;
+  return _hex2str(hex, 2)
 }
 function num2hex(num){
   nstr = num.toString()
@@ -6698,7 +6697,6 @@ var types = {
     'StringLiteral': 1,
     'NumericLiteral': 2,
     'CallExpression': 3,
-    'CallExpression_name': 4,
     'VariableDeclaration': 5,
     'VariableDeclarator': 6,
     'ExpressionStatement': 8,
@@ -6715,6 +6713,10 @@ var types = {
     'ForStatement': 18,
     'UpdateExpression': 19,
     'ConditionalExpression': 20,
+    'FunctionExpression': 21,
+    'SwitchStatement': 22,
+    'SwitchCase': 23,
+    'WhileStatement': 24,
     'Program': 0xff,
 }
 
@@ -6783,6 +6785,13 @@ function pack_node(node){
         var v = pack_node(node.id) + params + pack_node(node.body)
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
+    if (node.type == 'FunctionExpression'){
+        var params = node.params.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = (node.id?pack_node(node.id):pack_node({name:'null', type:'Identifier'})) + params + pack_node(node.body)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
     if (node.type == 'BlockStatement'){
         var v = node.body.map(function(e){
             return pack_node(e)
@@ -6797,7 +6806,7 @@ function pack_node(node){
         let test = node.test
         let cons = node.consequent
         let alte = node.alternate
-        var v = pack_node(test) + pack_node(cons) + (alte?pack_node(alte):'')
+        var v = pack_node(test) + pack_node(cons) + (alte?pack_node(alte):pack_node({name:'null', type:'Identifier'}))
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
     if (node.type == 'MemberExpression'){
@@ -6829,6 +6838,28 @@ function pack_node(node){
         var v = test + cons + alte
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
+    if (node.type == 'SwitchStatement'){
+        let discr = pack_node(node.discriminant)
+        let cases = node.cases.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = discr + cases
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'SwitchCase'){
+        let test = node.test?pack_node(node.test):pack_node({name:'null', type:'Identifier'})
+        let cons = node.consequent.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = test + cons
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
+    if (node.type == 'WhileStatement'){
+        let test = pack_node(node.test)
+        let body = pack_node(node.body)
+        var v = test + body
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
 }
 
 function parse_encjs(encjs){
@@ -6836,19 +6867,20 @@ function parse_encjs(encjs){
         let length = str2int(encjs.slice(2, 6))
         let restda = encjs.slice(6, 6 + length)
         while (restda.length){
-            let type = restda.slice(0, 2)
+            let type = str2int(restda.slice(0, 2))
             let leng = str2int(restda.slice(2, 6))
+            let rest = restda.slice(6, 6 + leng)
             if (type == types['StringLiteral']){
-                console.log(restda, hex2str(restda.slice(6, 6 + leng)))
+                console.log(rest, hex2str(rest))
             }
             if (type == types['NumericLiteral']){
-                console.log(restda, hex2num(restda.slice(6, 6 + leng)))
+                console.log(rest, hex2num(rest))
             }
             if (type == types['Identifier']){
-                console.log(restda, hex2istr(restda.slice(6, 6 + leng)))
+                console.log(rest, hex2istr(rest))
             }
             if (type == types['operator']){
-                console.log(restda, hex2istr(restda.slice(6, 6 + leng)))
+                console.log(rest, hex2istr(rest))
             }
             parse_node(restda)
             restda = restda.slice(6 + leng)
@@ -6860,23 +6892,29 @@ function parse_encjs(encjs){
         // if (type == types['Identifier']){parse_one(encjs, type)}
         // if (type == types['StringLiteral']){parse_one(encjs, type)}
         // if (type == types['NumericLiteral']){parse_one(encjs, type)}
-        if (type == types['CallExpression']){parse_one(encjs, type)}
-        if (type == types['CallExpression_name']){parse_one(encjs, type)}
-        if (type == types['VariableDeclaration']){parse_one(encjs, type)}
-        if (type == types['VariableDeclarator']){parse_one(encjs, type)}
-        if (type == types['ExpressionStatement']){parse_one(encjs, type)}
-        if (type == types['SequenceExpression']){parse_one(encjs, type)}
-        if (type == types['AssignmentExpression']){parse_one(encjs, type)}
         // if (type == types['operator']){parse_one(encjs, type)}
+
+        // 这部分为基础单元
+        if (type == types['ExpressionStatement']){parse_one(encjs, type)}
+        if (type == types['IfStatement']){parse_one(encjs, type)}
+        if (type == types['ForStatement']){parse_one(encjs, type)}
         if (type == types['FunctionDeclaration']){parse_one(encjs, type)}
+        if (type == types['VariableDeclaration']){parse_one(encjs, type)}
         if (type == types['BlockStatement']){parse_one(encjs, type)}
         if (type == types['ReturnStatement']){parse_one(encjs, type)}
-        if (type == types['IfStatement']){parse_one(encjs, type)}
+        if (type == types['WhileStatement']){parse_one(encjs, type)}
+        if (type == types['SwitchStatement']){parse_one(encjs, type)}
+
+        if (type == types['SequenceExpression']){parse_one(encjs, type)}
+        if (type == types['AssignmentExpression']){parse_one(encjs, type)}
+        if (type == types['CallExpression']){parse_one(encjs, type)}
+        if (type == types['VariableDeclarator']){parse_one(encjs, type)}
         if (type == types['MemberExpression']){parse_one(encjs, type)}
         if (type == types['BinaryExpression']){parse_one(encjs, type)}
-        if (type == types['ForStatement']){parse_one(encjs, type)}
+        if (type == types['FunctionExpression']){parse_one(encjs, type)}
         if (type == types['UpdateExpression']){parse_one(encjs, type)}
         if (type == types['ConditionalExpression']){parse_one(encjs, type)}
+        if (type == types['SwitchCase']){parse_one(encjs, type)}
         if (type == types['Program']){parse_one(encjs, type)}
     }
     parse_node(encjs)
@@ -6888,10 +6926,12 @@ function vilame_confusion(jscode){
     var ret = pack_node(ast.program)
     console.log(ret, ret.length)
     parse_encjs(ret)
+    // parse_encjs('0b00022b')
 }
 const fs = require('fs');
 var jscode = fs.readFileSync("./src.js", {
     encoding: "utf-8"
 });
 console.log(jscode);
+console.log('jscode(length):', jscode.length);
 code = vilame_confusion(jscode);
