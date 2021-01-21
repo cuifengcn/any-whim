@@ -6882,22 +6882,10 @@ function parse_encjs(encjs){
         let lenlen = str2int(encjs.slice(2, 3))
         let length = str2int(encjs.slice(3, 3 + lenlen))
         let restda = encjs.slice(3 + lenlen, 3 + lenlen + length)
-        if (type == types['StringLiteral']){
-            // console.log(restda, hex2str(restda))
-            return {type:'string', 0:hex2str(restda)};
-        }
-        if (type == types['NumericLiteral']){
-            // console.log(restda, hex2num(restda))
-            return {type:'number', 0:hex2num(restda)};
-        }
-        if (type == types['Identifier']){
-            // console.log(restda, hex2istr(restda))
-            return {type:'identity', 0:hex2istr(restda)};
-        }
-        if (type == types['operator']){
-            // console.log(restda, hex2istr(restda))
-            return {type:'operator', 0:hex2istr(restda)};
-        }
+        if (type == types['StringLiteral'])  { return {type:'string', 0:hex2str(restda)}; }
+        if (type == types['NumericLiteral']) { return {type:'number', 0:hex2num(restda)}; }
+        if (type == types['Identifier'])     { return {type:'identity', 0:hex2istr(restda)}; }
+        if (type == types['operator'])       { return {type:'operator', 0:hex2istr(restda)}; }
         var fchain = []
         while (restda.length){
             let type = str2int(restda.slice(0, 2))
@@ -6912,10 +6900,10 @@ function parse_encjs(encjs){
     function parse_node(encjs){
         let type = str2int(encjs.slice(0, 2))
         // console.log(type)
-        if (type == types['Identifier'])            {return parse_expfunc(encjs, type)}
-        if (type == types['StringLiteral'])         {return parse_expfunc(encjs, type)}
-        if (type == types['NumericLiteral'])        {return parse_expfunc(encjs, type)}
-        if (type == types['operator'])              {return parse_expfunc(encjs, type)}
+        if (type == types['Identifier'])     {return parse_expfunc(encjs, type)}
+        if (type == types['StringLiteral'])  {return parse_expfunc(encjs, type)}
+        if (type == types['NumericLiteral']) {return parse_expfunc(encjs, type)}
+        if (type == types['operator'])       {return parse_expfunc(encjs, type)}
 
         // 这部分为基础单元
         if (type == types['Program'])               {
@@ -6928,11 +6916,11 @@ function parse_encjs(encjs){
         if (type == types['FunctionDeclaration'])   {return parse_expfunc(encjs, type)}
         if (type == types['VariableDeclaration'])   {
             var declaration = parse_expfunc(encjs, type);
+            // 暂时不能写在这里，解释执行的部分应该交给外层执行
             // declaration.map(function(e){
             //     env[env.length-1][e[0][0]] = e[1][0]
             // })
-            return {'declaration': declaration};
-            return declaration;
+            return {declaration: declaration};
         }
         if (type == types['BlockStatement'])        {return parse_expfunc(encjs, type)}
         if (type == types['ReturnStatement'])       {return parse_expfunc(encjs, type)}
