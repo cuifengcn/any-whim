@@ -6595,35 +6595,6 @@ const parser = vilame.parser
 
 
 
-// 似乎这两个函数的增强提升不大
-// function str2hex(str){
-//   var unitoggle = /^[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_\$]+$/.test(str)
-//   if (unitoggle){
-//     var v = '00';
-//     for(var i = 0; i < str.length; i++){
-//       v += str.charCodeAt(i).toString(16);
-//     }
-//   }else{
-//     var v = "01";
-//     for(var i = 0; i < str.length; i++){
-//       var s = str.charCodeAt(i).toString(16);
-//       if (s.length == 2){
-//         s = '00' + s;
-//       }
-//       v += s;
-//     }
-//   }
-//   return v
-// }
-// function hex2str(hex){
-//   gap = parseInt(hex.slice(0, 2))?4:2
-//   hex = hex.slice(2)
-//   var v = "";
-//   for (var i = 0; i < hex.length/gap; i++) {
-//     v += String.fromCharCode(parseInt(hex.slice(i*gap, (i+1)*gap), 16))
-//   }
-//   return v;
-// }
 function str2hex(str){
   var v = "";
   for(var i = 0; i < str.length; i++){
@@ -6656,7 +6627,7 @@ function hex2istr(hex){
   return _hex2str(hex, 2)
 }
 function num2hex(num){
-  nstr = num.toString()
+  var nstr = num.toString()
   if (/^[0-9]+.?[0-9]*$/.test(nstr)){
     nstr = int2str(0, 1) + nstr
   }else if (/^[1-9]+[0-9]*]*$/.test(nstr)){
@@ -6667,12 +6638,12 @@ function num2hex(num){
   return istr2hex(nstr)
 }
 function hex2num(hex){
-  str = hex2istr(hex)
-  ntype = parseInt(str.slice(0,1))
+  var str = hex2istr(hex)
+  var ntype = parseInt(str.slice(0,1))
   if (ntype == 0){
-    nret = parseFloat(str.slice(1,))
+    var nret = parseFloat(str.slice(1,))
   }else if (ntype == 1){
-    nret = parseInt(str.slice(1,))
+    var nret = parseInt(str.slice(1,))
   }else{
     throw "error hex2num"
   }
@@ -6727,9 +6698,8 @@ var types = {
 
 function pack_node(node){
     function pack_length(length){
-        strleng = length.toString(16)
+        var strleng = length.toString(16)
         return strleng.length.toString(16) + strleng
-        // return int2str(v.length, 4)
     }
     if (node.type == 'Program'){
         var v = node.body.map(function(e){
@@ -6904,71 +6874,93 @@ function pack_node(node){
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     console.log(node)
+    throw "error in pack_node";
 }
 
 function parse_encjs(encjs){
-    function parse_one(encjs, type){
+    function parse_expfunc(encjs, type){
         let lenlen = str2int(encjs.slice(2, 3))
         let length = str2int(encjs.slice(3, 3 + lenlen))
         let restda = encjs.slice(3 + lenlen, 3 + lenlen + length)
+        if (type == types['StringLiteral']){
+            // console.log(restda, hex2str(restda))
+            return {type:'string', 0:hex2str(restda)};
+        }
+        if (type == types['NumericLiteral']){
+            // console.log(restda, hex2num(restda))
+            return {type:'number', 0:hex2num(restda)};
+        }
+        if (type == types['Identifier']){
+            // console.log(restda, hex2istr(restda))
+            return {type:'identity', 0:hex2istr(restda)};
+        }
+        if (type == types['operator']){
+            // console.log(restda, hex2istr(restda))
+            return {type:'operator', 0:hex2istr(restda)};
+        }
+        var fchain = []
         while (restda.length){
             let type = str2int(restda.slice(0, 2))
             let lenl = str2int(restda.slice(2, 3))
             let leng = str2int(restda.slice(3, 3 + lenl))
             let rest = restda.slice(3 + lenl, 3 + lenl + leng)
-            if (type == types['StringLiteral']){
-                console.log(rest, hex2str(rest))
-            }
-            if (type == types['NumericLiteral']){
-                console.log(rest, hex2num(rest))
-            }
-            if (type == types['Identifier']){
-                console.log(rest, hex2istr(rest))
-            }
-            if (type == types['operator']){
-                console.log(rest, hex2istr(rest))
-            }
-            parse_node(restda)
+            fchain.push(parse_node(restda))
             restda = restda.slice(3 + lenl + leng)
         }
+        return fchain;
     }
     function parse_node(encjs){
         let type = str2int(encjs.slice(0, 2))
         // console.log(type)
-        // if (type == types['Identifier']){parse_one(encjs, type)}
-        // if (type == types['StringLiteral']){parse_one(encjs, type)}
-        // if (type == types['NumericLiteral']){parse_one(encjs, type)}
-        // if (type == types['operator']){parse_one(encjs, type)}
+        if (type == types['Identifier'])            {return parse_expfunc(encjs, type)}
+        if (type == types['StringLiteral'])         {return parse_expfunc(encjs, type)}
+        if (type == types['NumericLiteral'])        {return parse_expfunc(encjs, type)}
+        if (type == types['operator'])              {return parse_expfunc(encjs, type)}
 
         // 这部分为基础单元
-        if (type == types['ExpressionStatement']){parse_one(encjs, type)}
-        if (type == types['IfStatement']){parse_one(encjs, type)}
-        if (type == types['ForStatement']){parse_one(encjs, type)}
-        if (type == types['FunctionDeclaration']){parse_one(encjs, type)}
-        if (type == types['VariableDeclaration']){parse_one(encjs, type)}
-        if (type == types['BlockStatement']){parse_one(encjs, type)}
-        if (type == types['ReturnStatement']){parse_one(encjs, type)}
-        if (type == types['WhileStatement']){parse_one(encjs, type)}
-        if (type == types['SwitchStatement']){parse_one(encjs, type)}
+        if (type == types['Program'])               {
+            var program = parse_expfunc(encjs, type);
+            return program;
+        }
+        if (type == types['ExpressionStatement'])   {return parse_expfunc(encjs, type)}
+        if (type == types['IfStatement'])           {return parse_expfunc(encjs, type)}
+        if (type == types['ForStatement'])          {return parse_expfunc(encjs, type)}
+        if (type == types['FunctionDeclaration'])   {return parse_expfunc(encjs, type)}
+        if (type == types['VariableDeclaration'])   {
+            var declaration = parse_expfunc(encjs, type);
+            // declaration.map(function(e){
+            //     env[env.length-1][e[0][0]] = e[1][0]
+            // })
+            return {'declaration': declaration};
+            return declaration;
+        }
+        if (type == types['BlockStatement'])        {return parse_expfunc(encjs, type)}
+        if (type == types['ReturnStatement'])       {return parse_expfunc(encjs, type)}
+        if (type == types['WhileStatement'])        {return parse_expfunc(encjs, type)}
+        if (type == types['SwitchStatement'])       {return parse_expfunc(encjs, type)}
 
-        if (type == types['SequenceExpression']){parse_one(encjs, type)}
-        if (type == types['AssignmentExpression']){parse_one(encjs, type)}
-        if (type == types['CallExpression']){parse_one(encjs, type)}
-        if (type == types['VariableDeclarator']){parse_one(encjs, type)}
-        if (type == types['MemberExpression']){parse_one(encjs, type)}
-        if (type == types['BinaryExpression']){parse_one(encjs, type)}
-        if (type == types['FunctionExpression']){parse_one(encjs, type)}
-        if (type == types['UpdateExpression']){parse_one(encjs, type)}
-        if (type == types['ConditionalExpression']){parse_one(encjs, type)}
-        if (type == types['SwitchCase']){parse_one(encjs, type)}
-        if (type == types['UnaryExpression']){parse_one(encjs, type)}
-        if (type == types['NewExpression']){parse_one(encjs, type)}
-        if (type == types['ArrayExpression']){parse_one(encjs, type)}
-        if (type == types['ObjectExpression']){parse_one(encjs, type)}
-        if (type == types['ObjectProperty']){parse_one(encjs, type)}
-        if (type == types['Program']){parse_one(encjs, type)}
+        if (type == types['SequenceExpression'])    {return parse_expfunc(encjs, type)}
+        if (type == types['AssignmentExpression'])  {return parse_expfunc(encjs, type)}
+        if (type == types['CallExpression'])        {return parse_expfunc(encjs, type)}
+        if (type == types['VariableDeclarator'])    {
+            var declarator = parse_expfunc(encjs, type);
+            return declarator;
+        }
+        if (type == types['MemberExpression'])      {return parse_expfunc(encjs, type)}
+        if (type == types['BinaryExpression'])      {return parse_expfunc(encjs, type)}
+        if (type == types['FunctionExpression'])    {return parse_expfunc(encjs, type)}
+        if (type == types['UpdateExpression'])      {return parse_expfunc(encjs, type)}
+        if (type == types['ConditionalExpression']) {return parse_expfunc(encjs, type)}
+        if (type == types['SwitchCase'])            {return parse_expfunc(encjs, type)}
+        if (type == types['UnaryExpression'])       {return parse_expfunc(encjs, type)}
+        if (type == types['NewExpression'])         {return parse_expfunc(encjs, type)}
+        if (type == types['ArrayExpression'])       {return parse_expfunc(encjs, type)}
+        if (type == types['ObjectExpression'])      {return parse_expfunc(encjs, type)}
+        if (type == types['ObjectProperty'])        {return parse_expfunc(encjs, type)}
     }
-    parse_node(encjs)
+    var env = [this]
+    var some = parse_node(encjs)
+    console.log(some);
 }
 
 
