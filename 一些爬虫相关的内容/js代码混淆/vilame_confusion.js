@@ -6658,9 +6658,9 @@ function hex2istr(hex){
 function num2hex(num){
   nstr = num.toString()
   if (/^[0-9]+.?[0-9]*$/.test(nstr)){
-    nstr = int2str(0, 2) + nstr
+    nstr = int2str(0, 1) + nstr
   }else if (/^[1-9]+[0-9]*]*$/.test(nstr)){
-    nstr = int2str(1, 2) + nstr
+    nstr = int2str(1, 1) + nstr
   }else{
     throw "error num2hex";
   }
@@ -6668,11 +6668,11 @@ function num2hex(num){
 }
 function hex2num(hex){
   str = hex2istr(hex)
-  ntype = parseInt(str.slice(0,2))
+  ntype = parseInt(str.slice(0,1))
   if (ntype == 0){
-    nret = parseFloat(str.slice(2,))
+    nret = parseFloat(str.slice(1,))
   }else if (ntype == 1){
-    nret = parseInt(str.slice(2,))
+    nret = parseInt(str.slice(1,))
   }else{
     throw "error hex2num"
   }
@@ -6717,6 +6717,7 @@ var types = {
     'SwitchStatement': 22,
     'SwitchCase': 23,
     'WhileStatement': 24,
+    'UnaryExpression': 25,
     'Program': 0xff,
 }
 
@@ -6860,6 +6861,10 @@ function pack_node(node){
         var v = test + body
         return int2str(types[node.type], 2) + int2str(v.length, 4) + v
     }
+    if (node.type == 'UnaryExpression'){
+        var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.argument)
+        return int2str(types[node.type], 2) + int2str(v.length, 4) + v
+    }
 }
 
 function parse_encjs(encjs){
@@ -6915,6 +6920,7 @@ function parse_encjs(encjs){
         if (type == types['UpdateExpression']){parse_one(encjs, type)}
         if (type == types['ConditionalExpression']){parse_one(encjs, type)}
         if (type == types['SwitchCase']){parse_one(encjs, type)}
+        if (type == types['UnaryExpression']){parse_one(encjs, type)}
         if (type == types['Program']){parse_one(encjs, type)}
     }
     parse_node(encjs)
