@@ -6630,7 +6630,7 @@ function num2hex(num){
   var nstr = num.toString()
   if (/^[0-9]+\.[0-9]*/.test(nstr)){
     nstr = int2str(0, 1) + nstr
-  }else if (/^[1-9]+[0-9]*]*$/.test(nstr)){
+  }else if (/^[0-9]+$/.test(nstr)){
     nstr = int2str(1, 1) + nstr
   }else{
     throw "error num2hex";
@@ -6667,7 +6667,7 @@ var types = {
     'Identifier': 0,
     'StringLiteral': 1,
     'NumericLiteral': 2,
-    'BigIntLiteral': 4, // 这个暂时不处理，后续再考虑处理方式
+    'BigIntLiteral': 4,
     'operator': 11,
 
     'CallExpression': 3,
@@ -6698,6 +6698,7 @@ var types = {
     'TryStatement': 30,
     'CatchClause': 31,
     'LogicalExpression': 32,
+    'ArrowFunctionExpression': 33,
     'Program': 0xff,
 }
 
@@ -6779,6 +6780,13 @@ function pack_node(node){
             return pack_node(e)
         }).join('')
         var v = (node.id?pack_node(node.id):pack_node({name:'null', type:'Identifier'})) + params + pack_node(node.body)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'ArrowFunctionExpression'){
+        var params = node.params.map(function(e){
+            return pack_node(e)
+        }).join('')
+        var v = params + pack_node(node.body)
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'BlockStatement'){
@@ -6863,11 +6871,9 @@ function pack_node(node){
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ArrayExpression'){
-        let eles = node.elements
-        eles = eles.map(function(e){
+        var v = node.elements.map(function(e){
             return pack_node(e)
         }).join('')
-        var v = eles
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ObjectExpression'){
@@ -6903,12 +6909,12 @@ function parse_encjs(encjs){
         let lenlen = str2int(encjs.slice(2, 3))
         let length = str2int(encjs.slice(3, 3 + lenlen))
         let restda = encjs.slice(3 + lenlen, 3 + lenlen + length)
-        if (type == types['operator'])       { return {type:'operator', 0:hex2istr(restda)}; }
-        if (type == types['Identifier'])     { return {type:'identity', 0:hex2istr(restda)}; }
-        if (type == types['StringLiteral'])  { return {type:'string', 0:hex2str(restda)}; }
-        if (type == types['NumericLiteral']) { return {type:'number', 0:hex2num(restda)}; }
-        if (type == types['BigIntLiteral'])  { return {type:'bigint', 0:BigInt(hex2istr(restda))}; }
-        var fchain = []
+        if (type == types['operator'])       { var ret = {}; ret['type'] = 'operator', ret[type] = hex2istr(restda); return  ret;}
+        if (type == types['Identifier'])     { var ret = {}; ret['type'] = 'identity', ret[type] = hex2istr(restda); return  ret;}
+        if (type == types['StringLiteral'])  { var ret = {}; ret['type'] = 'string', ret[type] = hex2str(restda); return  ret;}
+        if (type == types['NumericLiteral']) { var ret = {}; ret['type'] = 'number', ret[type] = hex2num(restda); return  ret;}
+        if (type == types['BigIntLiteral'])  { var ret = {}; ret['type'] = 'bigint', ret[type] = BigInt(hex2istr(restda)); return  ret;}
+        var fchain = [], ret = {}
         while (restda.length){
             let type = str2int(restda.slice(0, 2))
             let lenl = str2int(restda.slice(2, 3))
@@ -6917,11 +6923,12 @@ function parse_encjs(encjs){
             fchain.push(parse_node(restda))
             restda = restda.slice(3 + lenl + leng)
         }
-        return fchain;
+        return ret[type] = fchain, ret;
     }
     function parse_node(encjs){
         let type = str2int(encjs.slice(0, 2))
-        // console.log(type)
+        // return parse_expfunc(encjs, type)
+        // 正式使用时该函数只需要上面两行代码即可，该函数后面的部分用于调试开发
         if (type == types['operator'])       {return parse_expfunc(encjs, type)}
         if (type == types['Identifier'])     {return parse_expfunc(encjs, type)}
         if (type == types['StringLiteral'])  {return parse_expfunc(encjs, type)}
@@ -6929,52 +6936,178 @@ function parse_encjs(encjs){
         if (type == types['BigIntLiteral'])  {return parse_expfunc(encjs, type)}
 
         // 这部分为基础单元
-        if (type == types['Program'])               {
-            var program = parse_expfunc(encjs, type);
-            return program;
-        }
-        if (type == types['ExpressionStatement'])   {return parse_expfunc(encjs, type)}
-        if (type == types['IfStatement'])           {return parse_expfunc(encjs, type)}
-        if (type == types['ForStatement'])          {return parse_expfunc(encjs, type)}
-        if (type == types['FunctionDeclaration'])   {return parse_expfunc(encjs, type)}
-        if (type == types['VariableDeclaration'])   {
-            var declaration = parse_expfunc(encjs, type);
-            return {declaration: declaration};
-        }
-        if (type == types['BlockStatement'])        {return parse_expfunc(encjs, type)}
-        if (type == types['ReturnStatement'])       {return parse_expfunc(encjs, type)}
-        if (type == types['WhileStatement'])        {return parse_expfunc(encjs, type)}
-        if (type == types['SwitchStatement'])       {return parse_expfunc(encjs, type)}
-        if (type == types['TryStatement'])          {return parse_expfunc(encjs, type)}
+        if (type == types['Program'])                   {return parse_expfunc(encjs, type)}
+        if (type == types['ExpressionStatement'])       {return parse_expfunc(encjs, type)}
+        if (type == types['IfStatement'])               {return parse_expfunc(encjs, type)}
+        if (type == types['ForStatement'])              {return parse_expfunc(encjs, type)}
+        if (type == types['FunctionDeclaration'])       {return parse_expfunc(encjs, type)}
+        if (type == types['VariableDeclaration'])       {return parse_expfunc(encjs, type)}
+        if (type == types['BlockStatement'])            {return parse_expfunc(encjs, type)}
+        if (type == types['ReturnStatement'])           {return parse_expfunc(encjs, type)}
+        if (type == types['WhileStatement'])            {return parse_expfunc(encjs, type)}
+        if (type == types['SwitchStatement'])           {return parse_expfunc(encjs, type)}
+        if (type == types['TryStatement'])              {return parse_expfunc(encjs, type)}
 
-        if (type == types['SequenceExpression'])    {return parse_expfunc(encjs, type)}
-        if (type == types['AssignmentExpression'])  {return parse_expfunc(encjs, type)}
-        if (type == types['CallExpression'])        {return parse_expfunc(encjs, type)}
-        if (type == types['VariableDeclarator'])    {
-            var declarator = parse_expfunc(encjs, type);
-            return declarator;
-        }
-        if (type == types['MemberExpression'])      {return parse_expfunc(encjs, type)}
-        if (type == types['BinaryExpression'])      {return parse_expfunc(encjs, type)}
-        if (type == types['FunctionExpression'])    {return parse_expfunc(encjs, type)}
-        if (type == types['UpdateExpression'])      {return parse_expfunc(encjs, type)}
-        if (type == types['ConditionalExpression']) {return parse_expfunc(encjs, type)}
-        if (type == types['SwitchCase'])            {return parse_expfunc(encjs, type)}
-        if (type == types['UnaryExpression'])       {return parse_expfunc(encjs, type)}
-        if (type == types['NewExpression'])         {return parse_expfunc(encjs, type)}
-        if (type == types['ArrayExpression'])       {return parse_expfunc(encjs, type)}
-        if (type == types['ObjectExpression'])      {return parse_expfunc(encjs, type)}
-        if (type == types['ObjectProperty'])        {return parse_expfunc(encjs, type)}
-        if (type == types['CatchClause'])           {return parse_expfunc(encjs, type)}
-        if (type == types['LogicalExpression'])     {return parse_expfunc(encjs, type)}
+        if (type == types['SequenceExpression'])        {return parse_expfunc(encjs, type)}
+        if (type == types['AssignmentExpression'])      {return parse_expfunc(encjs, type)}
+        if (type == types['CallExpression'])            {return parse_expfunc(encjs, type)}
+        if (type == types['VariableDeclarator'])        {return parse_expfunc(encjs, type)}
+        if (type == types['MemberExpression'])          {return parse_expfunc(encjs, type)}
+        if (type == types['BinaryExpression'])          {return parse_expfunc(encjs, type)}
+        if (type == types['FunctionExpression'])        {return parse_expfunc(encjs, type)}
+        if (type == types['UpdateExpression'])          {return parse_expfunc(encjs, type)}
+        if (type == types['ConditionalExpression'])     {return parse_expfunc(encjs, type)}
+        if (type == types['SwitchCase'])                {return parse_expfunc(encjs, type)}
+        if (type == types['UnaryExpression'])           {return parse_expfunc(encjs, type)}
+        if (type == types['NewExpression'])             {return parse_expfunc(encjs, type)}
+        if (type == types['ArrayExpression'])           {return parse_expfunc(encjs, type)}
+        if (type == types['ObjectExpression'])          {return parse_expfunc(encjs, type)}
+        if (type == types['ObjectProperty'])            {return parse_expfunc(encjs, type)}
+        if (type == types['CatchClause'])               {return parse_expfunc(encjs, type)}
+        if (type == types['LogicalExpression'])         {return parse_expfunc(encjs, type)}
+        if (type == types['ArrowFunctionExpression'])   {return parse_expfunc(encjs, type)}
+            
+        console.log(type, encjs)
+        throw "error in parse_encjs."
     }
-    var env = [this]
-    var some = parse_node(encjs)
-    console.log(some);
-    // bak code
-    // declaration.map(function(e){
-    //     env[env.length-1][e[0][0]] = e[1][0]
-    // })
+    function execute_ast(ast){
+        function get_key(ast){
+            return Object.keys(ast)[0]
+        }
+        function get_from_env(env, name){
+            for(var i = env.length-1; i >= 0 ; i--){
+                var env_keys = Object.keys(env[i])
+                if (env_keys.indexOf(name) != -1){
+                    return env[i][name]
+                }
+            }
+            return env[0][name]
+        }
+        function set_from_env(env, name, value){
+            for(var i = env.length-1; i >= 0 ; i--){
+                var env_keys = Object.keys(env[i])
+                if (env_keys.indexOf(name) != -1){
+                    return env[i][name] = value;
+                }
+            }
+            // throw "error in set env."
+        }
+        function get_env(env){
+            return env[env.length-1];
+        }
+        function assign_env(env, operator, key, value){
+            if (operator == '=')    { return set_from_env(env, key, value)}
+            if (operator == '+=')   { return set_from_env(env, key, get_from_env(env, key) + value)}
+            if (operator == '-=')   { return set_from_env(env, key, get_from_env(env, key) - value)}
+            if (operator == '*=')   { return set_from_env(env, key, get_from_env(env, key) * value)}
+            if (operator == '/=')   { return set_from_env(env, key, get_from_env(env, key) / value)}
+            if (operator == '%=')   { return set_from_env(env, key, get_from_env(env, key) % value)}
+            if (operator == '<<=')  { return set_from_env(env, key, get_from_env(env, key) << value)}
+            if (operator == '>>=')  { return set_from_env(env, key, get_from_env(env, key) >> value)}
+            if (operator == '>>>=') { return set_from_env(env, key, get_from_env(env, key) >>> value)}
+            if (operator == '&=')   { return set_from_env(env, key, get_from_env(env, key) & value)}
+            if (operator == '|=')   { return set_from_env(env, key, get_from_env(env, key) | value)}
+            if (operator == '^=')   { return set_from_env(env, key, get_from_env(env, key) ^ value)}
+        }
+        function execute_env(env, ele){
+            var key = get_key(ele)
+            if (key == types['operator'])       { return ele[key]; }
+            if (key == types['Identifier'])     { return get_from_env(env, ele[key]); }
+            if (key == types['StringLiteral'])  { return ele[key]; }
+            if (key == types['NumericLiteral']) { return ele[key]; }
+            if (key == types['BigIntLiteral'])  { return ele[key]; }
+            if (key == types['VariableDeclaration']){
+                ele[key].map(function(e){
+                    execute_env(env, e)
+                })
+            }
+            if (key == types['VariableDeclarator']){
+                var k = ele[key][0][types['Identifier']], v = ele[key][1]
+                get_env(env)[k] = execute_env(env, v)
+            }
+            if (key == types['ExpressionStatement']){
+                ele[key].map(function(e){
+                    execute_env(env, e)
+                })
+            }
+            if (key == types['AssignmentExpression']){
+                var o = ele[key][0][types['operator']], k = ele[key][1][types['Identifier']], v = execute_env(env, ele[key][2])
+                return assign_env(env, o, k, v)
+            }
+            if (key == types['CallExpression']){
+                var params = ele[key].slice(1,).map(function(e){
+                    return execute_env(env, e)
+                })
+                return execute_env(env, ele[key][0])(...params)
+            }
+            if (key == types['MemberExpression']){
+                var a = arguments;
+                var v = ele[key][1][types['Identifier']] || ele[key][1][types['StringLiteral']] || ele[key][1][types['NumericLiteral']]
+                var d = a[3] || [];
+                var f = execute_env(env, ele[key][0], (a[2]||0)+1, d)
+                if (!a[2]){
+                    d.map(function(e){ return f = f[0], e }).map(function(e){ f = f[e] })
+                    return Array.isArray(f)?f[v]:function(...params){ return f[v].apply(f, params) }
+                }else{
+                    d.push(v);
+                    return [f, f[v]];
+                }
+            }
+            if (key == types['ArrayExpression']){
+                return ele[key].map(function(e){
+                    return execute_env(env, e)
+                })
+            }
+
+            // back
+            // if (key == types['Program'])                   {}
+            // if (key == types['IfStatement'])               {}
+            // if (key == types['ForStatement'])              {}
+            // if (key == types['FunctionDeclaration'])       {}
+            // if (key == types['BlockStatement'])            {}
+            // if (key == types['ReturnStatement'])           {}
+            // if (key == types['WhileStatement'])            {}
+            // if (key == types['SwitchStatement'])           {}
+            // if (key == types['TryStatement'])              {}
+
+            // if (key == types['SequenceExpression'])        {}
+            // if (key == types['BinaryExpression'])          {}
+            // if (key == types['FunctionExpression'])        {}
+            // if (key == types['UpdateExpression'])          {}
+            // if (key == types['ConditionalExpression'])     {}
+            // if (key == types['SwitchCase'])                {}
+            // if (key == types['UnaryExpression'])           {}
+            // if (key == types['NewExpression'])             {}
+            // if (key == types['ObjectExpression'])          {}
+            // if (key == types['ObjectProperty'])            {}
+            // if (key == types['CatchClause'])               {}
+            // if (key == types['LogicalExpression'])         {}
+            // if (key == types['ArrowFunctionExpression'])   {}
+        }
+
+        console.log(ast)
+        // console.log(JSON.stringify(ast, null, 1))
+        // var cenv = env[env.length-1]
+
+        ast[get_key(ast)].filter(function(e){
+            // 函数定义优先处理，返回除了函数以外的代码执行块进行后续处理
+            var v = e[types['FunctionDeclaration']]
+            if (v){
+                // console.log(v)
+                // env[env.length-1][v[0][0]] = v[1][0] // 这里存在一些问题需要后续解决一下
+            }else{
+                return true;
+            }
+        }).map(function(e){
+            // 处理后续代码执行逻辑的部分
+            // console.log(e)
+            execute_env(env, e)
+        })
+    }
+    var env = [typeof global=='undefined'?window:global]
+    var ast = parse_node(encjs)
+    execute_ast(ast)
+    console.log(env)
 }
 
 
