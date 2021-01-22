@@ -7128,6 +7128,7 @@ function parse_encjs(encjs){
                     return function(){
                         var fenv = get_env(_env)
                         var args = arguments;
+                        var tenv = {'b':[], 'r':0}
                         fenv[1].map(function(e,i){
                             if (e.hasOwnProperty(types['Identifier'])){
                                 name = e[types['Identifier']]
@@ -7137,32 +7138,33 @@ function parse_encjs(encjs){
                                 fenv[0][name] = Object.keys(args).map(function(e){return args[e]}).slice(i);
                             }
                         })
-                        return execute_env(_env, fenv[2])
+                        return execute_env(_env, fenv[2], tenv)
                     }
                 })())
             }
             if (key == types['BlockStatement']){
+                var tenv = arguments[2];
                 var exps = ele[key].filter(function(e){
                     return e[types['FunctionDeclaration']]?(execute_env(env, e)&&null):true;
                 })
                 for (var i = 0; i < exps.length; i++) {
-                    ret = execute_env(env, exps[i])
-                    if (exps[i].hasOwnProperty(types['ReturnStatement'])){
-                        return ret
-                    }
-                    if (exps[i].hasOwnProperty(types['BreakStatement'])){
-                        return ret
-                    }
-                    if (exps[i].hasOwnProperty(types['IfStatement']) && ret){
+                    ret = execute_env(env, exps[i], tenv)
+                    if (tenv['r']){
                         return ret
                     }
                 }
             }
             if (key == types['ReturnStatement']){
+                var tenv = arguments[2]
+                if (tenv){ tenv['r'] = 1 }
                 var ret = ele[key].map(function(e){
                     return execute_env(env, e)
                 })
                 return ret[ret.length-1]
+            }
+            if (key == types['BreakStatement']){
+                var tenv = arguments[2]
+                if (tenv){ tenv['b'][tenv['b'].length-1] = 1 }
             }
             if (key == types['ObjectExpression']){
                 var ret = {}
@@ -7184,37 +7186,32 @@ function parse_encjs(encjs){
                 return ret[ret.length-1]
             }
             if (key == types['IfStatement']){
+                var tenv = arguments[2]
                 var test = execute_env(env, ele[key][0])
-                return test?execute_env(env, ele[key][1]):execute_env(env, ele[key][2])
+                var ret = test?execute_env(env, ele[key][1], tenv):execute_env(env, ele[key][2], tenv)
+                if (tenv['r']){
+                    return ret
+                }
             }
             if (key == types['ForStatement']){
-                // var init = execute_env(env, ele[key][0])
-                // var test = execute_env(env, ele[key][1])
-                // var upda = execute_env(env, ele[key][2])
-                // var body = ele[key][3]
-                // console.log(ele[key])
-                // console.log(init,test,upda,body)
-                // console.log(env)
+                var tenv = arguments[2]
+                tenv['b'].push(0)
                 for (execute_env(env, ele[key][0]); execute_env(env, ele[key][1]); execute_env(env, ele[key][2])){
-                    // execute_env(env, ele[key][3])
-                    ret = execute_env(env, ele[key][3])
-                    console.log(ret, ele[key][3])
-                    // if (ele[key][3].hasOwnProperty(types['ReturnStatement'])){
-                    //     return ret
-                    // }
-                    // if (ele[key][3].hasOwnProperty(types['IfStatement']) && ret){
-                    //     return ret
-                    // }
+                    var ret = execute_env(env, ele[key][3], tenv)
+                    if (tenv['b'][tenv['b'].length-1]){
+                        break
+                    }
+                    if (tenv['r']){
+                        return ret
+                    }
                 }
+                tenv['b'].pop()
             }
             if (key == types['UpdateExpression']){
                 var opra = execute_env(env, ele[key][0])
                 var pref = execute_env(env, ele[key][1])
                 var init = ele[key][2]
                 return update_env(env, opra, pref, init)
-            }
-            if (key == types['BreakStatement']){
-                return true;
             }
 
 
@@ -7238,8 +7235,9 @@ function parse_encjs(encjs){
                 var exps = ele[key].filter(function(e){
                     return e[types['FunctionDeclaration']]?(execute_env(env, e)&&null):true;
                 })
+                var tenv = {'b':[], 'r':0}
                 for (var i = 0; i < exps.length; i++) {
-                    ret = execute_env(env, exps[i])
+                    var ret = execute_env(env, exps[i], tenv)
                     if (exps[i].hasOwnProperty(types['ReturnStatement'])){
                         return ret
                     }
