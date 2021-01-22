@@ -6701,6 +6701,7 @@ var types = {
     'ArrowFunctionExpression': 33,
     'RestElement': 34,
     'SpreadElement': 35,
+    'BreakStatement': 36,
     'Program': 0xff,
 }
 
@@ -6811,7 +6812,8 @@ function pack_node(node){
     if (node.type == 'MemberExpression'){
         let obje = node.object
         let prop = node.property
-        var v = pack_node(obje) + pack_node(prop)
+        let comp = node.computed
+        var v = pack_node(obje) + pack_node(prop) + pack_node({name:node.computed?'1':'0', type:'operator'})
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'BinaryExpression'){
@@ -6827,7 +6829,8 @@ function pack_node(node){
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'UpdateExpression'){
-        var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.argument)
+        console.log(node.prefix)
+        var v = pack_node({name:node.operator, type:'operator'}) + pack_node({name:node.prefix?'1':'0', type:'operator'}) + pack_node(node.argument)
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'ConditionalExpression'){
@@ -6910,6 +6913,10 @@ function pack_node(node){
         var v = pack_node(node.argument)
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
+    if (node.type == 'BreakStatement'){
+        var v = pack_node({name:'null', type:'Identifier'})
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
     console.log(node)
     throw "error in pack_node";
 }
@@ -6978,6 +6985,7 @@ function parse_encjs(encjs){
         if (type == types['ArrowFunctionExpression'])   {return parse_expfunc(encjs, type)}
         if (type == types['RestElement'])               {return parse_expfunc(encjs, type)}
         if (type == types['SpreadElement'])             {return parse_expfunc(encjs, type)}
+        if (type == types['BreakStatement'])            {return parse_expfunc(encjs, type)}
             
         console.log(type, encjs)
         throw "error in parse_encjs."
@@ -7033,9 +7041,26 @@ function parse_encjs(encjs){
             if (operator == '&'){ return left & right }
             if (operator == '|'){ return left | right }
             if (operator == '^'){ return left ^ right }
+            if (operator == '=='){ return left == right }
             if (operator == '<<'){ return left << right }
             if (operator == '>>'){ return left >> right }
             if (operator == '>>>'){ return left >>> right }
+        }
+        function update_env(env, operator, prefix, update){
+            if (operator == '++'){ 
+                v = execute_env(env, update)
+                if (update.hasOwnProperty(types['Identifier'])){
+                    set_from_env(env, update[types['Identifier']], v + 1)
+                }
+                return (prefix == '1')?v + 1:v
+            }
+            if (operator == '--'){ 
+                v = execute_env(env, update)
+                if (update.hasOwnProperty(types['Identifier'])){
+                    set_from_env(env, update[types['Identifier']], v - 1)
+                }
+                return (prefix == '1')?v - 1:v
+            }
         }
         function execute_env(env, ele){
             var key = get_key(ele)
@@ -7070,7 +7095,12 @@ function parse_encjs(encjs){
             }
             if (key == types['MemberExpression']){
                 var a = arguments;
-                var v = ele[key][1][types['Identifier']] || ele[key][1][types['StringLiteral']] || ele[key][1][types['NumericLiteral']]
+                var c = execute_env(env, ele[key][2])=='1'?true:false;
+                if (c){
+                    var v = ele[key][1][types['StringLiteral']] || ele[key][1][types['NumericLiteral']] || execute_env(env, ele[key][1])
+                }else{
+                    var v = ele[key][1][types['StringLiteral']] || ele[key][1][types['NumericLiteral']] || ele[key][1][types['Identifier']]
+                }
                 var d = a[3] || [];
                 var f = execute_env(env, ele[key][0], (a[2]||0)+1, d)
                 if (!a[2]){
@@ -7120,6 +7150,12 @@ function parse_encjs(encjs){
                     if (exps[i].hasOwnProperty(types['ReturnStatement'])){
                         return ret
                     }
+                    if (exps[i].hasOwnProperty(types['BreakStatement'])){
+                        return ret
+                    }
+                    if (exps[i].hasOwnProperty(types['IfStatement']) && ret){
+                        return ret
+                    }
                 }
             }
             if (key == types['ReturnStatement']){
@@ -7142,18 +7178,52 @@ function parse_encjs(encjs){
                 return [k, v]
             }
             if (key == types['SequenceExpression']){
-                // 
+                var ret = ele[key].map(function(e){
+                    return execute_env(env, e)
+                })
+                return ret[ret.length-1]
+            }
+            if (key == types['IfStatement']){
+                var test = execute_env(env, ele[key][0])
+                return test?execute_env(env, ele[key][1]):execute_env(env, ele[key][2])
+            }
+            if (key == types['ForStatement']){
+                // var init = execute_env(env, ele[key][0])
+                // var test = execute_env(env, ele[key][1])
+                // var upda = execute_env(env, ele[key][2])
+                // var body = ele[key][3]
+                // console.log(ele[key])
+                // console.log(init,test,upda,body)
+                // console.log(env)
+                for (execute_env(env, ele[key][0]); execute_env(env, ele[key][1]); execute_env(env, ele[key][2])){
+                    // execute_env(env, ele[key][3])
+                    ret = execute_env(env, ele[key][3])
+                    console.log(ret, ele[key][3])
+                    // if (ele[key][3].hasOwnProperty(types['ReturnStatement'])){
+                    //     return ret
+                    // }
+                    // if (ele[key][3].hasOwnProperty(types['IfStatement']) && ret){
+                    //     return ret
+                    // }
+                }
+            }
+            if (key == types['UpdateExpression']){
+                var opra = execute_env(env, ele[key][0])
+                var pref = execute_env(env, ele[key][1])
+                var init = ele[key][2]
+                return update_env(env, opra, pref, init)
+            }
+            if (key == types['BreakStatement']){
+                return true;
             }
 
+
             // back
-            // if (key == types['IfStatement'])               {}
-            // if (key == types['ForStatement'])              {}
             // if (key == types['WhileStatement'])            {}
             // if (key == types['SwitchStatement'])           {}
             // if (key == types['TryStatement'])              {}
 
             // if (key == types['FunctionExpression'])        {}
-            // if (key == types['UpdateExpression'])          {}
             // if (key == types['ConditionalExpression'])     {}
             // if (key == types['SwitchCase'])                {}
             // if (key == types['UnaryExpression'])           {}
