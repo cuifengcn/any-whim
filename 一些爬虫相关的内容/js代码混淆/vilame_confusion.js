@@ -6699,6 +6699,8 @@ var types = {
     'CatchClause': 31,
     'LogicalExpression': 32,
     'ArrowFunctionExpression': 33,
+    'RestElement': 34,
+    'SpreadElement': 35,
     'Program': 0xff,
 }
 
@@ -6900,6 +6902,14 @@ function pack_node(node){
         var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.left) + pack_node(node.right)
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
+    if (node.type == 'RestElement'){
+        var v = pack_node(node.argument)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'SpreadElement'){
+        var v = pack_node(node.argument)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
     console.log(node)
     throw "error in pack_node";
 }
@@ -6966,6 +6976,8 @@ function parse_encjs(encjs){
         if (type == types['CatchClause'])               {return parse_expfunc(encjs, type)}
         if (type == types['LogicalExpression'])         {return parse_expfunc(encjs, type)}
         if (type == types['ArrowFunctionExpression'])   {return parse_expfunc(encjs, type)}
+        if (type == types['RestElement'])               {return parse_expfunc(encjs, type)}
+        if (type == types['SpreadElement'])             {return parse_expfunc(encjs, type)}
             
         console.log(type, encjs)
         throw "error in parse_encjs."
@@ -6976,20 +6988,21 @@ function parse_encjs(encjs){
         }
         function get_from_env(env, name){
             for(var i = env.length-1; i >= 0 ; i--){
-                var env_keys = Object.keys(env[i])
+                var env_keys = Object.keys(env[i][0])
                 if (env_keys.indexOf(name) != -1){
-                    return env[i][name]
+                    return env[i][0][name]
                 }
             }
-            return env[0][name]
+            return env[0][0][name]
         }
         function set_from_env(env, name, value){
             for(var i = env.length-1; i >= 0 ; i--){
-                var env_keys = Object.keys(env[i])
+                var env_keys = Object.keys(env[i][0])
                 if (env_keys.indexOf(name) != -1){
-                    return env[i][name] = value;
+                    return env[i][0][name] = value;
                 }
             }
+            return env[0][0][name] = value;
             // throw "error in set env."
         }
         function get_env(env){
@@ -7009,6 +7022,21 @@ function parse_encjs(encjs){
             if (operator == '|=')   { return set_from_env(env, key, get_from_env(env, key) | value)}
             if (operator == '^=')   { return set_from_env(env, key, get_from_env(env, key) ^ value)}
         }
+        function binary_env(env, operator, left, right){
+            if (operator == '+'){ return left + right }
+            if (operator == '-'){ return left - right }
+            if (operator == '/'){ return left / right }
+            if (operator == '*'){ return left * right }
+            if (operator == '%'){ return left % right }
+            if (operator == '<'){ return left < right }
+            if (operator == '>'){ return left > right }
+            if (operator == '&'){ return left & right }
+            if (operator == '|'){ return left | right }
+            if (operator == '^'){ return left ^ right }
+            if (operator == '<<'){ return left << right }
+            if (operator == '>>'){ return left >> right }
+            if (operator == '>>>'){ return left >>> right }
+        }
         function execute_env(env, ele){
             var key = get_key(ele)
             if (key == types['operator'])       { return ele[key]; }
@@ -7022,8 +7050,8 @@ function parse_encjs(encjs){
                 })
             }
             if (key == types['VariableDeclarator']){
-                var k = ele[key][0][types['Identifier']], v = ele[key][1]
-                get_env(env)[k] = execute_env(env, v)
+                var k = ele[key][0][types['Identifier']], v = execute_env(env, ele[key][1])
+                set_from_env(env, k, v)
             }
             if (key == types['ExpressionStatement']){
                 ele[key].map(function(e){
@@ -7058,53 +7086,102 @@ function parse_encjs(encjs){
                     return execute_env(env, e)
                 })
             }
+            if (key == types['BinaryExpression']){
+                var o = ele[key][0][types['operator']], l = execute_env(env, ele[key][1]), r = execute_env(env, ele[key][2])
+                return binary_env(env, o, l, r)
+            }
+            if (key == types['FunctionDeclaration']){
+                var k = ele[key][0][types['Identifier']], v = ele[key][ele[key].length-1]
+                var p = ele[key].slice(1, ele[key].length-1)
+                set_from_env(env, k, (function(){
+                    var _env = [...env, [{}, p, v]];
+                    return function(){
+                        var fenv = get_env(_env)
+                        var args = arguments;
+                        fenv[1].map(function(e,i){
+                            if (e.hasOwnProperty(types['Identifier'])){
+                                name = e[types['Identifier']]
+                                fenv[0][name] = args[i];
+                            }else if (e.hasOwnProperty([types['RestElement']])){
+                                name = e[types['RestElement']][types['Identifier']][types['Identifier']]
+                                fenv[0][name] = Object.keys(args).map(function(e){return args[e]}).slice(i);
+                            }
+                        })
+                        return execute_env(_env, fenv[2])
+                    }
+                })())
+            }
+            if (key == types['BlockStatement']){
+                var exps = ele[key].filter(function(e){
+                    return e[types['FunctionDeclaration']]?(execute_env(env, e)&&null):true;
+                })
+                for (var i = 0; i < exps.length; i++) {
+                    ret = execute_env(env, exps[i])
+                    if (exps[i].hasOwnProperty(types['ReturnStatement'])){
+                        return ret
+                    }
+                }
+            }
+            if (key == types['ReturnStatement']){
+                var ret = ele[key].map(function(e){
+                    return execute_env(env, e)
+                })
+                return ret[ret.length-1]
+            }
+            if (key == types['ObjectExpression']){
+                var ret = {}
+                ele[key].map(function(e){
+                    var [k, v] = execute_env(env, e)
+                    ret[k] = v
+                })
+                return ret
+            }
+            if (key == types['ObjectProperty']){
+                var k = ele[key][0][types['Identifier']] || ele[key][0][types['StringLiteral']] || ele[key][0][types['NumericLiteral']]
+                var v = execute_env(env, ele[key][1])
+                return [k, v]
+            }
+            if (key == types['SequenceExpression']){
+                // 
+            }
 
             // back
-            // if (key == types['Program'])                   {}
             // if (key == types['IfStatement'])               {}
             // if (key == types['ForStatement'])              {}
-            // if (key == types['FunctionDeclaration'])       {}
-            // if (key == types['BlockStatement'])            {}
-            // if (key == types['ReturnStatement'])           {}
             // if (key == types['WhileStatement'])            {}
             // if (key == types['SwitchStatement'])           {}
             // if (key == types['TryStatement'])              {}
 
-            // if (key == types['SequenceExpression'])        {}
-            // if (key == types['BinaryExpression'])          {}
             // if (key == types['FunctionExpression'])        {}
             // if (key == types['UpdateExpression'])          {}
             // if (key == types['ConditionalExpression'])     {}
             // if (key == types['SwitchCase'])                {}
             // if (key == types['UnaryExpression'])           {}
             // if (key == types['NewExpression'])             {}
-            // if (key == types['ObjectExpression'])          {}
-            // if (key == types['ObjectProperty'])            {}
             // if (key == types['CatchClause'])               {}
             // if (key == types['LogicalExpression'])         {}
             // if (key == types['ArrowFunctionExpression'])   {}
-        }
+            // if (key == types['RestElement'])               {}
+            // if (key == types['SpreadElement'])             {}
 
-        console.log(ast)
+            if (key == types['Program']){
+                var exps = ele[key].filter(function(e){
+                    return e[types['FunctionDeclaration']]?(execute_env(env, e)&&null):true;
+                })
+                for (var i = 0; i < exps.length; i++) {
+                    ret = execute_env(env, exps[i])
+                    if (exps[i].hasOwnProperty(types['ReturnStatement'])){
+                        return ret
+                    }
+                }
+            }
+        }
+        // console.log(ast)
         // console.log(JSON.stringify(ast, null, 1))
         // var cenv = env[env.length-1]
-
-        ast[get_key(ast)].filter(function(e){
-            // 函数定义优先处理，返回除了函数以外的代码执行块进行后续处理
-            var v = e[types['FunctionDeclaration']]
-            if (v){
-                // console.log(v)
-                // env[env.length-1][v[0][0]] = v[1][0] // 这里存在一些问题需要后续解决一下
-            }else{
-                return true;
-            }
-        }).map(function(e){
-            // 处理后续代码执行逻辑的部分
-            // console.log(e)
-            execute_env(env, e)
-        })
+        execute_env(env, ast)
     }
-    var env = [typeof global=='undefined'?window:global]
+    var env = [[typeof global=='undefined'?window:global, null]]
     var ast = parse_node(encjs)
     execute_ast(ast)
     console.log(env)
