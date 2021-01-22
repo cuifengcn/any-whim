@@ -6628,7 +6628,7 @@ function hex2istr(hex){
 }
 function num2hex(num){
   var nstr = num.toString()
-  if (/^[0-9]+.?[0-9]*$/.test(nstr)){
+  if (/^[0-9]+\.[0-9]*/.test(nstr)){
     nstr = int2str(0, 1) + nstr
   }else if (/^[1-9]+[0-9]*]*$/.test(nstr)){
     nstr = int2str(1, 1) + nstr
@@ -6667,13 +6667,15 @@ var types = {
     'Identifier': 0,
     'StringLiteral': 1,
     'NumericLiteral': 2,
+    'BigIntLiteral': 4, // 这个暂时不处理，后续再考虑处理方式
+    'operator': 11,
+
     'CallExpression': 3,
     'VariableDeclaration': 5,
     'VariableDeclarator': 6,
     'ExpressionStatement': 8,
     'SequenceExpression': 9,
     'AssignmentExpression': 10,
-    'operator': 11,
 
     'FunctionDeclaration': 12,
     'BlockStatement': 13,
@@ -6693,6 +6695,9 @@ var types = {
     'ArrayExpression': 27,
     'ObjectExpression': 28,
     'ObjectProperty': 29,
+    'TryStatement': 30,
+    'CatchClause': 31,
+    'LogicalExpression': 32,
     'Program': 0xff,
 }
 
@@ -6721,6 +6726,10 @@ function pack_node(node){
     }
     if (node.type == 'NumericLiteral'){
         var v = num2hex(node.value)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'BigIntLiteral'){
+        var v = istr2hex(node.value)
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
     if (node.type == 'CallExpression'){
@@ -6873,6 +6882,18 @@ function pack_node(node){
         var v = pack_node(node.key) + pack_node(node.value)
         return int2str(types[node.type], 2) + pack_length(v.length) + v
     }
+    if (node.type == 'TryStatement'){
+        var v = pack_node(node.block) + pack_node(node.handler)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'CatchClause'){
+        var v = pack_node(node.param) + pack_node(node.body)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
+    if (node.type == 'LogicalExpression'){
+        var v = pack_node({name:node.operator, type:'operator'}) + pack_node(node.left) + pack_node(node.right)
+        return int2str(types[node.type], 2) + pack_length(v.length) + v
+    }
     console.log(node)
     throw "error in pack_node";
 }
@@ -6882,10 +6903,11 @@ function parse_encjs(encjs){
         let lenlen = str2int(encjs.slice(2, 3))
         let length = str2int(encjs.slice(3, 3 + lenlen))
         let restda = encjs.slice(3 + lenlen, 3 + lenlen + length)
+        if (type == types['operator'])       { return {type:'operator', 0:hex2istr(restda)}; }
+        if (type == types['Identifier'])     { return {type:'identity', 0:hex2istr(restda)}; }
         if (type == types['StringLiteral'])  { return {type:'string', 0:hex2str(restda)}; }
         if (type == types['NumericLiteral']) { return {type:'number', 0:hex2num(restda)}; }
-        if (type == types['Identifier'])     { return {type:'identity', 0:hex2istr(restda)}; }
-        if (type == types['operator'])       { return {type:'operator', 0:hex2istr(restda)}; }
+        if (type == types['BigIntLiteral'])  { return {type:'bigint', 0:BigInt(hex2istr(restda))}; }
         var fchain = []
         while (restda.length){
             let type = str2int(restda.slice(0, 2))
@@ -6900,10 +6922,11 @@ function parse_encjs(encjs){
     function parse_node(encjs){
         let type = str2int(encjs.slice(0, 2))
         // console.log(type)
+        if (type == types['operator'])       {return parse_expfunc(encjs, type)}
         if (type == types['Identifier'])     {return parse_expfunc(encjs, type)}
         if (type == types['StringLiteral'])  {return parse_expfunc(encjs, type)}
         if (type == types['NumericLiteral']) {return parse_expfunc(encjs, type)}
-        if (type == types['operator'])       {return parse_expfunc(encjs, type)}
+        if (type == types['BigIntLiteral'])  {return parse_expfunc(encjs, type)}
 
         // 这部分为基础单元
         if (type == types['Program'])               {
@@ -6916,16 +6939,13 @@ function parse_encjs(encjs){
         if (type == types['FunctionDeclaration'])   {return parse_expfunc(encjs, type)}
         if (type == types['VariableDeclaration'])   {
             var declaration = parse_expfunc(encjs, type);
-            // 暂时不能写在这里，解释执行的部分应该交给外层执行
-            // declaration.map(function(e){
-            //     env[env.length-1][e[0][0]] = e[1][0]
-            // })
             return {declaration: declaration};
         }
         if (type == types['BlockStatement'])        {return parse_expfunc(encjs, type)}
         if (type == types['ReturnStatement'])       {return parse_expfunc(encjs, type)}
         if (type == types['WhileStatement'])        {return parse_expfunc(encjs, type)}
         if (type == types['SwitchStatement'])       {return parse_expfunc(encjs, type)}
+        if (type == types['TryStatement'])          {return parse_expfunc(encjs, type)}
 
         if (type == types['SequenceExpression'])    {return parse_expfunc(encjs, type)}
         if (type == types['AssignmentExpression'])  {return parse_expfunc(encjs, type)}
@@ -6945,10 +6965,16 @@ function parse_encjs(encjs){
         if (type == types['ArrayExpression'])       {return parse_expfunc(encjs, type)}
         if (type == types['ObjectExpression'])      {return parse_expfunc(encjs, type)}
         if (type == types['ObjectProperty'])        {return parse_expfunc(encjs, type)}
+        if (type == types['CatchClause'])           {return parse_expfunc(encjs, type)}
+        if (type == types['LogicalExpression'])     {return parse_expfunc(encjs, type)}
     }
     var env = [this]
     var some = parse_node(encjs)
     console.log(some);
+    // bak code
+    // declaration.map(function(e){
+    //     env[env.length-1][e[0][0]] = e[1][0]
+    // })
 }
 
 
@@ -6957,7 +6983,6 @@ function vilame_confusion(jscode){
     var ret = pack_node(ast.program)
     console.log(ret, ret.length)
     parse_encjs(ret)
-    // parse_encjs('0b00022b')
 }
 const fs = require('fs');
 var jscode = fs.readFileSync("./src.js", {
