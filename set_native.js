@@ -1,6 +1,6 @@
 
 // by Ossian
-// 算是完美hook toString的一个方法 妙啊，当然要完美挂钩，这个函数必须最开始就运行，否则可能被检测。
+// 算是完美hook toString的一个方法 妙啊，当然要完美挂钩，这个函数必须最开始就运行，否则可能还是会被检测到。
 ;(function(){
     "use strict";
     const $toString = Function.toString;
@@ -28,7 +28,7 @@
 
 
 
-// 一个旧的检测 native 函数的方式，依赖于 Object.toString 方法是原始方法。若不是，则无法检测到真实内容。
+// 一个旧的检测 native 函数的方式，依赖于 Object.toString 方法是原始方法。若不是，则无法确认检测内容是否真实。
 ;(function() {
     var toString = Object.prototype.toString;
     var fnToString = Function.prototype.toString;
