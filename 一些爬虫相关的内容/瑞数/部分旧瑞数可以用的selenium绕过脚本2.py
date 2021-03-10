@@ -5,9 +5,32 @@
 #   使用 mitmdump 做中间代理的时候就能更好的调试各个请求的配置处理
 
 def get_driver():
-    chrome = None # 如果有设置 chrome.exe       的环境变量，这里可以不用主动设置
+    def get_win_chrome_path():
+        # 注意，要使用非硬盘版安装的 chrome 软件才会在注册表里面留有痕迹，才能使用这个函数快速定位软件地址
+        # 通常来说 chrome 的安装一般都是非硬盘版的安装，所以这个函数算是在 windows 系统下获取 chrome.exe 路径的通解。
+        import os, winreg
+        sub_key = ['SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall', 'SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall']
+        def get_install_list(key, root):
+            try:
+                _key = winreg.OpenKey(root, key, 0, winreg.KEY_ALL_ACCESS)
+                for j in range(0, winreg.QueryInfoKey(_key)[0]-1):
+                    try:
+                        each_key = winreg.OpenKey(root, key + '\\' + winreg.EnumKey(_key, j), 0, winreg.KEY_ALL_ACCESS)
+                        displayname, REG_SZ = winreg.QueryValueEx(each_key, 'DisplayName')
+                        install_loc, REG_SZ = winreg.QueryValueEx(each_key, 'InstallLocation')
+                        display_var, REG_SZ = winreg.QueryValueEx(each_key, 'DisplayVersion')
+                        yield displayname, install_loc, display_var
+                    except WindowsError:
+                        pass
+            except:
+                pass
+        for key in sub_key:
+            for root in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+                for name, local, var in get_install_list(key, root):
+                    if name == 'Google Chrome':
+                        return os.path.join(local, 'chrome.exe')
+    chrome = get_win_chrome_path() # 尝试自动获取 chrome.exe 的地址
     driver = None # 如果有设置 chromedriver.exe 的环境变量，这里可以不用主动设置
-    chrome = r"C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
     # driver = r'D:/Python/Python36/Scripts/chromedriver.exe'
     remote_port = 9223
     proxy_port = None # 8888 # 使用代理调试则将这里设置成代理端口既可，方便 mitmdump 等工具使用
@@ -25,15 +48,15 @@ def get_driver():
     home = os.path.join(home, 'auto_selenium', 'AutomationProfile')
     cache_path = os.path.split(home)[0]
     if os.path.isdir(cache_path):
-        print('cache_path clear: {}'.format(cache_path))
+        # print('cache_path clear: {}'.format(cache_path))
         shutil.rmtree(cache_path)
     # 如果想要使用代理
     if proxy_port: chrome_exe = '''"{}" --remote-debugging-port={} --user-data-dir="{}" --proxy-server=http://127.0.0.1:{}'''.format(chrome_path, remote_port, home, proxy_port)
     else:          chrome_exe = '''"{}" --remote-debugging-port={} --user-data-dir="{}"'''.format(chrome_path, remote_port, home)
     subprocess.Popen(chrome_exe)
-    print('driver_path: {}'.format(driver_path))
-    print('chrome_path: {}'.format(chrome_path))
-    print('chrome_exe: {}'.format(chrome_exe))
+    # print('driver_path: {}'.format(driver_path))
+    # print('chrome_path: {}'.format(chrome_path))
+    # print('chrome_exe: {}'.format(chrome_exe))
 
     import selenium
     from selenium import webdriver
@@ -51,7 +74,7 @@ def get_driver():
     check_magic_word(driver_path, rollback=False)
 
     # 启动 webdriver
-    webdriver = webdriver.Chrome(chrome_options=chrome_options, executable_path=driver_path)
+    webdriver = webdriver.Chrome(options=chrome_options, executable_path=driver_path)
     webdriver.set_page_load_timeout(5) # 让所有的 get 网页的加载都限制在 n秒钟内，防止无限加载的问题。
     _bak_get = webdriver.get
     def get(url):
