@@ -1,6 +1,6 @@
 import cv2
 def findmatchtemplate(filepathname, befindimage):
-    def canny(filepathname, left=70, right=140):
+    def canny(filepathname, left=180, right=240):
         v = cv2.imread(filepathname)
         s = cv2.cvtColor(v, cv2.COLOR_BGR2GRAY)
         s = cv2.Canny(s, left, right)
@@ -29,10 +29,12 @@ def findmatchtemplate(filepathname, befindimage):
         return t, l, w, h
     t, l, w, h = accurate(left_top, img1)
     def test():
+        cv2.imshow('nier1', img1)
+        cv2.imshow('nier2', img2)
         img3 = cv2.imread(befindimage)
         img3 = cv2.rectangle(img3, (l, t), (l+h, t+w), (0,255,0), 2)
         cv2.imshow('nier', img3); cv2.waitKey(); cv2.destroyAllWindows()
-    test()
+    test() # 使用时注释这行就可以了
     return t, l, w, h
 
 s = findmatchtemplate('front.png', 'bg.jpg')
