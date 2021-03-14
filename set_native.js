@@ -19,7 +19,7 @@
     delete Function.prototype['toString'];
     set_native(Function.prototype, "toString", myToString);
     set_native(Function.prototype.toString, myFunction_toString_symbol, "function toString() { [native code] }");
-    global.func_set_natvie = function(func){
+    (typeof global=='undefined'?window:global).func_set_natvie = function(func){
         set_native(func, myFunction_toString_symbol, `function ${myFunction_toString_symbol,func.name || ''}() { [native code] }`);
     };
 })();
@@ -47,7 +47,7 @@
             return (value && type == 'object' && reHostCtor.test(toString.call(value))) || false;
         }
     }
-    global.isNative = isNative;
+    (typeof global=='undefined'?window:global).isNative = isNative;
 }());
 
 
