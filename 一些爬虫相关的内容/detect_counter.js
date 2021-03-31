@@ -1,3 +1,5 @@
+// 计数器反调试代码
+
 function make_detect_counter(){
     // 这种主动混淆的方式比较适合将字符串集中优化处理
     // 并且这样得函数经过 ugliy-es 优化后混淆程度会提升很多。
@@ -128,11 +130,7 @@ function test_(){
     ;/a/.test('a')
     console.log('RegExp.prototype,   test',           inject_func(), inject_func.$)
     Date.now()
-    console.log('Date,               now',            inject_func(), inject_func.$)
+    console.log('Date,               now',            inject_func(), inject_func.$) // 这一行正常执行结果 和 你随便在前面打几个调试断点执行到这里的结果你看看变化就知道这个反调试有多强了.
 }
 
-
-const UglifyJS = require('uglify-es');
-var jscode = make_detect_counter.toString()
-jscode = UglifyJS.minify(jscode, { compress: { drop_debugger: false }, mangle: { reserved: ['window'] }});
-console.log(jscode.code + ';\n' + test_.toString() + ';\ntest_()')
+test_()
