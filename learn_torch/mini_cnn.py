@@ -1,3 +1,4 @@
+# coding=utf-8
 # 写一个中文的单字识别的cnn
 # 尽可能的搞定旋转缩放之类的分类问题
 
@@ -17,13 +18,19 @@ import cv2
 import numpy as np
 
 # 读取单字图片文件
-def read_imginfos(file):
+def read_imginfos(file, class_types_list):
     # 目前读取的数据是单字识别，这里读取的格式为，图片文件的第一个汉字代表了其类别
+    def get_name(file):
+        return file.split('_')[0]
     class_types = set()
     imginfos = []
-    for i in os.listdir(file):
-        if i.endswith('.jpg') or i.endswith('.png'):
-            class_types.add(i[0])
+    if class_types_list:
+        class_types = list(class_types_list)
+    else:
+        for i in os.listdir(file):
+            if i.endswith('.jpg') or i.endswith('.png'):
+                class_types.add(get_name(i))
+        class_types = sorted(class_types)
     for i in os.listdir(file):
         if i.endswith('.jpg') or i.endswith('.png'):
             fil = os.path.join(file, i)
@@ -32,12 +39,12 @@ def read_imginfos(file):
             img = cv2.resize(img, (40, 40))
             img = np.transpose(img, (2,1,0)) # [c,x,y]
             imginfo = {}
-            imginfo['class'] = i[0]
+            imginfo['class'] = get_name(i)
             imginfo['img'] = img
             imginfos.append(imginfo)
             # cv2.imshow('test', img)
             # cv2.waitKey(0)
-    class_types = {tp: idx for idx, tp in enumerate(sorted(class_types))}
+    class_types = {tp: idx for idx, tp in enumerate(class_types)}
     return imginfos, class_types
 
 # 生成 y_true 用于误差计算
@@ -48,8 +55,8 @@ def make_y_true(imginfo, class_types):
     clz[class_types.get(imginfo['class'])] = 1.
     return torch.FloatTensor(clz)
 
-def load_data(filepath):
-    imginfos, class_types = read_imginfos(filepath)
+def load_data(filepath, class_types_list=None):
+    imginfos, class_types = read_imginfos(filepath, class_types_list)
     train_data = []
     for imginfo in imginfos:
         train_data.append([torch.FloatTensor(imginfo['img']), make_y_true(imginfo, class_types)])
@@ -100,7 +107,8 @@ class MiniCNN(nn.Module):
                 ('Pool_2',    nn.MaxPool2d(2, 2)),
                 ('ConvBN_3',  self.ConvBN(128, 256)),
                 ('Flatten',   nn.Flatten()),
-                ('Linear',    nn.Linear(6400, self.oceil)),
+                ('Linear1',    nn.Linear(6400, 128)),
+                ('Linear2',    nn.Linear(128, self.oceil)),
             ])
         )
     def forward(self, x):
@@ -120,10 +128,30 @@ class miniloss(nn.Module):
         return loss
 
 def train(train_data, class_types):
-    EPOCH = 10
-    BATCH_SIZE = 100
-    LR = 0.001
-    net = MiniCNN(class_types).to(DEVICE)
+    EPOCH = 1000
+    BATCH_SIZE = 1000
+    LR = 0.0001
+
+    try:
+        state = torch.load('net.pkl')
+        net = MiniCNN(class_types)
+        net.load_state_dict(state['net'])
+        net.to(DEVICE)
+        optimizer = state['optimizer']
+        epoch = state['epoch']
+        print('load train.')
+    except:
+        import traceback
+        excp = traceback.format_exc()
+        if 'FileNotFoundError' not in excp:
+            print(traceback.format_exc())
+        net = MiniCNN(class_types)
+        net.to(DEVICE)
+        optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+        epoch = 0
+        print('new train.')
+
+    # net = MiniCNN(class_types).to(DEVICE)
     mloss = miniloss(class_types).to(DEVICE)
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
     train_loader = Data.DataLoader(
@@ -131,7 +159,7 @@ def train(train_data, class_types):
         batch_size=BATCH_SIZE,
         shuffle=True,
     )
-    for epoch in range(EPOCH):
+    for epoch in range(epoch, epoch+EPOCH):
         print('epoch', epoch)
         for step, (b_x, b_y) in enumerate(train_loader):
             b_x = Variable(b_x).to(DEVICE)
@@ -167,6 +195,7 @@ def load_state(filename):
 def test(filename, state):
     net = state['net'].to(DEVICE)
     class_types = state['class_types']
+    class_types = [i[0] for i in sorted(class_types.items(), key=lambda e:e[1])]
     img = cv2.imdecode(np.fromfile(filename, dtype=np.uint8), 1)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # [y,x,c]
     img = cv2.resize(img, (40, 40))
@@ -178,10 +207,17 @@ def test(filename, state):
     else:
         v = v.detach().numpy()
     v = v[0].tolist()
-    r = sorted(class_types)[v.index(max(v))]
-    print(v)
-    print(r)
-    return r
+    r = class_types[v.index(max(v))]
+    img = cv2.imdecode(np.fromfile(filename, dtype=np.uint8), 1)
+    def get_name(file):
+        return file.split('/')[-1].split('_')[0]
+    # print(r, get_name(filename))
+    # if r != get_name(filename):
+    #     print(r, get_name(filename))
+    #     cv2.imshow('test', img)
+    #     cv2.waitKey(0)
+    #     cv2.destroyAllWindows()
+    return r == get_name(filename)
 
 
 
@@ -191,9 +227,8 @@ def test(filename, state):
 
 
 
-
-# train_data, class_types = load_data('./train_img')
-# train(train_data, class_types)
+train_data, class_types = load_data('./angles_img')
+train(train_data, class_types)
 
 
 
@@ -201,4 +236,14 @@ def test(filename, state):
 print('loading model.')
 state = load_state('net.pkl')
 print('loading model. ok.')
-test('./train_img/你_00_30_(255, 255, 255)_(0, 0, 255)_simsun.ttc.jpg', state)
+print(state['class_types'])
+import os
+p = 0
+q = 0
+for i in os.listdir('angles_img'):
+    v = test('./angles_img/{}'.format(i), state)
+    if v:
+        p += 1
+    else:
+        q += 1
+    print('正确', p, '错误', q, '正确率', p/(p+q))
