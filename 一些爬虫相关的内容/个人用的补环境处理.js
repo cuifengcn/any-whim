@@ -11,7 +11,7 @@ function get_all(){
                     return `${name_}["${key}"] = ${name_};\r\n`
                 }
                 try {
-                    return `${name_}["${key}"] = new (class ${v.constructor.name} {});\r\n`
+                    return `${name_}["${key}"] = _vPxy(new class ${v.constructor.name}{}, "${key}");\r\n`
                 } catch (error) {
                     return `${name_}["${key}"] = "----------------------------------------------------------------";\r\n`
                 }
@@ -26,7 +26,7 @@ function get_all(){
                 }
             }
             if (typeof (v) == "function") {
-                return `${name_}["${key}"] = function ${v.name}(){debugger;};   safefunction(${name_}["${key}"]);\r\n`
+                return `${name_}["${key}"] = function ${v.name}(){_vLog('--- func(*) --- ${v.name}');debugger;};   safefunction(${name_}["${key}"]);\r\n`
             }
         }else{
             return `${name_}["${key}"] = ${JSON.stringify(v)};\r\n`
@@ -40,7 +40,7 @@ function get_all(){
                     return `${name_}.__proto__["${key}"] = null;\r\n`
                 }
                 try {
-                    return `${name_}.__proto__["${key}"] = new (class ${v.constructor.name} {});\r\n`
+                    return `${name_}.__proto__["${key}"] = _vPxy(new class ${v.constructor.name}{}, "${key}");\r\n`
                 } catch (error) {
                     return `${name_}.__proto__["${key}"] = "----------------------------------------------------------------";\r\n`
                 }
@@ -55,7 +55,7 @@ function get_all(){
                 }
             }
             if (typeof (v) == "function") {
-                return `${name_}.__proto__["${key}"] = function ${v.name}(){debugger;};   safefunction(${name_}["${key}"]);\r\n`
+                return `${name_}.__proto__["${key}"] = function ${v.name}(){_vLog('--- func(*) --- ${v.name}');debugger;};   safefunction(${name_}["${key}"]);\r\n`
             }
             if (name_ == 'document' && key == 'all'){
                 return `${name_}.__proto__["${key}"] = undefined;\r\n`
@@ -160,7 +160,7 @@ function make_all(){
     console.log(
     Cilame + "\\r\\n" +
     "Cilame()\\r\\n" +
-    vall(window, "window", ${JSON.stringify(Cilame())}) +
+    vall(window,                 "window",               ${JSON.stringify(Cilame())}.concat(['_vLog', '_vPxy'])) +
     vall(document,               "document",             ['cookie', 'addEventListener', 'dispatchEvent', 'removeEventListener', "createElement", "getElementsByName"]) +
     vall(Node.prototype,         "Node.prototype",       ["location", 'addEventListener', 'dispatchEvent', 'removeEventListener']) +
     vall(navigator,              "navigator",            ['connection'],    ['languages']) +
@@ -178,7 +178,15 @@ function make_all(){
             throw e;
         });
     }
-}\`)`)
+}
+window                = VmProxyB(window,                "window")
+window.document       = VmProxyB(window.document,       "window.document")
+window.navigator      = VmProxyB(window.navigator,      "window.navigator")
+window.location       = VmProxyB(window.location,       "window.location")
+window.localStorage   = VmProxyB(window.localStorage,   "window.localStorage")
+window.sessionStorage = VmProxyB(window.sessionStorage, "window.sessionStorage")
+start = true
+\`)`)
     ret += '\r\n'
     ret += 'get_all()\r\n// 将生成的代码全部拷贝到 chrome 控制台执行即可'
     return ret
@@ -257,15 +265,74 @@ function Cilame(){
             eval(evalstr)
         }
         ;(typeof global=='undefined'?window:global).make_constructor = make_constructor
+        ;(typeof global=='undefined'?window:global).start = false
+        ;(typeof global=='undefined'?window:global)._vLog = function _vLog(){ if (start){ console.log.apply(console.log, [].slice.call(arguments)) }}
+        ;(typeof global=='undefined'?window:global)._vPxy = function(G, M){
+            var _vLog = (typeof global=='undefined'?window:global)._vLog || console.log
+            function LS(T, M, F){ return `${M}[${T.constructor.name}].(Prxoy)${F} ==>`}
+            return new Proxy(G, {
+                apply:                    function(T, A, L){    _vLog(LS(G, M, 'apply'), arguments);                    return Reflect.apply(T, A, L) },
+                construct:                function(T, L, N){    _vLog(LS(G, M, 'construct'), arguments);                return Reflect.construct(T, L, N) },
+                defineProperty:           function(T, P, A){    _vLog(LS(G, M, 'defineProperty'), arguments);           return Reflect.defineProperty(T, P, A) },
+                deleteProperty:           function(T, P){       _vLog(LS(G, M, 'deleteProperty'), arguments);           return Reflect.deleteProperty(T, P) },
+                get:                      function(T, P, R){    _vLog(LS(G, M, 'get'), arguments);                      return Reflect.get(T, P, R) },
+                getOwnPropertyDescriptor: function(T, P){       _vLog(LS(G, M, 'getOwnPropertyDescriptor'), arguments); return Reflect.getOwnPropertyDescriptor(T, P) },
+                getPrototypeOf:           function(T){          _vLog(LS(G, M, 'getPrototypeOf'), arguments);           return Reflect.getPrototypeOf(T) },
+                has:                      function(T, P){       _vLog(LS(G, M, 'has'), arguments);                      return Reflect.has(T, P) },
+                isExtensible:             function(T){          _vLog(LS(G, M, 'isExtensible'), arguments);             return Reflect.isExtensible(T) },
+                ownKeys:                  function(T){          _vLog(LS(G, M, 'ownKeys'), arguments);                  return Reflect.ownKeys(T) },
+                preventExtensions:        function(T){          _vLog(LS(G, M, 'preventExtensions'), arguments);        return Reflect.preventExtensions(T) },
+                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), arguments);                      return Reflect.set(T, P, V, R) },
+                setPrototypeOf:           function(T, P){       _vLog(LS(G, M, 'setPrototypeOf'), arguments);           return Reflect.setPrototypeOf(T, P) },
+            })
+        }
+        function logA(tag, G_or_S, objectname, propertyname, value){
+            console.table([{tag, G_or_S, objectname, propertyname,value}], ["tag","G_or_S","objectname","propertyname","value"]);
+        }
+        function logB(tag, GS, objectname, propertyname, value){
+            console.info(tag, GS, `[${objectname}]`, `"${propertyname}"`, value);
+        }
+        function VmProxy(logger, object_, titlename, dont_log_value){
+            return new Proxy(object_, {
+                get (target, property) { 
+                    if (start){
+                        logger(titlename, "Get >>", target.constructor.name, property, dont_log_value?'<DONTLOG>':target[property]);
+                    }
+                    return target[property];
+                },
+                set (target, property, value) {
+                    if (start){
+                        logger(titlename, "Set <<", target.constructor.name, property, dont_log_value?'<DONTLOG>':value);
+                    }
+                    target[property] = value;
+                }
+            });
+        };
+        var VmProxyA = function (){return VmProxy.apply(this, [logA].concat([].slice.call(arguments)))}
+        var VmProxyB = function (){return VmProxy.apply(this, [logB].concat([].slice.call(arguments)))}
+        ;(typeof global=='undefined'?window:global).VmProxyA = VmProxyA
+        ;(typeof global=='undefined'?window:global).VmProxyB = VmProxyB
     })();
-
     // 将核心结构初始化，也就是 window navigator document 等初始化处理好
     var __cilame__ = { 'n':{}, 'N':{}, 'c':{} } // 临时存储空间, n 为 new 对象, N 为原始方法.
     var GL = _global = (typeof global=='undefined'?window:global)
     make_constructor("eventTarget", "EventTarget", [], [GL], undefined, { allow_illegal: true })
-    EventTarget.prototype.addEventListener    = safefunction(function addEventListener(){debugger;})
-    EventTarget.prototype.dispatchEvent       = safefunction(function dispatchEvent(){debugger;})
-    EventTarget.prototype.removeEventListener = safefunction(function removeEventListener(){debugger;})
+    EventTarget.prototype.listeners = {};
+    EventTarget.prototype.addEventListener = function(type, callback) {
+        if(!(type in this.listeners)) { this.listeners[type] = []; }
+        this.listeners[type].push(callback);
+    };
+    EventTarget.prototype.removeEventListener = function(type, callback) {
+        if(!(type in this.listeners)) { return; }
+        var stack = this.listeners[type];
+        for(var i = 0, l = stack.length; i < l; i++) { if(stack[i] === callback){ stack.splice(i, 1); return this.removeEventListener(type, callback); } }
+    };
+    EventTarget.prototype.dispatchEvent = function(event) {
+        if(!(event.type in this.listeners)) { return; }
+        var stack = this.listeners[event.type];
+        event.target = this;
+        for(var i = 0, l = stack.length; i < l; i++) { stack[i].call(this, event); }
+    };
     make_constructor("windowProperties",    "WindowProperties", [], [], new EventTarget, { allow_illegal: true })
     make_constructor("window",              "Window", [GL], [GL],       __cilame__['n']['windowProperties']) // WindowProperties 没有注入 window 环境
     window = new Proxy(window, {
@@ -285,7 +352,6 @@ function Cilame(){
     var EN = normal_env = [window, GL]
     make_constructor("navigator",   "Navigator",    EN, EN)
     window.clientInformation = navigator
-
     // 处理 document 初始化
     make_constructor("_vNode",      "Node",         [], EN, new EventTarget)
     make_constructor("_vDocument",  "Document",     [], EN, __cilame__["n"]['_vNode'], { allow_illegal: true })
@@ -318,11 +384,10 @@ function Cilame(){
                 return cookie_cache;
             }
         });
-        function init_cookie(str){
+        global.init_cookie = function init_cookie(str){
             cookie_cache = str
         }
     })();
-
     // 处理 location 初始化，以及绑定 document
     make_constructor("location",    "Location",     EN, EN)
     location["ancestorOrigins"] = new (class DOMStringList {});
