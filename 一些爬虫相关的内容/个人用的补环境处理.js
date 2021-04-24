@@ -185,7 +185,11 @@ window.navigator      = VmProxyB(window.navigator,      "window.navigator")
 window.location       = VmProxyB(window.location,       "window.location")
 window.localStorage   = VmProxyB(window.localStorage,   "window.localStorage")
 window.sessionStorage = VmProxyB(window.sessionStorage, "window.sessionStorage")
-start = true
+
+hookFunc('eval')
+hookFunc('Function')
+start = true  // 主要的 VmProxyB 的log开关
+// start1 = true // 一些未被实现的 _vPxy(new class Unknown{}) 的 Proxy 打印日志，让输出更清晰，不过尽量不要使用这个
 \`)`)
     ret += '\r\n'
     ret += 'get_all()\r\n// 将生成的代码全部拷贝到 chrome 控制台执行即可'
@@ -219,7 +223,6 @@ function Cilame(){
     // 生成一些重要的参数，比如 screen Screen 这种对应的系统对象
     // 这些系统对象原型结构稍微有点绕，统一成下面模式就行
     ;(function(){
-        "use strict";
         const $toString = Function.toString;
         const myFunction_toString_symbol = Symbol('('.concat('', ')_', (Math.random() + '').toString(36)));
         const myToString = function() {
@@ -266,24 +269,27 @@ function Cilame(){
         }
         ;(typeof global=='undefined'?window:global).make_constructor = make_constructor
         ;(typeof global=='undefined'?window:global).start = false
-        ;(typeof global=='undefined'?window:global)._vLog = function _vLog(){ if (start){ console.log.apply(console.log, [].slice.call(arguments)) }}
+        ;(typeof global=='undefined'?window:global).start1 = false
+        ;(typeof global=='undefined'?window:global)._vLog = function _vLog(){ if (start1){ 
+            console.log.apply(console.log, [].slice.call(arguments))
+        }}
         ;(typeof global=='undefined'?window:global)._vPxy = function(G, M){
             var _vLog = (typeof global=='undefined'?window:global)._vLog || console.log
-            function LS(T, M, F){ return `${M}[${T.constructor.name}].(Prxoy)${F} ==>`}
+            function LS(T, M, F){ return `${M}[${T.constructor.name}].(Prxoy)${F} ==>>`}
             return new Proxy(G, {
-                apply:                    function(T, A, L){    _vLog(LS(G, M, 'apply'), arguments);                    return Reflect.apply(T, A, L) },
-                construct:                function(T, L, N){    _vLog(LS(G, M, 'construct'), arguments);                return Reflect.construct(T, L, N) },
-                defineProperty:           function(T, P, A){    _vLog(LS(G, M, 'defineProperty'), arguments);           return Reflect.defineProperty(T, P, A) },
-                deleteProperty:           function(T, P){       _vLog(LS(G, M, 'deleteProperty'), arguments);           return Reflect.deleteProperty(T, P) },
-                get:                      function(T, P, R){    _vLog(LS(G, M, 'get'), arguments);                      return Reflect.get(T, P, R) },
-                getOwnPropertyDescriptor: function(T, P){       _vLog(LS(G, M, 'getOwnPropertyDescriptor'), arguments); return Reflect.getOwnPropertyDescriptor(T, P) },
-                getPrototypeOf:           function(T){          _vLog(LS(G, M, 'getPrototypeOf'), arguments);           return Reflect.getPrototypeOf(T) },
-                has:                      function(T, P){       _vLog(LS(G, M, 'has'), arguments);                      return Reflect.has(T, P) },
-                isExtensible:             function(T){          _vLog(LS(G, M, 'isExtensible'), arguments);             return Reflect.isExtensible(T) },
-                ownKeys:                  function(T){          _vLog(LS(G, M, 'ownKeys'), arguments);                  return Reflect.ownKeys(T) },
-                preventExtensions:        function(T){          _vLog(LS(G, M, 'preventExtensions'), arguments);        return Reflect.preventExtensions(T) },
-                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), arguments);                      return Reflect.set(T, P, V, R) },
-                setPrototypeOf:           function(T, P){       _vLog(LS(G, M, 'setPrototypeOf'), arguments);           return Reflect.setPrototypeOf(T, P) },
+                apply:                    function(T, A, L){    _vLog(LS(G, M, 'apply') );                    return Reflect.apply(T, A, L) },
+                construct:                function(T, L, N){    _vLog(LS(G, M, 'construct') );                return Reflect.construct(T, L, N) },
+                deleteProperty:           function(T, P){       _vLog(LS(G, M, 'deleteProperty') );           return Reflect.deleteProperty(T, P) },
+                get:                      function(T, P, R){    _vLog(LS(G, M, 'get'), P);                    return Reflect.get(T, P, R) },
+                // defineProperty:           function(T, P, A){    _vLog(LS(G, M, 'defineProperty') );           return Reflect.defineProperty(T, P, A) },
+                // getOwnPropertyDescriptor: function(T, P){       _vLog(LS(G, M, 'getOwnPropertyDescriptor') ); return Reflect.getOwnPropertyDescriptor(T, P) },
+                getPrototypeOf:           function(T){          _vLog(LS(G, M, 'getPrototypeOf') );           return Reflect.getPrototypeOf(T) },
+                has:                      function(T, P){       _vLog(LS(G, M, 'has') );                      return Reflect.has(T, P) },
+                isExtensible:             function(T){          _vLog(LS(G, M, 'isExtensible') );             return Reflect.isExtensible(T) },
+                ownKeys:                  function(T){          _vLog(LS(G, M, 'ownKeys') );                  return Reflect.ownKeys(T) },
+                preventExtensions:        function(T){          _vLog(LS(G, M, 'preventExtensions') );        return Reflect.preventExtensions(T) },
+                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), P);                    return Reflect.set(T, P, V, R) },
+                setPrototypeOf:           function(T, P){       _vLog(LS(G, M, 'setPrototypeOf'));            return Reflect.setPrototypeOf(T, P) },
             })
         }
         function logA(tag, G_or_S, objectname, propertyname, value){
@@ -312,6 +318,19 @@ function Cilame(){
         var VmProxyB = function (){return VmProxy.apply(this, [logB].concat([].slice.call(arguments)))}
         ;(typeof global=='undefined'?window:global).VmProxyA = VmProxyA
         ;(typeof global=='undefined'?window:global).VmProxyB = VmProxyB
+        ;(typeof global=='undefined'?window:global).hookFunc = function hookFunc(H){
+            eval(`
+            _v${H} = ${H}
+            window.${H} = function ${H}(){
+                if (window.start){
+                    console.log('-------------------- ${H}(*) --------------------')
+                    console.log(arguments[0])
+                }
+                return _v${H}.apply(this, arguments)
+            }
+            safefunction(window.${H})
+            `)
+        }
     })();
     // 将核心结构初始化，也就是 window navigator document 等初始化处理好
     var __cilame__ = { 'n':{}, 'N':{}, 'c':{} } // 临时存储空间, n 为 new 对象, N 为原始方法.
