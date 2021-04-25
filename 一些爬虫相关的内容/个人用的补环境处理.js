@@ -163,7 +163,7 @@ function make_all(){
     vall(window,                 "window",               ${JSON.stringify(Cilame())}.concat(['_vLog', '_vPxy'])) +
     vall(document,               "document",             ['cookie', 'addEventListener', 'dispatchEvent', 'removeEventListener', "createElement", "getElementsByName"]) +
     vall(Node.prototype,         "Node.prototype",       ["location", 'addEventListener', 'dispatchEvent', 'removeEventListener']) +
-    vall(navigator,              "navigator",            ['connection'],    ['languages']) +
+    vall(navigator,              "navigator",            ['connection', 'getBattery'],    ['languages']) +
     vall(window.location,        "window.location") +
     vall(window.localStorage,    "window.localStorage",   ["clear", "getItem", "key", "removeItem", "setItem", "length"]) +
     vall(window.sessionStorage,  "window.sessionStorage", ["clear", "getItem", "key", "removeItem", "setItem", "length"]) +
@@ -179,17 +179,144 @@ function make_all(){
         });
     }
 }
-window                = VmProxyB(window,                "window")
-window.document       = VmProxyB(window.document,       "window.document")
-window.navigator      = VmProxyB(window.navigator,      "window.navigator")
+window                = VmProxyB(window,                "window",               true) // 这三个暂时不打印获取的结果
+window.document       = VmProxyB(window.document,       "window.document",      true) // 这三个暂时不打印获取的结果
+window.navigator      = VmProxyB(window.navigator,      "window.navigator",     true) // 这三个暂时不打印获取的结果
 window.location       = VmProxyB(window.location,       "window.location")
 window.localStorage   = VmProxyB(window.localStorage,   "window.localStorage")
 window.sessionStorage = VmProxyB(window.sessionStorage, "window.sessionStorage")
+window.XMLHttpRequest = VmProxyB(window.XMLHttpRequest, "window.XMLHttpRequest")
+window.indexedDB      = VmProxyB(window.indexedDB,      "window.indexedDB")
 
-hookFunc('eval')
-hookFunc('Function')
+// 该处用于一些定制的挂钩处理，绕过 Function 或 eval 函数内一些检测使用的，视情况修改
+function temp_hookFunc(H){
+    eval(\\\`
+    _v\\\${H.split('.').pop()} = \\\${H}
+    window.\\\${H} = function \\\${H.split('.').pop()}(){
+        if (start){
+            console.log('-------------------- \\\${H}(*) --------------------')
+            console.log(arguments[0])
+        }
+        if (arguments[0].indexOf('__dirname') != -1 || arguments[0].indexOf('__filename') != -1){
+            return function (){}
+        }
+        return _v\\\${H.split('.').pop()}.apply(this, arguments)
+    }
+    safefunction(window.\\\${H})
+    \\\`)
+}
+temp_hookFunc('Function')
+
+// hookFunc('Function')
+hookFunc("clearInterval")
+hookFunc("clearTimeout")
+hookFunc("setInterval")
+hookFunc("setTimeout")
+hookFunc("Number")
+hookFunc("parseFloat")
+hookFunc("parseInt")
+hookFunc("Symbol")
+hookFunc("Error")
+hookFunc("ArrayBuffer")
+hookFunc("Uint8Array")
+hookFunc("Int8Array")
+hookFunc("Uint16Array")
+hookFunc("Int16Array")
+hookFunc("Uint32Array")
+hookFunc("Int32Array")
+hookFunc("Float32Array")
+hookFunc("Float64Array")
+hookFunc("Uint8ClampedArray")
+hookFunc("BigUint64Array")
+hookFunc("BigInt64Array")
+hookFunc("decodeURI")
+hookFunc("decodeURIComponent")
+hookFunc("encodeURI")
+hookFunc("encodeURIComponent")
+hookFunc("escape")
+hookFunc("unescape")
+hookFunc("eval")
+hookFunc("isFinite")
+hookFunc("isNaN")
+hookFunc("SharedArrayBuffer")
+// 一般这种可以处理 new RegExp(*) 系列的挂钩。
+// 如果是直接 /*/ 挂钩不上，不过这种是可以从代码里面明白的找到，这种无法混淆
+// 正则的挂钩比较特殊，需要在实例化的时候挂钩上实例对象的函数，所以挂钩处理如下
+;(function (){
+    var _vRegExp = RegExp
+    window.RegExp = function RegExp(){
+        var ostart = start
+        if (ostart){
+            console.log('-------------------- RegExp(*) --------------------')
+            console.log(arguments[0])
+        }
+        start = false
+        fakeRegExpObj = _vRegExp.apply(this, arguments)
+        _fakeRegExp_test = fakeRegExpObj.test
+        fakeRegExpObj.test = safefunction(function test() {
+            if (start){
+                console.log('-------------------- RegExp.prototype.test(*) --------------------')
+                console.log(this+'', '==>', arguments[0])
+            }
+            return _fakeRegExp_test.apply(this, arguments)
+        })
+        _fakeRegExp_exec = fakeRegExpObj.exec
+        fakeRegExpObj.exec = safefunction(function exec() {
+            if (start){
+                console.log('-------------------- RegExp.prototype.exec(*) --------------------')
+                console.log(this+'', '==>', arguments[0])
+            }
+            return _fakeRegExp_exec.apply(this, arguments)
+        })
+        start = ostart
+        return fakeRegExpObj
+    }
+    safefunction(window.RegExp)
+})()
+// 挂钩 Object 的各种函数
+hookFuncObject("Object.assign")
+hookFuncObject("Object.getOwnPropertyDescriptor")
+hookFuncObject("Object.getOwnPropertyDescriptors")
+hookFuncObject("Object.getOwnPropertyNames")
+hookFuncObject("Object.getOwnPropertySymbols")
+hookFuncObject("Object.is")
+hookFuncObject("Object.preventExtensions")
+hookFuncObject("Object.seal")
+hookFuncObject("Object.create")
+hookFuncObject("Object.defineProperties")
+hookFuncObject("Object.defineProperty")
+hookFuncObject("Object.freeze")
+hookFuncObject("Object.getPrototypeOf")
+hookFuncObject("Object.setPrototypeOf")
+hookFuncObject("Object.isExtensible")
+hookFuncObject("Object.isFrozen")
+hookFuncObject("Object.isSealed")
+hookFuncObject("Object.keys")
+hookFuncObject("Object.entries")
+hookFuncObject("Object.values")
+
 start = true  // 主要的 VmProxyB 的log开关
 // start1 = true // 一些未被实现的 _vPxy(new class Unknown{}) 的 Proxy 打印日志，让输出更清晰，不过尽量不要使用这个
+
+
+
+
+
+
+
+// 这里插入浏览器给你的代码
+// $placeholder_code
+
+runloads()
+
+
+
+
+
+
+
+
+// 这里往后插入你自己的代码，用于导出/编辑自己使用的函数
 \`)`)
     ret += '\r\n'
     ret += 'get_all()\r\n// 将生成的代码全部拷贝到 chrome 控制台执行即可'
@@ -242,6 +369,9 @@ function Cilame(){
         ;(typeof global=='undefined'?window:global).safefunction = function(func){
             set_native(func, myFunction_toString_symbol, `function ${myFunction_toString_symbol,func.name || ''}() { [native code] }`);
             return func
+        };(typeof global=='undefined'?window:global).safefunction_with_name = function(func,name){
+            set_native(func, myFunction_toString_symbol, `function ${myFunction_toString_symbol,name || ''}() { [native code] }`);
+            return func
         };
         function make_constructor(name, Name, name_inject_objs, Name_inject_objs, proto, config){
             config = config !== undefined?config:{}
@@ -275,7 +405,7 @@ function Cilame(){
         }}
         ;(typeof global=='undefined'?window:global)._vPxy = function(G, M){
             var _vLog = (typeof global=='undefined'?window:global)._vLog || console.log
-            function LS(T, M, F){ return `${M}[${T.constructor.name}].(Prxoy)${F} ==>>`}
+            function LS(T, M, F){ return `  [UnProxy] ${M}[${T.constructor.name}].(Prxoy)${F} ==>>`} // 未知对象取值处理时的检查操作
             return new Proxy(G, {
                 apply:                    function(T, A, L){    _vLog(LS(G, M, 'apply') );                    return Reflect.apply(T, A, L) },
                 construct:                function(T, L, N){    _vLog(LS(G, M, 'construct') );                return Reflect.construct(T, L, N) },
@@ -296,7 +426,7 @@ function Cilame(){
             console.table([{tag, G_or_S, objectname, propertyname,value}], ["tag","G_or_S","objectname","propertyname","value"]);
         }
         function logB(tag, GS, objectname, propertyname, value){
-            console.info(tag, GS, `[${objectname}]`, `"${propertyname}"`, value);
+            console.info('[VmProxy]', tag, GS, `[${objectname}]`, `"${typeof propertyname=='symbol'?'symbol':propertyname}"`, value);
         }
         function VmProxy(logger, object_, titlename, dont_log_value){
             return new Proxy(object_, {
@@ -320,13 +450,26 @@ function Cilame(){
         ;(typeof global=='undefined'?window:global).VmProxyB = VmProxyB
         ;(typeof global=='undefined'?window:global).hookFunc = function hookFunc(H){
             eval(`
-            _v${H} = ${H}
-            window.${H} = function ${H}(){
-                if (window.start){
+            _v${H.split('.').pop()} = ${H}
+            window.${H} = function ${H.split('.').pop()}(){
+                if (start){
                     console.log('-------------------- ${H}(*) --------------------')
                     console.log(arguments[0])
                 }
-                return _v${H}.apply(this, arguments)
+                return _v${H.split('.').pop()}.apply(this, arguments)
+            }
+            safefunction(window.${H})
+            `)
+        }
+        ;(typeof global=='undefined'?window:global).hookFuncObject = function hookFuncObject(H){
+            eval(`
+            _v${H.split('.').pop()} = ${H}
+            window.${H} = function ${H.split('.').pop()}(){
+                if (start){
+                    console.log('-------------------- ${H}(*) --------------------')
+                    console.log(arguments)
+                }
+                return _v${H.split('.').pop()}.apply(this, arguments)
             }
             safefunction(window.${H})
             `)
@@ -355,13 +498,8 @@ function Cilame(){
     make_constructor("windowProperties",    "WindowProperties", [], [], new EventTarget, { allow_illegal: true })
     make_constructor("window",              "Window", [GL], [GL],       __cilame__['n']['windowProperties']) // WindowProperties 没有注入 window 环境
     window = new Proxy(window, {
-        get: function(a,b,c){
-            return a[b] || global[b]
-        },
-        set: function(a,b,c){
-            global[b] = c
-            return a[b] = c
-        }
+        get: function(a,b,c){ return a[b] || global[b] },
+        set: function(a,b,c){ return a[b] = global[b] = c }
     })
     // window 生成之后将 global 内部的常用函数直接传到 window 里面
     var Gkeys = Object.getOwnPropertyNames(global), exclude = ['global', 'process', '_global']
@@ -430,7 +568,6 @@ function Cilame(){
         }
     });
     document.location = location
-
     // 处理 localStorage 和 sessionStorage 的初始化
     function Storage(){}
     Storage.prototype.clear      = function clear(){            debugger; var self = this; Object.keys(self).forEach(function (key) { self[key] = undefined; delete self[key]; }); }
@@ -502,11 +639,34 @@ function Cilame(){
     performance['timing'] = Object.assign(_vtiming, performance['timing'])
     performance['navigation'] = Object.assign(_vnavigation, performance['navigation'])
     // window.indexedDB
+    make_constructor("_vDOMStringList", "DOMStringList", [], EN, undefined, { allow_illegal: true})
+    make_constructor("_vIDBDatabase", "IDBDatabase", [], EN, undefined, { allow_illegal: true})
+    make_constructor("_vIDBOpenDBRequest", "IDBOpenDBRequest", [], EN, undefined, { allow_illegal: true})
     make_constructor("indexedDB", "IDBFactory", EN, EN)
     window.indexedDB.__proto__["cmp"]            = function cmp(){debugger;};            safefunction(window.indexedDB["cmp"]);
     window.indexedDB.__proto__["databases"]      = function databases(){debugger;};      safefunction(window.indexedDB["databases"]);
     window.indexedDB.__proto__["deleteDatabase"] = function deleteDatabase(){debugger;}; safefunction(window.indexedDB["deleteDatabase"]);
-    window.indexedDB.__proto__["open"]           = function open(){debugger;};           safefunction(window.indexedDB["open"]);
+    window.indexedDB.__proto__["open"]           = function open(name){
+        var _temp_IDBOpenDBRequest = _vPxy(new IDBOpenDBRequest, 'IDBOpenDBRequest');
+        _temp_IDBOpenDBRequest.error = null
+        _temp_IDBOpenDBRequest.onblocked = null
+        _temp_IDBOpenDBRequest.onerror = null
+        _temp_IDBOpenDBRequest.onsuccess = null
+        _temp_IDBOpenDBRequest.onupgradeneeded = null
+        _temp_IDBOpenDBRequest.readyState = "done"
+        _temp_IDBOpenDBRequest.result = _vPxy(new IDBDatabase, 'IDBDatabase')
+        _temp_IDBOpenDBRequest.result.name = name
+        _temp_IDBOpenDBRequest.result.objectStoreNames = _vPxy(new DOMStringList, 'DOMStringList')
+        _temp_IDBOpenDBRequest.result.objectStoreNames.length = 0
+        _temp_IDBOpenDBRequest.result.onabort = null
+        _temp_IDBOpenDBRequest.result.onclose = null
+        _temp_IDBOpenDBRequest.result.onerror = null
+        _temp_IDBOpenDBRequest.result.onversionchange = null
+        _temp_IDBOpenDBRequest.result.version = 1
+        _temp_IDBOpenDBRequest.source = null
+        _temp_IDBOpenDBRequest.transaction = null
+        return _temp_IDBOpenDBRequest
+    }; safefunction(window.indexedDB["open"]);
     // window.XMLHttpRequest
     make_constructor("XMLHttpRequest", "XMLHttpRequest", EN, EN, undefined, { allow_illegal: true })
     XMLHttpRequest.prototype["UNSENT"]                = XMLHttpRequest["UNSENT"]                = 0;
@@ -521,7 +681,6 @@ function Cilame(){
     XMLHttpRequest.prototype["overrideMimeType"]      = function overrideMimeType(){debugger;};      safefunction(XMLHttpRequest.prototype["overrideMimeType"]);
     XMLHttpRequest.prototype["send"]                  = function send(){debugger;};                  safefunction(XMLHttpRequest.prototype["send"]);
     XMLHttpRequest.prototype["setRequestHeader"]      = function setRequestHeader(){debugger;};      safefunction(XMLHttpRequest.prototype["setRequestHeader"]);
-
     // window.screen
     make_constructor("screen", "Screen", EN, EN)
     screen.__proto__["availWidth"]  = 1920;
@@ -539,11 +698,36 @@ function Cilame(){
     _vorientation.__proto__["onchange"]            = null;
     _vorientation.__proto__["lock"]                = function lock(){debugger;};                safefunction(_vorientation["lock"]);
     _vorientation.__proto__["unlock"]              = function unlock(){debugger;};              safefunction(_vorientation["unlock"]);
-    _vorientation.__proto__["addEventListener"]    = function addEventListener(){debugger;};    safefunction(_vorientation["addEventListener"]);
-    _vorientation.__proto__["dispatchEvent"]       = function dispatchEvent(){debugger;};       safefunction(_vorientation["dispatchEvent"]);
-    _vorientation.__proto__["removeEventListener"] = function removeEventListener(){debugger;}; safefunction(_vorientation["removeEventListener"]);
     screen["orientation"] = _vorientation
+    // window.BatteryManager
+    make_constructor("_vBatteryManager", "BatteryManager", EN, EN)
+    BatteryManager.prototype['charging']                = true
+    BatteryManager.prototype['chargingTime']            = 0
+    BatteryManager.prototype['dischargingTime']         = Infinity
+    BatteryManager.prototype['level']                   = 1
+    BatteryManager.prototype['onchargingchange']        = null
+    BatteryManager.prototype['onchargingtimechange']    = null
+    BatteryManager.prototype['ondischargingtimechange'] = null
+    BatteryManager.prototype['onlevelchange']           = null
+    navigator.getBattery = function getBattery(){
+        fakePromise = new safefunction_with_name(function Promise(){}, 'Promise') // 这里不用真实的 Promise 主要就是考虑到更好的控制执行流程
+        fakePromise.then = safefunction(function then(func){
+            EventTarget.prototype.addEventListener('load', function(){
+                return func(_vBatteryManager)
+            })
+        })
+        return fakePromise
+    }
 
+    // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
+    ;(typeof global=='undefined'?window:global).runloads = function runloads(){
+        loadfuncs = EventTarget.prototype.listeners.load
+        if (loadfuncs){
+            for (var i = 0; i < loadfuncs.length; i++) {
+                loadfuncs[i]()
+            }
+        }
+    }
     // 用于生成代码用，在环境中无影响，保留即可
     var nn = Object.keys(__cilame__['n'])
     var NN = Object.keys(__cilame__['N'])
@@ -551,36 +735,6 @@ function Cilame(){
     return nn.concat(NN).concat(AA)
 }
 Cilame()
-
-
-
-// console.log(localStorage)
-// console.log(localStorage.length)
-// console.log(localStorage.getItem("$_fb"))
-// console.log(localStorage.removeItem("$_fb"))
-// console.log(localStorage.getItem("$_fb"))
-// console.log(localStorage)
-// console.log(localStorage.setItem("$_fb", "hahaha"))
-// console.log(localStorage.getItem("$_fb"))
-// console.log(localStorage)
-
-
-
-
-
-
-
-// sessionStorage.__proto__["length"]     = 2;
-// sessionStorage.__proto__["clear"]      = function clear(){debugger;};      safefunction(sessionStorage.__proto__["clear"]);
-// sessionStorage.__proto__["getItem"]    = function getItem(){debugger;};    safefunction(sessionStorage.__proto__["getItem"]);
-// sessionStorage.__proto__["key"]        = function key(){debugger;};        safefunction(sessionStorage.__proto__["key"]);
-// sessionStorage.__proto__["removeItem"] = function removeItem(){debugger;}; safefunction(sessionStorage.__proto__["removeItem"]);
-// sessionStorage.__proto__["setItem"]    = function setItem(){debugger;};    safefunction(sessionStorage.__proto__["setItem"]);
-// sessionStorage["$_cDro"] = "1";
-// sessionStorage["$_YWTU"] = "FEQUsSBVzv0QWk6YXiwmU1rTQu5fgYnAS0QCjp2noTZ";
-
-
-
 
 
 
