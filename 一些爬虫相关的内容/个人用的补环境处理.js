@@ -60,6 +60,9 @@ function get_all(){
             if (name_ == 'document' && key == 'all'){
                 return `${name_}.__proto__["${key}"] = undefined;\r\n`
             }
+            if (name_ == 'document' && key == 'body'){
+                return `${name_}.__proto__["${key}"] = _vPxy(new class HTMLBodyElement{}, "body");\r\n`
+            }
         }else{
             return `${name_}.__proto__["${key}"] = ${JSON.stringify(v)};\r\n`
         }
@@ -547,10 +550,10 @@ function Cilame(){
     })();
     // 处理 location 初始化，以及绑定 document
     make_constructor("location",    "Location",     EN, EN)
-    location["ancestorOrigins"] = new (class DOMStringList {});
-    location["assign"]          = function assign(){debugger;};  safefunction(location["assign"]);
-    location["reload"]          = function reload(){debugger;};  safefunction(location["reload"]);
-    location["replace"]         = function replace(){debugger;}; safefunction(location["replace"]);
+    location["ancestorOrigins"] = _vPxy(new (class DOMStringList {}), "location.ancestorOrigins");
+    location["assign"]          = function assign(U){  console.log("  [location] assign", U);};  safefunction(location["assign"]);
+    location["reload"]          = function reload(){   console.log("  [location] reload");};     safefunction(location["reload"]);
+    location["replace"]         = function replace(U){ console.log("  [location] replace", U);}; safefunction(location["replace"]);
     Object.defineProperty(location, 'href', {
         get: function(){
             return location.protocol + "//" + location.host + (location.port ? ":" + location.port : "") + location.pathname + location.search + location.hash;
@@ -570,11 +573,11 @@ function Cilame(){
     document.location = location
     // 处理 localStorage 和 sessionStorage 的初始化
     function Storage(){}
-    Storage.prototype.clear      = function clear(){            debugger; var self = this; Object.keys(self).forEach(function (key) { self[key] = undefined; delete self[key]; }); }
-    Storage.prototype.getItem    = function getItem(key){       debugger; return this.hasOwnProperty(key)?String(this[key]):null }
-    Storage.prototype.key        = function key(i){             debugger; return Object.keys(this)[i||0];} 
-    Storage.prototype.removeItem = function removeItem(key){    debugger; delete this[key];}       
-    Storage.prototype.setItem    = function setItem(key, val){  debugger; this[key] = (val === undefined)?null:String(val) }
+    Storage.prototype.clear      = function clear(){            console.log('  [Storage] clear');           var self = this; Object.keys(self).forEach(function (key) { self[key] = undefined; delete self[key]; }); }
+    Storage.prototype.getItem    = function getItem(key){       console.log('  [Storage] getItem',key);     return this.hasOwnProperty(key)?String(this[key]):null }
+    Storage.prototype.key        = function key(i){             console.log('  [Storage] key',i);           return Object.keys(this)[i||0];} 
+    Storage.prototype.removeItem = function removeItem(key){    console.log('  [Storage] removeItem',key);  delete this[key];}       
+    Storage.prototype.setItem    = function setItem(key, val){  console.log('  [Storage] setItem',key,val); this[key] = (val === undefined)?null:String(val) }
     safefunction(Storage)
     _storage_obj = new Storage
     // window.localStorage
@@ -638,6 +641,28 @@ function Cilame(){
     make_constructor("_vnavigation", "PerformanceNavigation", EN, EN)
     performance['timing'] = Object.assign(_vtiming, performance['timing'])
     performance['navigation'] = Object.assign(_vnavigation, performance['navigation'])
+    // window.chrome
+    window.chrome = {
+        "app": {
+            "isInstalled": false,
+            "InstallState": { "DISABLED": "disabled", "INSTALLED": "installed", "NOT_INSTALLED": "not_installed" },
+            "RunningState": { "CANNOT_RUN": "cannot_run", "READY_TO_RUN": "ready_to_run", "RUNNING": "running" },
+            "getDetails":     safefunction(function getDetails(){     console.log("  [chrome] getDetails")}),
+            "getIsInstalled": safefunction(function getIsInstalled(){ console.log("  [chrome] getIsInstalled")}),
+            "installState":   safefunction(function installState(){   console.log("  [chrome] installState")}),
+        },
+        "runtime": {
+            "OnInstalledReason": { "CHROME_UPDATE": "chrome_update", "INSTALL": "install", "SHARED_MODULE_UPDATE": "shared_module_update", "UPDATE": "update" },
+            "OnRestartRequiredReason": { "APP_UPDATE": "app_update", "OS_UPDATE": "os_update", "PERIODIC": "periodic" },
+            "PlatformArch": { "ARM": "arm", "ARM64": "arm64", "MIPS": "mips", "MIPS64": "mips64", "X86_32": "x86-32", "X86_64": "x86-64" },
+            "PlatformNaclArch": { "ARM": "arm", "MIPS": "mips", "MIPS64": "mips64", "X86_32": "x86-32", "X86_64": "x86-64" },
+            "PlatformOs": { "ANDROID": "android", "CROS": "cros", "LINUX": "linux", "MAC": "mac", "OPENBSD": "openbsd", "WIN": "win" },
+            "RequestUpdateCheckStatus": { "NO_UPDATE": "no_update", "THROTTLED": "throttled", "UPDATE_AVAILABLE": "update_available" },
+            "connect":     safefunction(function connect(){     console.log("  [chrome] connect") }),
+            "sendMessage": safefunction(function sendMessage(){ console.log("  [chrome] sendMessage") }),
+            "id": undefined,
+        }
+    }
     // window.indexedDB
     make_constructor("_vDOMStringList", "DOMStringList", [], EN, undefined, { allow_illegal: true})
     make_constructor("_vIDBDatabase", "IDBDatabase", [], EN, undefined, { allow_illegal: true})
@@ -699,7 +724,59 @@ function Cilame(){
     _vorientation.__proto__["lock"]                = function lock(){debugger;};                safefunction(_vorientation["lock"]);
     _vorientation.__proto__["unlock"]              = function unlock(){debugger;};              safefunction(_vorientation["unlock"]);
     screen["orientation"] = _vorientation
-    // window.BatteryManager
+    // mimeTypes模拟
+    make_constructor("_vPlugin", "Plugin", EN, EN, Array)
+    make_constructor("_vMimeType", "MimeType", EN, EN)
+    make_constructor("_vMimeTypeArray", "MimeTypeArray", EN, EN, Array)
+    _vMimeTypeArray[0] = new __cilame__['N']['MimeType']
+    _vMimeTypeArray[0].description = ""
+    _vMimeTypeArray[0].enabledPlugin = new __cilame__['N']['Plugin'] 
+    _vMimeTypeArray[0].enabledPlugin[0] = _vMimeTypeArray[0]
+    _vMimeTypeArray[0].enabledPlugin.description = ""
+    _vMimeTypeArray[0].enabledPlugin.filename = "mhjfbmdgcfjbbpaeojofohoefgiehjai"
+    _vMimeTypeArray[0].enabledPlugin.length = 1
+    _vMimeTypeArray[0].enabledPlugin.name = "Chrome PDF Viewer"
+    _vMimeTypeArray[0].suffixes = "pdf"
+    _vMimeTypeArray[0].type = "application/pdf"
+    _vMimeTypeArray[_vMimeTypeArray[0].type] = _vMimeTypeArray[0]
+    _vMimeTypeArray[1] = new __cilame__['N']['MimeType']
+    _vMimeTypeArray[1].description = "Portable Document Format"
+    _vMimeTypeArray[1].enabledPlugin = new __cilame__['N']['Plugin'] 
+    _vMimeTypeArray[1].enabledPlugin[0] = _vMimeTypeArray[1]
+    _vMimeTypeArray[1].enabledPlugin.description = "Portable Document Format"
+    _vMimeTypeArray[1].enabledPlugin.filename = "internal-pdf-viewer"
+    _vMimeTypeArray[1].enabledPlugin.length = 1
+    _vMimeTypeArray[1].enabledPlugin.name = "Chrome PDF Viewer"
+    _vMimeTypeArray[1].suffixes = "pdf"
+    _vMimeTypeArray[1].type = "application/x-google-chrome-pdf"
+    _vMimeTypeArray[_vMimeTypeArray[1].type] = _vMimeTypeArray[1]
+    _vMimeTypeArray[2] = new __cilame__['N']['MimeType']
+    _vMimeTypeArray[2].description = "Native Client Executable"
+    _vMimeTypeArray[2].enabledPlugin = new __cilame__['N']['Plugin'] 
+    _vMimeTypeArray[2].enabledPlugin[0] = _vMimeTypeArray[2]
+    _vMimeTypeArray[2].enabledPlugin[1] = _vMimeTypeArray[3]
+    _vMimeTypeArray[2].enabledPlugin.description = ""
+    _vMimeTypeArray[2].enabledPlugin.filename = "internal-nacl-plugin"
+    _vMimeTypeArray[2].enabledPlugin.length = 2
+    _vMimeTypeArray[2].enabledPlugin.name = "Native Client"
+    _vMimeTypeArray[2].suffixes = "pdf"
+    _vMimeTypeArray[2].type = "application/x-nacl"
+    _vMimeTypeArray[_vMimeTypeArray[2].type] = _vMimeTypeArray[2]
+    _vMimeTypeArray[3] = new __cilame__['N']['MimeType']
+    _vMimeTypeArray[3].description = "Portable Native Client Executable"
+    _vMimeTypeArray[3].enabledPlugin = new __cilame__['N']['Plugin'] 
+    _vMimeTypeArray[3].enabledPlugin[0] = _vMimeTypeArray[2]
+    _vMimeTypeArray[3].enabledPlugin[1] = _vMimeTypeArray[3]
+    _vMimeTypeArray[3].enabledPlugin.description = ""
+    _vMimeTypeArray[3].enabledPlugin.filename = "internal-nacl-plugin"
+    _vMimeTypeArray[3].enabledPlugin.length = 2
+    _vMimeTypeArray[3].enabledPlugin.name = "Native Client"
+    _vMimeTypeArray[3].suffixes = "pdf"
+    _vMimeTypeArray[3].type = "application/x-pnacl"
+    _vMimeTypeArray[_vMimeTypeArray[3].type] = _vMimeTypeArray[3]
+    Object.defineProperty(_vMimeTypeArray, 'length', { get: function(){ return 4 } })
+    navigator.mimeTypes = _vMimeTypeArray
+    // 电池信息模拟
     make_constructor("_vBatteryManager", "BatteryManager", EN, EN)
     BatteryManager.prototype['charging']                = true
     BatteryManager.prototype['chargingTime']            = 0
@@ -735,6 +812,33 @@ function Cilame(){
     return nn.concat(NN).concat(AA)
 }
 Cilame()
+
+
+
+// console.log(localStorage)
+// console.log(localStorage.length)
+// console.log(localStorage.getItem("$_fb"))
+// console.log(localStorage.removeItem("$_fb"))
+// console.log(localStorage.getItem("$_fb"))
+// console.log(localStorage)
+// console.log(localStorage.setItem("$_fb", "hahaha"))
+// console.log(localStorage.getItem("$_fb"))
+// console.log(localStorage)
+
+
+
+
+
+
+
+// sessionStorage.__proto__["length"]     = 2;
+// sessionStorage.__proto__["clear"]      = function clear(){debugger;};      safefunction(sessionStorage.__proto__["clear"]);
+// sessionStorage.__proto__["getItem"]    = function getItem(){debugger;};    safefunction(sessionStorage.__proto__["getItem"]);
+// sessionStorage.__proto__["key"]        = function key(){debugger;};        safefunction(sessionStorage.__proto__["key"]);
+// sessionStorage.__proto__["removeItem"] = function removeItem(){debugger;}; safefunction(sessionStorage.__proto__["removeItem"]);
+// sessionStorage.__proto__["setItem"]    = function setItem(){debugger;};    safefunction(sessionStorage.__proto__["setItem"]);
+// sessionStorage["$_cDro"] = "1";
+// sessionStorage["$_YWTU"] = "FEQUsSBVzv0QWk6YXiwmU1rTQu5fgYnAS0QCjp2noTZ";
 
 
 
