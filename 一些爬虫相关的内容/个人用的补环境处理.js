@@ -163,7 +163,7 @@ function make_all(){
     console.log(
     Cilame + "\\r\\n" +
     "Cilame()\\r\\n" +
-    vall(window,                 "window",               ${JSON.stringify(Cilame())}.concat(['_vLog', '_vPxy'])) +
+    vall(window,                 "window",               ${JSON.stringify(Cilame())}.concat(['_vLog', '_vPxy','setTimeout', 'setInterval', 'clearInterval', 'clearTimeout'])) +
     vall(document,               "document",             ['cookie', 'addEventListener', 'dispatchEvent', 'removeEventListener', "createElement", "getElementsByName"]) +
     vall(Node.prototype,         "Node.prototype",       ["location", 'addEventListener', 'dispatchEvent', 'removeEventListener']) +
     vall(navigator,              "navigator",            ['connection', 'getBattery'],    ['languages']) +
@@ -209,12 +209,19 @@ function temp_hookFunc(H){
     \\\`)
 }
 temp_hookFunc('Function')
-
 // hookFunc('Function')
+
+// 目前就使用这样的方式将 setTimeout/setInterval 钩住使用，这两个函数都有点特殊，需要特别关注
+window.setTimeout = safefunction(function setTimeout(func, time){ 
+    if ((time||0) < 100){  console.log('  [setTimeout] immediately.', func); func() }
+    else{ console.log('  [setTimeout] not run. cos interval over 100:', time) }
+})
+window.setInterval = safefunction(function setInterval(func, time){
+    if ((time||0) < 100){ console.log('  [setInterval] immediately (only run once).', func); func() }
+    else{ console.log('  [setInterval] not run. cos interval over 100:', time) }
+})
 hookFunc("clearInterval")
 hookFunc("clearTimeout")
-hookFunc("setInterval")
-hookFunc("setTimeout")
 hookFunc("Number")
 hookFunc("parseFloat")
 hookFunc("parseInt")
@@ -905,7 +912,7 @@ function Cilame(){
     BatteryManager.prototype['onchargingtimechange']    = null
     BatteryManager.prototype['ondischargingtimechange'] = null
     BatteryManager.prototype['onlevelchange']           = null
-    navigator.getBattery = function getBattery(){
+    navigator.getBattery = safefunction(function getBattery(){
         var ostart = start
         start = false
         fakePromise = new safefunction_with_name(function Promise(){}, 'Promise') // 这里不用真实的 Promise 主要就是考虑到更好的控制执行流程
@@ -916,13 +923,20 @@ function Cilame(){
         })
         start = ostart
         return fakePromise
-    }
+    })
     // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
-    ;(typeof global=='undefined'?window:global).runloads = function runloads(){
+    ;(typeof global=='undefined'?window:global).runloads = function runloads(reverse){
         loadfuncs = EventTarget.prototype.listeners.load
         if (loadfuncs){
-            for (var i = 0; i < loadfuncs.length; i++) {
-                loadfuncs[i]()
+            if (reverse){
+                for (var i = loadfuncs.length - 1; i >= 0; i--) { 
+                    console.log('---------------------------------------------------- LoadFunc ${loadfuncs[i]} ----------------------------------------------------')
+                    loadfuncs[i]() }
+            }else{
+                for (var i = 0; i < loadfuncs.length; i++) { 
+                    console.log('---------------------------------------------------- LoadFunc ${loadfuncs[i]} ----------------------------------------------------')
+                    loadfuncs[i]() 
+                }
             }
         }
     }
