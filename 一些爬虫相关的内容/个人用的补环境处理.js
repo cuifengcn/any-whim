@@ -298,8 +298,17 @@ hookFuncObject("Object.keys")
 hookFuncObject("Object.entries")
 hookFuncObject("Object.values")
 
+// 为了保证函数内部的随机函数在一定程度上固定，这里将 random hook 成一个伪随机函数，保证某些函数计算的稳定。
+Math.random = (function(seed) {
+    return (function random() {
+        seed = (seed * 9301 + 49297) % 233280, rnd = seed / 233280.0
+        console.log('  [fake Math.random]', rnd)
+        return rnd
+    })
+})(0)
+
 start = true  // 主要的 VmProxyB 的log开关
-// start1 = true // 一些未被实现的 _vPxy(new class Unknown{}) 的 Proxy 打印日志，让输出更清晰，不过尽量不要使用这个
+// start1 = true // 一些未被实现的 _vPxy(new class Unknown{}) 的 Proxy 打印日志，让输出更清晰
 
 
 
@@ -421,7 +430,14 @@ function Cilame(){
                 isExtensible:             function(T){          _vLog(LS(G, M, 'isExtensible') );             return Reflect.isExtensible(T) },
                 ownKeys:                  function(T){          _vLog(LS(G, M, 'ownKeys') );                  return Reflect.ownKeys(T) },
                 preventExtensions:        function(T){          _vLog(LS(G, M, 'preventExtensions') );        return Reflect.preventExtensions(T) },
-                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), P);                    return Reflect.set(T, P, V, R) },
+                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), P, 
+                    typeof V=='string'?
+                        V.length > 100?V.slice(0,100)+'<DONSHOW MORETHAN 100 LENGTH>':V
+                    :
+                    typeof V=='number'?V:
+                    typeof V=='function'?V:
+                    '<DONTSHOW OBJECTTYPE>'
+                );                    return Reflect.set(T, P, V, R) },
                 setPrototypeOf:           function(T, P){       _vLog(LS(G, M, 'setPrototypeOf'));            return Reflect.setPrototypeOf(T, P) },
             })
         }
@@ -483,21 +499,21 @@ function Cilame(){
     var GL = _global = (typeof global=='undefined'?window:global)
     make_constructor("eventTarget", "EventTarget", [], [GL], undefined, { allow_illegal: true })
     EventTarget.prototype.listeners = {};
-    EventTarget.prototype.addEventListener = function(type, callback) {
+    EventTarget.prototype.addEventListener = safefunction(function addEventListener(type, callback) {
         if(!(type in this.listeners)) { this.listeners[type] = []; }
         this.listeners[type].push(callback);
-    };
-    EventTarget.prototype.removeEventListener = function(type, callback) {
+    })
+    EventTarget.prototype.removeEventListener = safefunction(function removeEventListener(type, callback) {
         if(!(type in this.listeners)) { return; }
         var stack = this.listeners[type];
         for(var i = 0, l = stack.length; i < l; i++) { if(stack[i] === callback){ stack.splice(i, 1); return this.removeEventListener(type, callback); } }
-    };
-    EventTarget.prototype.dispatchEvent = function(event) {
+    })
+    EventTarget.prototype.dispatchEvent = safefunction(function dispatchEvent(event) {
         if(!(event.type in this.listeners)) { return; }
         var stack = this.listeners[event.type];
         event.target = this;
         for(var i = 0, l = stack.length; i < l; i++) { stack[i].call(this, event); }
-    };
+    })
     make_constructor("windowProperties",    "WindowProperties", [], [], new EventTarget, { allow_illegal: true })
     make_constructor("window",              "Window", [GL], [GL],       __cilame__['n']['windowProperties']) // WindowProperties 没有注入 window 环境
     window = new Proxy(window, {
@@ -652,11 +668,11 @@ function Cilame(){
             "installState":   safefunction(function installState(){   console.log("  [chrome] installState")}),
         },
         "runtime": {
-            "OnInstalledReason": { "CHROME_UPDATE": "chrome_update", "INSTALL": "install", "SHARED_MODULE_UPDATE": "shared_module_update", "UPDATE": "update" },
-            "OnRestartRequiredReason": { "APP_UPDATE": "app_update", "OS_UPDATE": "os_update", "PERIODIC": "periodic" },
-            "PlatformArch": { "ARM": "arm", "ARM64": "arm64", "MIPS": "mips", "MIPS64": "mips64", "X86_32": "x86-32", "X86_64": "x86-64" },
-            "PlatformNaclArch": { "ARM": "arm", "MIPS": "mips", "MIPS64": "mips64", "X86_32": "x86-32", "X86_64": "x86-64" },
-            "PlatformOs": { "ANDROID": "android", "CROS": "cros", "LINUX": "linux", "MAC": "mac", "OPENBSD": "openbsd", "WIN": "win" },
+            "OnInstalledReason":        { "CHROME_UPDATE": "chrome_update", "INSTALL": "install", "SHARED_MODULE_UPDATE": "shared_module_update", "UPDATE": "update" },
+            "OnRestartRequiredReason":  { "APP_UPDATE": "app_update", "OS_UPDATE": "os_update", "PERIODIC": "periodic" },
+            "PlatformArch":             { "ARM": "arm", "ARM64": "arm64", "MIPS": "mips", "MIPS64": "mips64", "X86_32": "x86-32", "X86_64": "x86-64" },
+            "PlatformNaclArch":         { "ARM": "arm", "MIPS": "mips", "MIPS64": "mips64", "X86_32": "x86-32", "X86_64": "x86-64" },
+            "PlatformOs":               { "ANDROID": "android", "CROS": "cros", "LINUX": "linux", "MAC": "mac", "OPENBSD": "openbsd", "WIN": "win" },
             "RequestUpdateCheckStatus": { "NO_UPDATE": "no_update", "THROTTLED": "throttled", "UPDATE_AVAILABLE": "update_available" },
             "connect":     safefunction(function connect(){     console.log("  [chrome] connect") }),
             "sendMessage": safefunction(function sendMessage(){ console.log("  [chrome] sendMessage") }),
@@ -724,6 +740,104 @@ function Cilame(){
     _vorientation.__proto__["lock"]                = function lock(){debugger;};                safefunction(_vorientation["lock"]);
     _vorientation.__proto__["unlock"]              = function unlock(){debugger;};              safefunction(_vorientation["unlock"]);
     screen["orientation"] = _vorientation
+    // document.createElement ， 这个函数很重要，需要特殊挂钩一下
+    var htmlmap = {
+        HTMLElement: ["abbr", "address", "article", "aside", "b", "bdi", "bdo", "cite", "code", "dd", "dfn", "dt", "em", "figcaption", "figure", "footer", "header", "hgroup", "i", "kbd", "main", "mark", "nav", "noscript", "rp", "rt", "ruby", "s", "samp", "section", "small", "strong", "sub", "summary", "sup", "u", "var", "wbr"],
+        HTMLAnchorElement: ["a"],
+        HTMLAreaElement: ["area"],
+        HTMLAudioElement: ["audio"],
+        HTMLBaseElement: ["base"],
+        HTMLBodyElement: ["body"],
+        HTMLBRElement: ["br"],
+        HTMLButtonElement: ["button"],
+        HTMLCanvasElement: ["canvas"],
+        HTMLDataElement: ["data"],
+        HTMLDataListElement: ["datalist"],
+        HTMLDetailsElement: ["details"],
+        HTMLDialogElement: ["dialog"],
+        HTMLDirectoryElement: ["dir"],
+        HTMLDivElement: ["div"],
+        HTMLDListElement: ["dl"],
+        HTMLEmbedElement: ["embed"],
+        HTMLFieldSetElement: ["fieldset"],
+        HTMLFontElement: ["font"],
+        HTMLFormElement: ["form"],
+        HTMLFrameElement: ["frame"],
+        HTMLFrameSetElement: ["frameset"],
+        HTMLHeadingElement: ["h1", "h2", "h3", "h4", "h5", "h6"],
+        HTMLHeadElement: ["head"],
+        HTMLHRElement: ["hr"],
+        HTMLHtmlElement: ["html"],
+        HTMLIFrameElement: ["iframe"],
+        HTMLImageElement: ["img"],
+        HTMLInputElement: ["input"],
+        HTMLLabelElement: ["label"],
+        HTMLLegendElement: ["legend"],
+        HTMLLIElement: ["li"],
+        HTMLLinkElement: ["link"],
+        HTMLMapElement: ["map"],
+        HTMLMarqueeElement: ["marquee"],
+        HTMLMediaElement: [],
+        HTMLMenuElement: ["menu"],
+        HTMLMetaElement: ["meta"],
+        HTMLMeterElement: ["meter"],
+        HTMLModElement: ["del", "ins"],
+        HTMLObjectElement: ["object"],
+        HTMLOListElement: ["ol"],
+        HTMLOptGroupElement: ["optgroup"],
+        HTMLOptionElement: ["option"],
+        HTMLOutputElement: ["output"],
+        HTMLParagraphElement: ["p"],
+        HTMLParamElement: ["param"],
+        HTMLPictureElement: ["picture"],
+        HTMLPreElement: ["listing", "pre", "xmp"],
+        HTMLProgressElement: ["progress"],
+        HTMLQuoteElement: ["blockquote", "q"],
+        HTMLScriptElement: ["script"],
+        HTMLSelectElement: ["select"],
+        HTMLSlotElement: ["slot"],
+        HTMLSourceElement: ["source"],
+        HTMLSpanElement: ["span"],
+        HTMLStyleElement: ["style"],
+        HTMLTableCaptionElement: ["caption"],
+        HTMLTableCellElement: ["th", "td"],
+        HTMLTableColElement: ["col", "colgroup"],
+        HTMLTableElement: ["table"],
+        HTMLTimeElement: ["time"],
+        HTMLTitleElement: ["title"],
+        HTMLTableRowElement: ["tr"],
+        HTMLTableSectionElement: ["thead", "tbody", "tfoot"],
+        HTMLTemplateElement: ["template"],
+        HTMLTextAreaElement: ["textarea"],
+        HTMLTrackElement: ["track"],
+        HTMLUListElement: ["ul"],
+        HTMLUnknownElement: [],
+        HTMLVideoElement: ["video"]
+    }
+    document.createElement = safefunction(function createElement(e){
+        var ostart = start
+        var ostart1 = start1
+        start = false
+        start1 = false
+        var htmlmapkeys = Object.keys(htmlmap)
+        e = e.toLocaleLowerCase()
+        for (var i = 0; i < htmlmapkeys.length; i++) {
+            if (htmlmap[htmlmapkeys[i]].indexOf(e) != -1){
+                var ele = eval(` _vPxy(new class ${htmlmapkeys[i]}{}, "${htmlmapkeys[i]}");`)
+                break
+            }
+        }
+        if (!ele){ var ele = eval(` _vPxy(new class HTMLElement{}, "HTMLElement");`) }
+        ele.getAttribute           = safefunction(function getAttribute(N){              console.log('  [document.createElement.getAttribute] null',N); return null})
+        ele.getAttributeNode       = safefunction(function getAttributeNode(N){          console.log('  [document.createElement.getAttributeNode] null',N); return null})
+        ele.getAttributeNames      = safefunction(function getAttributeNames(N){         console.log('  [document.createElement.getAttributeNames] []',N); return []})
+        ele.getElementsByClassName = safefunction(function getElementsByClassName(N){    console.log('  [document.createElement.getElementsByClassName] []',N); return []})
+        ele.getElementsByTagName   = safefunction(function getElementsByTagName(N){      console.log('  [document.createElement.getElementsByTagName] []',N); return []})
+        ele.getElementsByTagNameNS = safefunction(function getElementsByTagNameNS(A,B){  console.log('  [document.createElement.getElementsByTagNameNS] []',A,B); return []})
+        start = ostart
+        start1 = ostart1
+        return ele
+    })
     // mimeTypes模拟
     make_constructor("_vPlugin", "Plugin", EN, EN, Array)
     make_constructor("_vMimeType", "MimeType", EN, EN)
@@ -787,15 +901,17 @@ function Cilame(){
     BatteryManager.prototype['ondischargingtimechange'] = null
     BatteryManager.prototype['onlevelchange']           = null
     navigator.getBattery = function getBattery(){
+        var ostart = start
+        start = false
         fakePromise = new safefunction_with_name(function Promise(){}, 'Promise') // 这里不用真实的 Promise 主要就是考虑到更好的控制执行流程
         fakePromise.then = safefunction(function then(func){
             EventTarget.prototype.addEventListener('load', function(){
-                return func(_vBatteryManager)
+                return func(_vPxy(_vBatteryManager, "BatteryManager"))
             })
         })
+        start = ostart
         return fakePromise
     }
-
     // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
     ;(typeof global=='undefined'?window:global).runloads = function runloads(){
         loadfuncs = EventTarget.prototype.listeners.load
