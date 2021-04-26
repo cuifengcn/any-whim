@@ -475,28 +475,6 @@ function Cilame(){
                 }
             });
         };
-        function logA(tag, G_or_S, objectname, propertyname, value){
-            console.table([{tag, G_or_S, objectname, propertyname,value}], ["tag","G_or_S","objectname","propertyname","value"]);
-        }
-        function logB(tag, GS, objectname, propertyname, value){
-            console.info('[VmProxy]', tag, GS, `[${objectname}]`, `"${typeof propertyname=='symbol'?'symbol':propertyname}"`, value);
-        }
-        function VmProxy(logger, object_, titlename, dont_log_value){
-            return new Proxy(object_, {
-                get (target, property) { 
-                    if (start){
-                        logger(titlename, "Get >>", target.constructor.name, property, dont_log_value?'<DONTLOG>':target[property]);
-                    }
-                    return target[property];
-                },
-                set (target, property, value) {
-                    if (start){
-                        logger(titlename, "Set <<", target.constructor.name, property, dont_log_value?'<DONTLOG>':value);
-                    }
-                    target[property] = value;
-                }
-            });
-        };
         var VmProxyA = function (){return VmProxy.apply(this, [logA].concat([].slice.call(arguments)))}
         var VmProxyB = function (){return VmProxy.apply(this, [logB].concat([].slice.call(arguments)))}
         ;(typeof global=='undefined'?window:global).VmProxyA = VmProxyA
