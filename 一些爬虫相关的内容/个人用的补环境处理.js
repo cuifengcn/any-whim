@@ -458,7 +458,9 @@ function Cilame(){
             console.table([{tag, G_or_S, objectname, propertyname,value}], ["tag","G_or_S","objectname","propertyname","value"]);
         }
         function logB(tag, GS, objectname, propertyname, value){
-            console.info('[VmProxy]', tag, GS, `[${objectname}]`, `"${typeof propertyname=='symbol'?'symbol':propertyname}"`, value);
+            var pro = `[VmProxy] ${tag} ${GS} [${objectname}] "${typeof propertyname=='symbol'?'symbol':propertyname}"`
+            var emp = function (n){ return n>0?Array(n).fill('=').join('').replace(/=/g, ' '):'' };
+            console.info(pro + emp(70-pro.length), value);
         }
         function VmProxy(logger, object_, titlename, dont_log_value){
             return new Proxy(object_, {
@@ -486,7 +488,7 @@ function Cilame(){
             window.${H} = function ${H.split('.').pop()}(){
                 if (start){
                     console.log('-------------------- ${H}(*) --------------------')
-                    console.log(arguments[0])
+                    console.log(myparselog(arguments[0]))
                 }
                 return _v${H.split('.').pop()}.apply(this, arguments)
             }
@@ -513,7 +515,7 @@ function Cilame(){
                 var v = _v${H.split('.').pop()}.apply(this, arguments)
                 if (start){
                     console.log('-------------------- ${H}(*) --------------------')
-                    console.log(v)
+                    console.log(myparselog(v))
                 }
                 return v
             }
