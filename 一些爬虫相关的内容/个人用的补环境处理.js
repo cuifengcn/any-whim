@@ -432,7 +432,8 @@ function Cilame(){
             typeof V=='number'?V:
             typeof V=='function'?V:
             typeof V=='undefined'?undefined:
-            '<DONTSHOW OBJECTTYPE>'
+            typeof V=='boolean'?V:
+            `<DONTSHOW TYPE:${typeof V}>`
         }
         ;(typeof global=='undefined'?window:global)._vPxy = function(G, M){
             var _vLog = (typeof global=='undefined'?window:global)._vLog || console.log
@@ -771,83 +772,37 @@ function Cilame(){
     _vorientation.__proto__["lock"]                = function lock(){debugger;};                safefunction(_vorientation["lock"]);
     _vorientation.__proto__["unlock"]              = function unlock(){debugger;};              safefunction(_vorientation["unlock"]);
     screen["orientation"] = _vorientation
+    // Element 元素上面通常存在的 style /CSSStyleDeclaration
+    make_constructor("_vCSSStyleDeclaration", "CSSStyleDeclaration", EN, EN)
+    function make_style() {
+        var style = Object.assign(new __cilame__['N']['CSSStyleDeclaration'], {
+            alignContent: "", alignItems: "", alignSelf: "", alignmentBaseline: "", all: "", animation: "", animationDelay: "", animationDirection: "", animationDuration: "", animationFillMode: "", animationIterationCount: "", animationName: "", animationPlayState: "", animationTimingFunction: "", appearance: "", ascentOverride: "", aspectRatio: "", backdropFilter: "",
+            backfaceVisibility: "",
+            background: "", backgroundAttachment: "", backgroundBlendMode: "", backgroundClip: "", backgroundColor: "", backgroundImage: "", backgroundOrigin: "", backgroundPosition: "", backgroundPositionX: "", backgroundPositionY: "", backgroundRepeat: "", backgroundRepeatX: "", backgroundRepeatY: "", backgroundSize: "", baselineShift: "", blockSize: "", border: "", borderBlock: "", borderBlockColor: "", borderBlockEnd: "", borderBlockEndColor: "", borderBlockEndStyle: "", borderBlockEndWidth: "", borderBlockStart: "", borderBlockStartColor: "", borderBlockStartStyle: "", borderBlockStartWidth: "", borderBlockStyle: "", borderBlockWidth: "", borderBottom: "", borderBottomColor: "", borderBottomLeftRadius: "", borderBottomRightRadius: "", borderBottomStyle: "", borderBottomWidth: "", borderCollapse: "", borderColor: "", borderEndEndRadius: "", borderEndStartRadius: "", borderImage: "", borderImageOutset: "", borderImageRepeat: "", borderImageSlice: "", borderImageSource: "", borderImageWidth: "", borderInline: "", borderInlineColor: "", borderInlineEnd: "", borderInlineEndColor: "", borderInlineEndStyle: "", borderInlineEndWidth: "", borderInlineStart: "", borderInlineStartColor: "", borderInlineStartStyle: "", borderInlineStartWidth: "", borderInlineStyle: "", borderInlineWidth: "", borderLeft: "", borderLeftColor: "", borderLeftStyle: "", borderLeftWidth: "", borderRadius: "", borderRight: "", borderRightColor: "", borderRightStyle: "", borderRightWidth: "", borderSpacing: "", borderStartEndRadius: "", borderStartStartRadius: "", borderStyle: "", borderTop: "", borderTopColor: "", borderTopLeftRadius: "", borderTopRightRadius: "", borderTopStyle: "", borderTopWidth: "", borderWidth: "", bottom: "", boxShadow: "", boxSizing: "", breakAfter: "", breakBefore: "", breakInside: "", bufferedRendering: "", captionSide: "",
+            caretColor: "", clear: "", clip: "", clipPath: "", clipRule: "", color: "", colorInterpolation: "", colorInterpolationFilters: "", colorRendering: "", colorScheme: "", columnCount: "", columnFill: "", columnGap: "", columnRule: "", columnRuleColor: "", columnRuleStyle: "", columnRuleWidth: "", columnSpan: "", columnWidth: "", columns: "", contain: "", containIntrinsicSize: "", content: "", contentVisibility: "", counterIncrement: "", counterReset: "", counterSet: "", cssFloat: "", cssText: "", cursor: "", cx: "", cy: "", d: "",
+            descentOverride: "", direction: "", display: "", dominantBaseline: "", emptyCells: "", fill: "", fillOpacity: "", fillRule: "", filter: "", flex: "", flexBasis: "", flexDirection: "", flexFlow: "", flexGrow: "", flexShrink: "", flexWrap: "", float: "", floodColor: "", floodOpacity: "", font: "", fontDisplay: "", fontFamily: "", fontFeatureSettings: "", fontKerning: "", fontOpticalSizing: "", fontSize: "", fontStretch: "", fontStyle: "", fontVariant: "", fontVariantCaps: "", fontVariantEastAsian: "", fontVariantLigatures: "", fontVariantNumeric: "", fontVariationSettings: "", fontWeight: "", forcedColorAdjust: "", gap: "", grid: "", gridArea: "", gridAutoColumns: "", gridAutoFlow: "", gridAutoRows: "", gridColumn: "", gridColumnEnd: "", gridColumnGap: "", gridColumnStart: "", gridGap: "", gridRow: "", gridRowEnd: "", gridRowGap: "", gridRowStart: "", gridTemplate: "", gridTemplateAreas: "", gridTemplateColumns: "", gridTemplateRows: "", height: "",
+            hyphens: "", imageOrientation: "", imageRendering: "", inherits: "", initialValue: "", inlineSize: "", inset: "", insetBlock: "", insetBlockEnd: "", insetBlockStart: "", insetInline: "", insetInlineEnd: "", insetInlineStart: "", isolation: "", justifyContent: "", justifyItems: "", justifySelf: "", left: "", length: 0, letterSpacing: "", lightingColor: "", lineBreak: "", lineGapOverride: "", lineHeight: "", listStyle: "", listStyleImage: "", listStylePosition: "", listStyleType: "", margin: "", marginBlock: "", marginBlockEnd: "", marginBlockStart: "", marginBottom: "", marginInline: "", marginInlineEnd: "", marginInlineStart: "", marginLeft: "", marginRight: "", marginTop: "", marker: "", markerEnd: "", markerMid: "", markerStart: "", mask: "", maskType: "", maxBlockSize: "", maxHeight: "", maxInlineSize: "", maxWidth: "", maxZoom: "", minBlockSize: "", minHeight: "", minInlineSize: "", minWidth: "", minZoom: "", mixBlendMode: "", objectFit: "",
+            objectPosition: "", offset: "", offsetDistance: "", offsetPath: "", offsetRotate: "", opacity: "", order: "", orientation: "", orphans: "", outline: "", outlineColor: "", outlineOffset: "", outlineStyle: "", outlineWidth: "", overflow: "", overflowAnchor: "", overflowWrap: "", overflowX: "", overflowY: "", overscrollBehavior: "", overscrollBehaviorBlock: "", overscrollBehaviorInline: "", overscrollBehaviorX: "", overscrollBehaviorY: "", padding: "", paddingBlock: "", paddingBlockEnd: "", paddingBlockStart: "", paddingBottom: "", paddingInline: "", paddingInlineEnd: "", paddingInlineStart: "", paddingLeft: "", paddingRight: "", paddingTop: "", page: "", pageBreakAfter: "", pageBreakBefore: "", pageBreakInside: "", pageOrientation: "", paintOrder: "", parentRule: null, perspective: "", perspectiveOrigin: "", placeContent: "", placeItems: "", placeSelf: "", pointerEvents: "", position: "", quotes: "", r: "", resize: "", right: "", rowGap: "", rubyPosition: "", rx: "", ry: "", scrollBehavior: "",
+            scrollMargin: "", scrollMarginBlock: "", scrollMarginBlockEnd: "", scrollMarginBlockStart: "", scrollMarginBottom: "", scrollMarginInline: "", scrollMarginInlineEnd: "", scrollMarginInlineStart: "", scrollMarginLeft: "", scrollMarginRight: "", scrollMarginTop: "", scrollPadding: "", scrollPaddingBlock: "", scrollPaddingBlockEnd: "", scrollPaddingBlockStart: "", scrollPaddingBottom: "", scrollPaddingInline: "", scrollPaddingInlineEnd: "", scrollPaddingInlineStart: "", scrollPaddingLeft: "", scrollPaddingRight: "", scrollPaddingTop: "", scrollSnapAlign: "", scrollSnapStop: "", scrollSnapType: "", shapeImageThreshold: "", shapeMargin: "", shapeOutside: "", shapeRendering: "", size: "", speak: "", src: "", stopColor: "", stopOpacity: "", stroke: "", strokeDasharray: "", strokeDashoffset: "", strokeLinecap: "", strokeLinejoin: "", strokeMiterlimit: "", strokeOpacity: "", strokeWidth: "", syntax: "", tabSize: "", tableLayout: "", textAlign: "", textAlignLast: "", textAnchor: "", textCombineUpright: "", textDecoration: "", textDecorationColor: "", textDecorationLine: "", textDecorationSkipInk: "", textDecorationStyle: "", textDecorationThickness: "", textIndent: "", textOrientation: "", textOverflow: "", textRendering: "", textShadow: "", textSizeAdjust: "", textTransform: "", textUnderlineOffset: "", textUnderlinePosition: "", top: "", touchAction: "", transform: "", transformBox: "", transformOrigin: "", transformStyle: "", transition: "", transitionDelay: "", transitionDuration: "", transitionProperty: "", transitionTimingFunction: "", unicodeBidi: "", unicodeRange: "", userSelect: "", userZoom: "", vectorEffect: "", verticalAlign: "", visibility: "", whiteSpace: "", widows: "", width: "", willChange: "", wordBreak: "", wordSpacing: "", wordWrap: "", writingMode: "", 
+            x: "",
+            y: "",
+            zIndex: "",
+            zoom: "",
+        })
+        style.__proto__ = safefunction(function(){})
+        return style
+    }
     // document.createElement ， 这个函数很重要，需要特殊挂钩一下
     var htmlmap = {
         HTMLElement: ["abbr", "address", "article", "aside", "b", "bdi", "bdo", "cite", "code", "dd", "dfn", "dt", "em", "figcaption", "figure", "footer", "header", "hgroup", "i", "kbd", "main", "mark", "nav", "noscript", "rp", "rt", "ruby", "s", "samp", "section", "small", "strong", "sub", "summary", "sup", "u", "var", "wbr"],
-        HTMLAnchorElement: ["a"],
-        HTMLAreaElement: ["area"],
-        HTMLAudioElement: ["audio"],
-        HTMLBaseElement: ["base"],
-        HTMLBodyElement: ["body"],
-        HTMLBRElement: ["br"],
-        HTMLButtonElement: ["button"],
-        HTMLCanvasElement: ["canvas"],
-        HTMLDataElement: ["data"],
-        HTMLDataListElement: ["datalist"],
-        HTMLDetailsElement: ["details"],
-        HTMLDialogElement: ["dialog"],
-        HTMLDirectoryElement: ["dir"],
-        HTMLDivElement: ["div"],
-        HTMLDListElement: ["dl"],
-        HTMLEmbedElement: ["embed"],
-        HTMLFieldSetElement: ["fieldset"],
-        HTMLFontElement: ["font"],
-        HTMLFormElement: ["form"],
-        HTMLFrameElement: ["frame"],
-        HTMLFrameSetElement: ["frameset"],
-        HTMLHeadingElement: ["h1", "h2", "h3", "h4", "h5", "h6"],
-        HTMLHeadElement: ["head"],
-        HTMLHRElement: ["hr"],
-        HTMLHtmlElement: ["html"],
-        HTMLIFrameElement: ["iframe"],
-        HTMLImageElement: ["img"],
-        HTMLInputElement: ["input"],
-        HTMLLabelElement: ["label"],
-        HTMLLegendElement: ["legend"],
-        HTMLLIElement: ["li"],
-        HTMLLinkElement: ["link"],
-        HTMLMapElement: ["map"],
-        HTMLMarqueeElement: ["marquee"],
-        HTMLMediaElement: [],
-        HTMLMenuElement: ["menu"],
-        HTMLMetaElement: ["meta"],
-        HTMLMeterElement: ["meter"],
-        HTMLModElement: ["del", "ins"],
-        HTMLObjectElement: ["object"],
-        HTMLOListElement: ["ol"],
-        HTMLOptGroupElement: ["optgroup"],
-        HTMLOptionElement: ["option"],
-        HTMLOutputElement: ["output"],
-        HTMLParagraphElement: ["p"],
-        HTMLParamElement: ["param"],
-        HTMLPictureElement: ["picture"],
-        HTMLPreElement: ["listing", "pre", "xmp"],
-        HTMLProgressElement: ["progress"],
-        HTMLQuoteElement: ["blockquote", "q"],
-        HTMLScriptElement: ["script"],
-        HTMLSelectElement: ["select"],
-        HTMLSlotElement: ["slot"],
-        HTMLSourceElement: ["source"],
-        HTMLSpanElement: ["span"],
-        HTMLStyleElement: ["style"],
-        HTMLTableCaptionElement: ["caption"],
-        HTMLTableCellElement: ["th", "td"],
-        HTMLTableColElement: ["col", "colgroup"],
-        HTMLTableElement: ["table"],
-        HTMLTimeElement: ["time"],
-        HTMLTitleElement: ["title"],
-        HTMLTableRowElement: ["tr"],
-        HTMLTableSectionElement: ["thead", "tbody", "tfoot"],
-        HTMLTemplateElement: ["template"],
-        HTMLTextAreaElement: ["textarea"],
-        HTMLTrackElement: ["track"],
-        HTMLUListElement: ["ul"],
-        HTMLUnknownElement: [],
-        HTMLVideoElement: ["video"]
+        HTMLAnchorElement: ["a"], HTMLAreaElement: ["area"], HTMLAudioElement: ["audio"], HTMLBaseElement: ["base"], HTMLBodyElement: ["body"], HTMLBRElement: ["br"], HTMLButtonElement: ["button"], HTMLCanvasElement: ["canvas"], HTMLDataElement: ["data"], HTMLDataListElement: ["datalist"], HTMLDetailsElement: ["details"], HTMLDialogElement: ["dialog"], HTMLDirectoryElement: ["dir"], HTMLDivElement: ["div"], HTMLDListElement: ["dl"], HTMLEmbedElement: ["embed"], HTMLFieldSetElement: ["fieldset"], HTMLFontElement: ["font"], HTMLFormElement: ["form"], HTMLFrameElement: ["frame"], HTMLFrameSetElement: ["frameset"], HTMLHeadingElement: ["h1", "h2", "h3", "h4", "h5", "h6"], HTMLHeadElement: ["head"], HTMLHRElement: ["hr"], HTMLHtmlElement: ["html"], HTMLIFrameElement: ["iframe"], HTMLImageElement: ["img"], HTMLInputElement: ["input"],
+        HTMLLabelElement: ["label"], HTMLLegendElement: ["legend"], HTMLLIElement: ["li"], HTMLLinkElement: ["link"], HTMLMapElement: ["map"], HTMLMarqueeElement: ["marquee"], HTMLMediaElement: [], HTMLMenuElement: ["menu"], HTMLMetaElement: ["meta"], HTMLMeterElement: ["meter"], HTMLModElement: ["del", "ins"], HTMLObjectElement: ["object"], HTMLOListElement: ["ol"], HTMLOptGroupElement: ["optgroup"], HTMLOptionElement: ["option"], HTMLOutputElement: ["output"], HTMLParagraphElement: ["p"], HTMLParamElement: ["param"], HTMLPictureElement: ["picture"], HTMLPreElement: ["listing", "pre", "xmp"], HTMLProgressElement: ["progress"], HTMLQuoteElement: ["blockquote", "q"], HTMLScriptElement: ["script"], HTMLSelectElement: ["select"], HTMLSlotElement: ["slot"],
+        HTMLSourceElement: ["source"], HTMLSpanElement: ["span"], HTMLStyleElement: ["style"], HTMLTableCaptionElement: ["caption"], HTMLTableCellElement: ["th", "td"], HTMLTableColElement: ["col", "colgroup"], HTMLTableElement: ["table"], HTMLTimeElement: ["time"], HTMLTitleElement: ["title"], HTMLTableRowElement: ["tr"], HTMLTableSectionElement: ["thead", "tbody", "tfoot"], HTMLTemplateElement: ["template"], HTMLTextAreaElement: ["textarea"], HTMLTrackElement: ["track"], HTMLUListElement: ["ul"], HTMLUnknownElement: [], HTMLVideoElement: ["video"]
     }
     document.createElement = safefunction(function createElement(e){
         var ostart = start
         var ostart1 = start1
+        if (ostart){ console.log('  [document.createElement]', e) }
         start = false
         start1 = false
         var htmlmapkeys = Object.keys(htmlmap)
@@ -865,6 +820,7 @@ function Cilame(){
         ele.getElementsByClassName = safefunction(function getElementsByClassName(N){    console.log('  [document.createElement.getElementsByClassName] []',N); return []})
         ele.getElementsByTagName   = safefunction(function getElementsByTagName(N){      console.log('  [document.createElement.getElementsByTagName] []',N); return []})
         ele.getElementsByTagNameNS = safefunction(function getElementsByTagNameNS(A,B){  console.log('  [document.createElement.getElementsByTagNameNS] []',A,B); return []})
+        ele.style = make_style()
         start = ostart
         start1 = ostart1
         return ele
@@ -943,7 +899,6 @@ function Cilame(){
         start = ostart
         return fakePromise
     })
-    // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
     // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
     ;(typeof global=='undefined'?window:global).runloads = function runloads(reverse){
         var loadfuncs = EventTarget.prototype.listeners.load
