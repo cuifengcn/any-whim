@@ -500,15 +500,18 @@ function Cilame(){
     make_constructor("eventTarget", "EventTarget", [], [GL], undefined, { allow_illegal: true })
     EventTarget.prototype.listeners = {};
     EventTarget.prototype.addEventListener = safefunction(function addEventListener(type, callback) {
+        console.log('  [addEventListener]', type, callback)
         if(!(type in this.listeners)) { this.listeners[type] = []; }
         this.listeners[type].push(callback);
     })
     EventTarget.prototype.removeEventListener = safefunction(function removeEventListener(type, callback) {
+        console.log('  [removeEventListener]', type, callback)
         if(!(type in this.listeners)) { return; }
         var stack = this.listeners[type];
         for(var i = 0, l = stack.length; i < l; i++) { if(stack[i] === callback){ stack.splice(i, 1); return this.removeEventListener(type, callback); } }
     })
     EventTarget.prototype.dispatchEvent = safefunction(function dispatchEvent(event) {
+        console.log('  [dispatchEvent]', event)
         if(!(event.type in this.listeners)) { return; }
         var stack = this.listeners[event.type];
         event.target = this;
@@ -516,6 +519,8 @@ function Cilame(){
     })
     make_constructor("windowProperties",    "WindowProperties", [], [], new EventTarget, { allow_illegal: true })
     make_constructor("window",              "Window", [GL], [GL],       __cilame__['n']['windowProperties']) // WindowProperties 没有注入 window 环境
+    window["TEMPORARY"]  = 0;
+    window["PERSISTENT"] = 1;
     window = new Proxy(window, {
         get: function(a,b,c){ return a[b] || global[b] },
         set: function(a,b,c){ return a[b] = global[b] = c }
