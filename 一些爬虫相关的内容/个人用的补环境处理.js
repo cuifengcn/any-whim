@@ -313,6 +313,9 @@ Math.random = (function(seed) {
         return rnd
     })
 })(0)
+hookFunc("Date.parse")
+hookFuncReturn("Date.prototype.valueOf")
+hookFuncReturn("Date.prototype.getTime")
 
 start = true  // 主要的 VmProxyB 的log开关
 // start1 = true // 一些未被实现的 _vPxy(new class Unknown{}) 的 Proxy 打印日志，让输出更清晰
@@ -422,32 +425,56 @@ function Cilame(){
         ;(typeof global=='undefined'?window:global)._vLog = function _vLog(){ if (start1){ 
             console.log.apply(console.log, [].slice.call(arguments))
         }}
+        function myparselog(V){
+            return typeof V=='string'?
+                V.length > 100?V.slice(0,100) + '... <DONSHOW MORETHAN 100 LENGTH>':V
+            :
+            typeof V=='number'?V:
+            typeof V=='function'?V:
+            typeof V=='undefined'?undefined:
+            '<DONTSHOW OBJECTTYPE>'
+        }
         ;(typeof global=='undefined'?window:global)._vPxy = function(G, M){
             var _vLog = (typeof global=='undefined'?window:global)._vLog || console.log
             function LS(T, M, F){ return `  [UnProxy] ${M}[${T.constructor.name}].(Prxoy)${F} ==>>`} // 未知对象取值处理时的检查操作
             return new Proxy(G, {
                 apply:                    function(T, A, L){    _vLog(LS(G, M, 'apply') );                    return Reflect.apply(T, A, L) },
                 construct:                function(T, L, N){    _vLog(LS(G, M, 'construct') );                return Reflect.construct(T, L, N) },
-                deleteProperty:           function(T, P){       _vLog(LS(G, M, 'deleteProperty') );           return Reflect.deleteProperty(T, P) },
+                deleteProperty:           function(T, P){       _vLog(LS(G, M, 'deleteProperty'), P);         return Reflect.deleteProperty(T, P) },
                 get:                      function(T, P, R){    _vLog(LS(G, M, 'get'), P);                    return Reflect.get(T, P, R) },
                 // defineProperty:           function(T, P, A){    _vLog(LS(G, M, 'defineProperty') );           return Reflect.defineProperty(T, P, A) },
                 // getOwnPropertyDescriptor: function(T, P){       _vLog(LS(G, M, 'getOwnPropertyDescriptor') ); return Reflect.getOwnPropertyDescriptor(T, P) },
                 getPrototypeOf:           function(T){          _vLog(LS(G, M, 'getPrototypeOf') );           return Reflect.getPrototypeOf(T) },
-                has:                      function(T, P){       _vLog(LS(G, M, 'has') );                      return Reflect.has(T, P) },
+                has:                      function(T, P){       _vLog(LS(G, M, 'has'), P);                    return Reflect.has(T, P) },
                 isExtensible:             function(T){          _vLog(LS(G, M, 'isExtensible') );             return Reflect.isExtensible(T) },
                 ownKeys:                  function(T){          _vLog(LS(G, M, 'ownKeys') );                  return Reflect.ownKeys(T) },
                 preventExtensions:        function(T){          _vLog(LS(G, M, 'preventExtensions') );        return Reflect.preventExtensions(T) },
-                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), P, 
-                    typeof V=='string'?
-                        V.length > 100?V.slice(0,100)+'<DONSHOW MORETHAN 100 LENGTH>':V
-                    :
-                    typeof V=='number'?V:
-                    typeof V=='function'?V:
-                    '<DONTSHOW OBJECTTYPE>'
-                );                    return Reflect.set(T, P, V, R) },
-                setPrototypeOf:           function(T, P){       _vLog(LS(G, M, 'setPrototypeOf'));            return Reflect.setPrototypeOf(T, P) },
+                set:                      function(T, P, V, R){ _vLog(LS(G, M, 'set'), P, myparselog(V) );    return Reflect.set(T, P, V, R) },
+                setPrototypeOf:           function(T, P){       _vLog(LS(G, M, 'setPrototypeOf'), P);         return Reflect.setPrototypeOf(T, P) },
             })
         }
+        function logA(tag, G_or_S, objectname, propertyname, value){
+            console.table([{tag, G_or_S, objectname, propertyname,value}], ["tag","G_or_S","objectname","propertyname","value"]);
+        }
+        function logB(tag, GS, objectname, propertyname, value){
+            console.info('[VmProxy]', tag, GS, `[${objectname}]`, `"${typeof propertyname=='symbol'?'symbol':propertyname}"`, value);
+        }
+        function VmProxy(logger, object_, titlename, dont_log_value){
+            return new Proxy(object_, {
+                get (target, property) { 
+                    if (start){
+                        logger(titlename, "Get >>", target.constructor.name, property, myparselog(target[property]));
+                    }
+                    return target[property];
+                },
+                set (target, property, value) {
+                    if (start){
+                        logger(titlename, "Set <<", target.constructor.name, property, myparselog(value));
+                    }
+                    target[property] = value;
+                }
+            });
+        };
         function logA(tag, G_or_S, objectname, propertyname, value){
             console.table([{tag, G_or_S, objectname, propertyname,value}], ["tag","G_or_S","objectname","propertyname","value"]);
         }
@@ -496,6 +523,20 @@ function Cilame(){
                     console.log(arguments)
                 }
                 return _v${H.split('.').pop()}.apply(this, arguments)
+            }
+            safefunction(window.${H})
+            `)
+        }
+        ;(typeof global=='undefined'?window:global).hookFuncReturn = function hookFuncReturn(H){
+            eval(`
+            _v${H.split('.').pop()} = ${H}
+            window.${H} = function ${H.split('.').pop()}(){
+                var v = _v${H.split('.').pop()}.apply(this, arguments)
+                if (start){
+                    console.log('-------------------- ${H}(*) --------------------')
+                    console.log(v)
+                }
+                return v
             }
             safefunction(window.${H})
             `)
@@ -925,16 +966,18 @@ function Cilame(){
         return fakePromise
     })
     // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
+    // runloads： 在你添加的js执行完之后，再执行这个用于将 load 内的函数尽数执行
     ;(typeof global=='undefined'?window:global).runloads = function runloads(reverse){
-        loadfuncs = EventTarget.prototype.listeners.load
+        var loadfuncs = EventTarget.prototype.listeners.load
+        var T = '======================================================================='
         if (loadfuncs){
             if (reverse){
                 for (var i = loadfuncs.length - 1; i >= 0; i--) { 
-                    console.log('---------------------------------------------------- LoadFunc ${loadfuncs[i]} ----------------------------------------------------')
+                    console.log(`${T} LoadFunc ${loadfuncs[i].name||'UnknownFunc'} ${T}`)
                     loadfuncs[i]() }
             }else{
                 for (var i = 0; i < loadfuncs.length; i++) { 
-                    console.log('---------------------------------------------------- LoadFunc ${loadfuncs[i]} ----------------------------------------------------')
+                    console.log(`${T} LoadFunc ${loadfuncs[i].name||'UnknownFunc'} ${T}`)
                     loadfuncs[i]() 
                 }
             }
