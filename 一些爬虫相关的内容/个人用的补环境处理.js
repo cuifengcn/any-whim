@@ -624,10 +624,10 @@ function Cilame(){
     // 处理 localStorage 和 sessionStorage 的初始化
     function Storage(){}
     Storage.prototype.clear      = function clear(){            console.log('  [Storage] clear');           var self = this; Object.keys(self).forEach(function (key) { self[key] = undefined; delete self[key]; }); }
-    Storage.prototype.getItem    = function getItem(key){       console.log('  [Storage] getItem',key);     return this.hasOwnProperty(key)?String(this[key]):null }
-    Storage.prototype.key        = function key(i){             console.log('  [Storage] key',i);           return Object.keys(this)[i||0];} 
-    Storage.prototype.removeItem = function removeItem(key){    console.log('  [Storage] removeItem',key);  delete this[key];}       
+    Storage.prototype.getItem    = function getItem(key){       var r = (this.hasOwnProperty(key)?String(this[key]):null); console.log('  [Storage] getItem',key,myparselog(r)); return r}
     Storage.prototype.setItem    = function setItem(key, val){  console.log('  [Storage] setItem',key,val); this[key] = (val === undefined)?null:String(val) }
+    Storage.prototype.key        = function key(i){             console.log('  [Storage] key',i);           return Object.keys(this)[i||0];} 
+    Storage.prototype.removeItem = function removeItem(key){    console.log('  [Storage] removeItem',key);  delete this[key];}  
     safefunction(Storage)
     _storage_obj = new Storage
     // window.localStorage
