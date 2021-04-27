@@ -425,7 +425,7 @@ function Cilame(){
         ;(typeof global=='undefined'?window:global)._vLog = function _vLog(){ if (start1){ 
             console.log.apply(console.log, [].slice.call(arguments))
         }}
-        function myparselog(V){
+        ;(typeof global=='undefined'?window:global).myparselog = function myparselog(V){
             return typeof V=='string'?
                 V.length > 100?V.slice(0,100) + '... <DONSHOW MORETHAN 100 LENGTH>':V
             :
@@ -718,9 +718,9 @@ function Cilame(){
     make_constructor("_vIDBDatabase", "IDBDatabase", [], EN, undefined, { allow_illegal: true})
     make_constructor("_vIDBOpenDBRequest", "IDBOpenDBRequest", [], EN, undefined, { allow_illegal: true})
     make_constructor("indexedDB", "IDBFactory", EN, EN)
-    window.indexedDB.__proto__["cmp"]            = function cmp(){debugger;};            safefunction(window.indexedDB["cmp"]);
-    window.indexedDB.__proto__["databases"]      = function databases(){debugger;};      safefunction(window.indexedDB["databases"]);
-    window.indexedDB.__proto__["deleteDatabase"] = function deleteDatabase(){debugger;}; safefunction(window.indexedDB["deleteDatabase"]);
+    window.indexedDB.__proto__["cmp"]            = function cmp(){_vLog('--- func(*) --- indexedDB.cmp');debugger;};                       safefunction(window.indexedDB["cmp"]);
+    window.indexedDB.__proto__["databases"]      = function databases(){_vLog('--- func(*) --- indexedDB.databases');debugger;};           safefunction(window.indexedDB["databases"]);
+    window.indexedDB.__proto__["deleteDatabase"] = function deleteDatabase(){_vLog('--- func(*) --- indexedDB.deleteDatabase');debugger;}; safefunction(window.indexedDB["deleteDatabase"]);
     window.indexedDB.__proto__["open"]           = function open(name){
         var _temp_IDBOpenDBRequest = _vPxy(new IDBOpenDBRequest, 'IDBOpenDBRequest');
         _temp_IDBOpenDBRequest.error = null
@@ -749,13 +749,13 @@ function Cilame(){
     XMLHttpRequest.prototype["HEADERS_RECEIVED"]      = XMLHttpRequest["HEADERS_RECEIVED"]      = 2;
     XMLHttpRequest.prototype["LOADING"]               = XMLHttpRequest["LOADING"]               = 3;
     XMLHttpRequest.prototype["DONE"]                  = XMLHttpRequest["DONE"]                  = 4;
-    XMLHttpRequest.prototype["abort"]                 = function abort(){debugger;};                 safefunction(XMLHttpRequest.prototype["abort"]);
-    XMLHttpRequest.prototype["getAllResponseHeaders"] = function getAllResponseHeaders(){debugger;}; safefunction(XMLHttpRequest.prototype["getAllResponseHeaders"]);
-    XMLHttpRequest.prototype["getResponseHeader"]     = function getResponseHeader(){debugger;};     safefunction(XMLHttpRequest.prototype["getResponseHeader"]);
-    XMLHttpRequest.prototype["open"]                  = function open(){debugger;};                  safefunction(XMLHttpRequest.prototype["open"]);
-    XMLHttpRequest.prototype["overrideMimeType"]      = function overrideMimeType(){debugger;};      safefunction(XMLHttpRequest.prototype["overrideMimeType"]);
-    XMLHttpRequest.prototype["send"]                  = function send(){debugger;};                  safefunction(XMLHttpRequest.prototype["send"]);
-    XMLHttpRequest.prototype["setRequestHeader"]      = function setRequestHeader(){debugger;};      safefunction(XMLHttpRequest.prototype["setRequestHeader"]);
+    XMLHttpRequest.prototype["abort"]                 = function abort(){_vLog('--- func(*) --- XMLHttpRequest.abort');debugger;};                                  safefunction(XMLHttpRequest.prototype["abort"]);
+    XMLHttpRequest.prototype["getAllResponseHeaders"] = function getAllResponseHeaders(){_vLog('--- func(*) --- XMLHttpRequest.getAllResponseHeaders');debugger;};  safefunction(XMLHttpRequest.prototype["getAllResponseHeaders"]);
+    XMLHttpRequest.prototype["getResponseHeader"]     = function getResponseHeader(){_vLog('--- func(*) --- XMLHttpRequest.getResponseHeader');debugger;};          safefunction(XMLHttpRequest.prototype["getResponseHeader"]);
+    XMLHttpRequest.prototype["open"]                  = function open(){_vLog('--- func(*) --- XMLHttpRequest.open');debugger;};                                    safefunction(XMLHttpRequest.prototype["open"]);
+    XMLHttpRequest.prototype["overrideMimeType"]      = function overrideMimeType(){_vLog('--- func(*) --- XMLHttpRequest.overrideMimeType');debugger;};            safefunction(XMLHttpRequest.prototype["overrideMimeType"]);
+    XMLHttpRequest.prototype["send"]                  = function send(){_vLog('--- func(*) --- XMLHttpRequest.send');debugger;};                                    safefunction(XMLHttpRequest.prototype["send"]);
+    XMLHttpRequest.prototype["setRequestHeader"]      = function setRequestHeader(){_vLog('--- func(*) --- XMLHttpRequest.setRequestHeader');debugger;};            safefunction(XMLHttpRequest.prototype["setRequestHeader"]);
     // window.screen
     make_constructor("screen", "Screen", EN, EN)
     screen.__proto__["availWidth"]  = 1920;
