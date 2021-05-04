@@ -166,7 +166,7 @@ function make_all(){
     vall(window,                 "window",               ${JSON.stringify(Cilame())}.concat(['_vLog', '_vPxy','setTimeout', 'setInterval', 'clearInterval', 'clearTimeout'])) +
     vall(document,               "document",             ['cookie', 'addEventListener', 'dispatchEvent', 'removeEventListener', "createElement", "getElementsByName"]) +
     vall(Node.prototype,         "Node.prototype",       ["location", 'addEventListener', 'dispatchEvent', 'removeEventListener']) +
-    vall(navigator,              "navigator",            ['connection', 'getBattery'],    ['languages']) +
+    vall(navigator,              "navigator",            ['connection', 'getBattery', 'mimeTypes'],    ['languages']) +
     vall(window.location,        "window.location") +
     vall(window.localStorage,    "window.localStorage",   ["clear", "getItem", "key", "removeItem", "setItem", "length"]) +
     vall(window.sessionStorage,  "window.sessionStorage", ["clear", "getItem", "key", "removeItem", "setItem", "length"]) +
