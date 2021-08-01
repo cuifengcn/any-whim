@@ -41,8 +41,6 @@ def get_info():
     url,headers = mk_url_headers()
     s = requests.get(url,headers=headers,allow_redirects=False)
     location = s.headers['location']
-    scookie = s.headers['Set-Cookie']
-    acw_tc = re.findall('(acw_tc=[^;]+;)', scookie)[0]
     seed = unquote(re.findall('seed=([^&]+)&', location)[0])
     name = unquote(re.findall('name=([^&]+)&', location)[0])
     ts = unquote(re.findall('ts=([^&]+)&', location)[0])
@@ -56,6 +54,7 @@ def get_info():
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36"
         }
         return url,headers
+    # 此处可以不必每次都要请求，这里搞个缓存即可。
     url,headers = mk_url_headers(name)
     s = requests.get(url,headers=headers)
     code = s.text
