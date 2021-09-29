@@ -9,7 +9,7 @@
         return typeof this == 'function' && this[myFunction_toString_symbol] || $toString.call(this);
     };
     function set_native(func, key, value) {
-        Object.defineProperty(func, key, {
+        return Object.defineProperty(func, key, {
             "enumerable": false,
             "configurable": true,
             "writable": true,
@@ -20,7 +20,7 @@
     set_native(Function.prototype, "toString", myToString);
     set_native(Function.prototype.toString, myFunction_toString_symbol, "function toString() { [native code] }");
     (typeof global=='undefined'?window:global).func_set_natvie = function(func){
-        set_native(func, myFunction_toString_symbol, `function ${myFunction_toString_symbol,func.name || ''}() { [native code] }`);
+        return set_native(func, myFunction_toString_symbol, `function ${myFunction_toString_symbol,func.name || ''}() { [native code] }`);
     };
 })();
 
