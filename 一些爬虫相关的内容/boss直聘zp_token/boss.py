@@ -12,7 +12,7 @@ def make_func(code):
         jstitle = f.read()
     jscode = jstitle + code + '''
     ;function test(seed, time) {
-        code = encodeURIComponent((new ABC).z(seed, parseInt(time) + (480 + (new Date).getTimezoneOffset()) * 60 * 1e3));
+        code = encodeURIComponent((new window.ABC).z(seed, parseInt(time) + (480 + (new Date).getTimezoneOffset()) * 60 * 1e3));
         return "__zp_stoken__=" +code;
     }; 
     '''
