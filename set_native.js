@@ -27,6 +27,37 @@
 
 
 
+// 根据上面的原理改造的 toString 保护函数，这样不用入侵每一个函数体，给那个函数对象增加东西
+var saf;
+;(function(){
+  var $toString = Function.toString
+    , cacheI = []
+    , cacheS = []
+    , idxI = [].indexOf.bind(cacheI)
+    , pushI = [].push.bind(cacheI)
+    , pushS = [].push.bind(cacheS)
+  Object.defineProperty(Function.prototype, 'toString', {
+    "enumerable": !1, 
+    "configurable": !0, 
+    "writable": !0,
+    "value": function toString() {
+      return typeof this == 'function' && cacheS[idxI(this)] || $toString.call(this);
+    }
+  })
+  function safe_func(func, name){
+    if (-1 == idxI(func)){
+      pushI(func)
+      pushS(`function ${name || func.name || ''}() { [native code] }`)
+    }
+    return func
+  };
+  safe_func(Function.prototype.toString)
+  saf = safe_func
+})();
+
+
+
+
 
 // 一个旧的检测 native 函数的方式，依赖于 Object.toString 方法是原始方法。若不是，则无法确认检测内容是否真实。
 ;(function() {
