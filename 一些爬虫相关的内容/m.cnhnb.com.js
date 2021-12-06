@@ -31,7 +31,6 @@ function make(e, head){
    "secret": e["$env"]["inApp"] ? L : B ? N : G,
    "secretType": e["$env"]["inApp"] ? 1 : B ? 3 : 2
   }
-  console.log(data)
   var tp = data.secretType
   if (tp == 1){
     var a = sha1(data.nonce)
@@ -48,7 +47,6 @@ function make(e, head){
     var c = md5(data.nonce+data.deviceId)
     var d = sha1(data.secret+data.timestamp)+''
     d = d.substring(d.length-16, d.length-1)
-    console.log(d)
     d = bignum(d)
     var e = [a,b,c,d].join('!')
   }
@@ -61,7 +59,6 @@ function make(e, head){
     d = bignum(d)
     var e = [a,b,c,d].join("(o1o)")
   }
-  console.log(e)
   return sha384(e) + ''
 }
 
