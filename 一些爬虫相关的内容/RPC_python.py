@@ -13,6 +13,13 @@
 #   }
 # }()
 
+
+
+
+
+
+# pip install websockets flask
+
 import traceback
 import threading
 from urllib.parse import unquote
@@ -35,8 +42,6 @@ threading.Thread(target=app.run).start()
 
 import asyncio
 import websockets
-que = asyncio.Queue()
-res = asyncio.Queue()
 tog = False
 async def echo(websocket, path):
     global tog
@@ -54,6 +59,9 @@ async def echo(websocket, path):
                 return await websocket.send(await res.get())
             return await websocket.send('browser websocket not start.')
 async def main():
+    global que, res
+    que = asyncio.Queue()
+    res = asyncio.Queue()
     async with websockets.serve(echo, "localhost", 8887):
         await asyncio.Future()
 asyncio.run(main())
