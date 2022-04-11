@@ -1,16 +1,15 @@
-# 代码还有点问题。
-
 # !function(){
-#   var websocket = new WebSocket("ws://127.0.0.1:8887/getinfo");
+#   var websocket = new WebSocket("ws://127.0.0.1:8887/browser");
 #   websocket.onopen = function(){
-#     v_log("websocket open");
-#   }
-#   websocket.inclose = function(){
-#     v_log('websocket close');
+#     var info = 'browser:start'
+#     console.log(info);
+#     websocket.send(info)
 #   }
 #   websocket.onmessage = function(e){
-#     v_log('websocket.onmessage', e)
-#     websocket.send(v_stringify(v_env_cache))
+#     console.log('websocket.onmessage', e.data)
+#     // 这里处理请求参数以及对应rpc函数调用，返回参数用字符串传递回 websocket
+#     var ret = ''
+#     websocket.send(ret)
 #   }
 # }()
 
@@ -36,14 +35,24 @@ threading.Thread(target=app.run).start()
 
 import asyncio
 import websockets
+que = asyncio.Queue()
+res = asyncio.Queue()
+tog = False
 async def echo(websocket, path):
+    global tog
     async for message in websocket:
         print("path:{} message:{}".format(path, message))
-        if path == '/server':
-            await websocket.send(message+'asdf')
+        if path == '/browser':
+            if message == 'browser:start':
+                tog = True
+                while 1:
+                    await websocket.send(await que.get())
+                    await res.put(await websocket.recv())
         if path == '/getinfo':
-            await websocket.send(message+'asdf')
-        await websocket.send('empty')
+            if tog:
+                await que.put(message)
+                return await websocket.send(await res.get())
+            return await websocket.send('browser websocket not start.')
 async def main():
     async with websockets.serve(echo, "localhost", 8887):
         await asyncio.Future()
