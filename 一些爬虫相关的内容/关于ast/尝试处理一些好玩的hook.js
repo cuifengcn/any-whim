@@ -76,7 +76,7 @@ function fetch_hook(jscode){
     }
     function hook_init_func(path){
         var init = template(`
-        window.vilame_hook = function(func,type,ret,temp,tempidx,idx){
+        window.vilame_hook = window.vilame_hook || function(func,type,ret,temp,tempidx,idx){
             temp = (window.vilame_func = window.vilame_func || [])
             tempidx = (window.vilame_fidx = window.vilame_fidx || {})
             if (temp.indexOf(func) == -1){
