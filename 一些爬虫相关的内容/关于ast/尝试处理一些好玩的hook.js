@@ -51,55 +51,126 @@ test()
 
 
 function fetch_hook(jscode){
-    function template(jscode){
-        return parser.parse(jscode).program.body[0]
+  function template(jscode){
+    return parser.parse(jscode).program.body[0]
+  }
+  function hook_use_strict(path){
+    path.remove()
+  }
+  function hook_args(path){
+    var body = path.node.body
+    var params = path.node.params
+    var call = template(`window.vilame_hook(arguments.callee,'args')`)
+    call.expression.arguments.push(t.ArrayExpression(params))
+    body.body.unshift(call)
+  }
+  function hook_return(path){
+    var argument = path.node.argument
+    if (!argument){
+      return
     }
-    function hook_use_strict(path){
-        path.remove()
-    }
-    function hook_args(path){
-        var body = path.node.body
-        var params = path.node.params
-        var call = template(`window.vilame_hook(arguments.callee,'args')`)
-        call.expression.arguments.push(t.ArrayExpression(params))
-        body.body.unshift(call)
-    }
-    function hook_return(path){
-        var argument = path.node.argument
-        if (!argument){
-            return
-        }
-        var call = template(`window.vilame_hook(arguments.callee,'ret')`).expression
-        call.arguments.push(argument)
-        path.replaceWith(t.ReturnStatement(call))
-        path.stop()
-    }
-    function hook_init_func(path){
-        var init = template(`
-        window.vilame_hook = window.vilame_hook || function(func,type,ret,temp,tempidx,idx){
-            temp = (window.vilame_func = window.vilame_func || [])
-            tempidx = (window.vilame_fidx = window.vilame_fidx || [])
-            if (temp.indexOf(func) == -1){
-                temp.push(func)
+    var call = template(`window.vilame_hook(arguments.callee,'ret')`).expression
+    call.arguments.push(argument)
+    call.arguments.push(t.Identifier('arguments'))
+    path.replaceWith(t.ReturnStatement(call))
+    path.stop()
+  }
+  function hook_init_func(path){
+    var init = template(`
+    window.vilame_hook = window.vilame_hook || function(func,type,ret,args,temp,tempidx,idx){
+      window.v_n_toString = window.v_n_toString || (function(){}).call.bind((1).toString)
+      window.v_o_toString = window.v_o_toString || (function(){}).call.bind(Object.prototype.toString)
+      window.v_a_slice = window.v_a_slice || (function(){}).call.bind([].slice)
+      window.v_find = window.v_find || function v_find(info){
+        function match_type(a,b){
+          if (typeof a == typeof b){
+            if (typeof a === 'string'){
+              if (a.indexOf(b) != -1){
+                return true
+              }
             }
-            idx = temp.indexOf(func)
-            tempidx[idx] = tempidx[idx] || []
-            tempidx[idx].push([type, func, ret])
-            if (tempidx[idx].length > 10){
-                tempidx[idx].shift()
+            else if (typeof a == 'number'){
+              if (v_n_toString(a).indexOf(v_n_toString(b)) != -1){
+                return true
+              }
             }
-            return ret
+            else if (a === b){
+              return true
+            }
+          }
         }
-        `)
-        path.node.body.unshift(init)
+        var rets = []
+        for (var i = 0; i < vilame_fidx.length; i++) {
+          for (var j = 0; j < vilame_fidx[i].length; j++) {
+            var [type, func, data, args] = vilame_fidx[i][j]
+            if (type == 'args'){
+              for (var k = 0; k < data.length; k++) {
+                if (match_type(data[k], info)){
+                  rets.push(vilame_fidx[i][j])
+                  break
+                }
+              }
+            }
+            if (type == 'ret'){
+              if (args){
+                for (var k = 0; k < args.length; k++) {
+                  if (match_type(args[k], info)){
+                    rets.push(vilame_fidx[i][j])
+                    break
+                  }
+                }
+              }
+              if (v_o_toString(data) == '[object Array]'){
+                for (var k = 0; k < data.length; k++) {
+                  if (match_type(data[k], info)){
+                    rets.push(vilame_fidx[i][j])
+                    break
+                  }
+                }
+              }else{
+                if (match_type(data, info)){
+                  rets.push(vilame_fidx[i][j])
+                }
+              }
+            }
+          }
+        }
+        return rets
+      }
+      window.v_show = window.v_show || function v_show(info){
+        var ls = v_find(info)
+        console.log('==================================')
+        for (var i = 0; i < ls.length; i++) {
+          var [type, func, data] = ls[i]
+          console.log('----------------------------------')
+          console.log(type)
+          console.log(func)
+          console.log(data)
+        }
+      }
+      temp = (window.vilame_func = window.vilame_func || [])
+      tempidx = (window.vilame_fidx = window.vilame_fidx || [])
+      if (temp.indexOf(func) == -1){
+        temp.push(func)
+      }
+      idx = temp.indexOf(func)
+      tempidx[idx] = tempidx[idx] || []
+      tempidx[idx].push([type, func, ret, args?v_a_slice(args):null])
+      if (tempidx[idx].length > 10){
+        tempidx[idx].shift()
+      }
+      return ret
     }
-    var ast = parser.parse(jscode)
-    traverse(ast, {enter: function(path){t.removeComments(path.node);}})
-    traverse(ast, {Directive: hook_use_strict})
-    traverse(ast, {FunctionDeclaration: hook_args})
-    traverse(ast, {ReturnStatement: hook_return})
-    traverse(ast, {Program: hook_init_func})
-    return generator(ast, {minified:true}).code
+    `)
+    path.node.body.unshift(init)
+  }
+  var ast = parser.parse(jscode)
+  traverse(ast, {enter: function(path){t.removeComments(path.node);}})
+  traverse(ast, {Directive: hook_use_strict})
+  traverse(ast, {FunctionDeclaration: hook_args})
+  traverse(ast, {ReturnStatement: hook_return})
+  traverse(ast, {Program: hook_init_func})
+  return generator(ast, {minified:true}).code
 }
 
 
