@@ -383,6 +383,6 @@ while True:
             p += 1
         else:
             q += 1
-        if idx % 1000 == 0:
+        if idx % 100 == 0:
             print('正确', p, '错误', q, '正确率', p/(p+q))
     remove_imgs()
