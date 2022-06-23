@@ -140,45 +140,6 @@ def get_window_behind_by_name(name, x1x2y1y2=None):
     # test()
     return npimg
 
-# 发送按键指令给窗口
-from ctypes import windll
-from ctypes.wintypes import HWND
-import string
-import time
-PostMessageW = windll.user32.PostMessageW
-MapVirtualKeyW = windll.user32.MapVirtualKeyW
-VkKeyScanA = windll.user32.VkKeyScanA
-WM_KEYDOWN = 0x100
-WM_KEYUP = 0x101
-VkCode = {
-    "back": 0x08,      "snapshot": 0x2C,  "separator": 0x6C, "end": 0x23,       "numpad5": 0x65,   "f7": 0x76,
-    "tab": 0x09,       "insert": 0x2D,    "subtract": 0x6D,  "home": 0x24,      "numpad6": 0x66,   "f8": 0x77,
-    "return": 0x0D,    "delete": 0x2E,    "decimal": 0x6E,   "left": 0x25,      "numpad7": 0x67,   "f9": 0x78,
-    "shift": 0x10,     "lwin": 0x5B,      "divide": 0x6F,    "up": 0x26,        "numpad8": 0x68,   "f10": 0x79,
-    "control": 0x11,   "rwin": 0x5C,      "f1": 0x70,        "right": 0x27,     "numpad9": 0x69,   "f11": 0x7A,
-    "menu": 0x12,      "numpad0": 0x60,   "f2": 0x71,        "down": 0x28,      "multiply": 0x6A,  "f12": 0x7B,
-    "pause": 0x13,     "numpad1": 0x61,   "f3": 0x72,        "print": 0x2A,     "add": 0x6B,       "numlock": 0x90,
-    "capital": 0x14,   "numpad2": 0x62,   "f4": 0x73,        "scroll": 0x91,    "lshift": 0xA0,    "rshift": 0xA1,
-    "escape": 0x1B,    "numpad3": 0x63,   "f5": 0x74,        "lcontrol": 0xA2,  "rcontrol": 0xA3,  "lmenu": 0xA4,
-    "space": 0x20,     "numpad4": 0x64,   "f6": 0x75,        "rmenu": 0XA5
-}
-def get_virtual_keycode(key: str):
-    return (VkKeyScanA(ord(key)) & 0xff) if len(key) == 1 and key in string.printable else VkCode[key]
-def key_down(handle, key: str):
-    if type(handle) == str: handle = ctypes.windll.User32.FindWindowW(None,handle)
-    vk_code = get_virtual_keycode(key)
-    scan_code = MapVirtualKeyW(vk_code, 0)
-    wparam = vk_code
-    lparam = (scan_code << 16) | 1
-    PostMessageW(handle, WM_KEYDOWN, wparam, lparam)
-def key_up(handle, key: str):
-    if type(handle) == str: handle = ctypes.windll.User32.FindWindowW(None,handle)
-    vk_code = get_virtual_keycode(key)
-    scan_code = MapVirtualKeyW(vk_code, 0)
-    wparam = vk_code
-    lparam = (scan_code << 16) | 0XC0000001
-    PostMessageW(handle, WM_KEYUP, wparam, lparam)
-
 
 
 
@@ -196,75 +157,88 @@ def key_up(handle, key: str):
 
 
 import ctypes
-import time
-
-SendInput = ctypes.windll.user32.SendInput
 MapVirtualKey = ctypes.windll.user32.MapVirtualKeyW
 MAPVK_VK_TO_VSC = 0
-PUL = ctypes.POINTER(ctypes.c_ulong)
-VkCodeList = {
+INTERCEPTION_KEY_DOWN = 0x00
+INTERCEPTION_KEY_UP = 0x01
+INTERCEPTION_MOUSE_MOVE_ABSOLUTE = 0x001
+INTERCEPTION_MOUSE_LEFT_BUTTON_DOWN = 0x001
+INTERCEPTION_MOUSE_LEFT_BUTTON_UP = 0x002
+INTERCEPTION_KEYBOARD = lambda index: ((index) + 1)
+INTERCEPTION_MOUSE = lambda index: (10 + (index) + 1)
+interception = ctypes.CDLL('./interception_64.dll')
+interception.interception_create_context.restype = ctypes.POINTER(ctypes.c_void_p)
+class InterceptionMouseStroke(ctypes.Structure):
+    _fields_ = [('state',       ctypes.c_ushort),
+                ('flags',       ctypes.c_ushort),
+                ('rolling',     ctypes.c_short),
+                ('x',           ctypes.c_int),
+                ('y',           ctypes.c_int),
+                ('information', ctypes.c_uint)]
+class InterceptionKeyStroke(ctypes.Structure):
+    _fields_ = [('code',        ctypes.c_ushort),
+                ('state',       ctypes.c_ushort),
+                ('information', ctypes.c_uint)]
+VkCode = {
     "back": 0x08,      "snapshot": 0x2C,  "separator": 0x6C, "end": 0x23,       "numpad5": 0x65,   "f7": 0x76,
     "tab": 0x09,       "insert": 0x2D,    "subtract": 0x6D,  "home": 0x24,      "numpad6": 0x66,   "f8": 0x77,
-    "return": 0x0D,    "delete": 0x2E,    "decimal": 0x6E,   "numpad7": 0x67,   "f9": 0x78,        "left": MapVirtualKey(0x25, MAPVK_VK_TO_VSC),
-    "shift": 0x10,     "lwin": 0x5B,      "divide": 0x6F,    "numpad8": 0x68,   "f10": 0x79,       "up": MapVirtualKey(0x26, MAPVK_VK_TO_VSC),
-    "control": 0x11,   "rwin": 0x5C,      "f1": 0x70,        "numpad9": 0x69,   "f11": 0x7A,       "right": MapVirtualKey(0x27, MAPVK_VK_TO_VSC),
-    "menu": 0x12,      "numpad0": 0x60,   "f2": 0x71,        "multiply": 0x6A,  "f12": 0x7B,       "down": MapVirtualKey(0x28, MAPVK_VK_TO_VSC),
+    "return": 0x0D,    "delete": 0x2E,    "decimal": 0x6E,   "left": 0x25,      "numpad7": 0x67,   "f9": 0x78,
+    "shift": 0x10,     "lwin": 0x5B,      "divide": 0x6F,    "up": 0x26,        "numpad8": 0x68,   "f10": 0x79,
+    "control": 0x11,   "rwin": 0x5C,      "f1": 0x70,        "right": 0x27,     "numpad9": 0x69,   "f11": 0x7A,
+    "menu": 0x12,      "numpad0": 0x60,   "f2": 0x71,        "down": 0x28,      "multiply": 0x6A,  "f12": 0x7B,
     "pause": 0x13,     "numpad1": 0x61,   "f3": 0x72,        "print": 0x2A,     "add": 0x6B,       "numlock": 0x90,
     "capital": 0x14,   "numpad2": 0x62,   "f4": 0x73,        "scroll": 0x91,    "lshift": 0xA0,    "rshift": 0xA1,
     "escape": 0x1B,    "numpad3": 0x63,   "f5": 0x74,        "lcontrol": 0xA2,  "rcontrol": 0xA3,  "lmenu": 0xA4,
     "space": 0x20,     "numpad4": 0x64,   "f6": 0x75,        "rmenu": 0XA5
 }
-def get_vkcode(key: str):
-    return (VkKeyScanA(ord(key)) & 0xff) if len(key) == 1 and key in string.printable else VkCodeList[key]
-class KeyBdInput(ctypes.Structure):
-    _fields_ = [("wVk", ctypes.c_ushort),
-                ("wScan", ctypes.c_ushort),
-                ("dwFlags", ctypes.c_ulong),
-                ("time", ctypes.c_ulong),
-                ("dwExtraInfo", PUL)]
-class HardwareInput(ctypes.Structure):
-    _fields_ = [("uMsg", ctypes.c_ulong),
-                ("wParamL", ctypes.c_short),
-                ("wParamH", ctypes.c_ushort)]
-class MouseInput(ctypes.Structure):
-    _fields_ = [("dx", ctypes.c_long),
-                ("dy", ctypes.c_long),
-                ("mouseData", ctypes.c_ulong),
-                ("dwFlags", ctypes.c_ulong),
-                ("time",ctypes.c_ulong),
-                ("dwExtraInfo", PUL)]
-class Input_I(ctypes.Union):
-    _fields_ = [("ki", KeyBdInput),
-                 ("mi", MouseInput),
-                 ("hi", HardwareInput)]
-class Input(ctypes.Structure):
-    _fields_ = [("type", ctypes.c_ulong),
-                ("ii", Input_I)]
-def PressKey(hexKeyCode):
-    extra = ctypes.c_ulong(0)
-    ii_ = Input_I()
-    ii_.ki = KeyBdInput( hexKeyCode, 0x48, 0, 0, ctypes.pointer(extra) )
-    x = Input( ctypes.c_ulong(1), ii_ )
-    ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
-def ReleaseKey(hexKeyCode):
-    extra = ctypes.c_ulong(0)
-    ii_ = Input_I()
-    ii_.ki = KeyBdInput( hexKeyCode, 0x48, 0x0002, 0, ctypes.pointer(extra) )
-    x = Input( ctypes.c_ulong(1), ii_ )
-    ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
-def down_up(key, times=0.5):
-    code = get_vkcode(key)
-    PressKey(code)
-    import time
-    time.sleep(times)
-    ReleaseKey(code)
+import time
+import string
+VkKeyScanA = ctypes.windll.user32.VkKeyScanA
+def get_virtual_keycode(key: str):
+    return (VkKeyScanA(ord(key)) & 0xff) if len(key) == 1 and key in string.printable else VkCode[key]
+
+def keyboard_click(key):
+    key = get_virtual_keycode(key)
+    time.sleep(0.001)
+    context = interception.interception_create_context()
+    keyStroke = (InterceptionKeyStroke * 1)()
+    keyStroke[0].code = MapVirtualKey(key, MAPVK_VK_TO_VSC)
+    keyStroke[0].state = INTERCEPTION_KEY_DOWN
+    interception.interception_send(context, 1, keyStroke, keyStroke._length_)
+    time.sleep(0.017)
+    context = interception.interception_create_context()
+    keyStroke = (InterceptionKeyStroke * 1)()
+    keyStroke[0].code = MapVirtualKey(key, MAPVK_VK_TO_VSC)
+    keyStroke[0].state = INTERCEPTION_KEY_UP
+    interception.interception_send(context, INTERCEPTION_KEYBOARD(0), keyStroke, keyStroke._length_)
+    interception.interception_destroy_context(context)
+
+desktop_w = ctypes.windll.user32.GetSystemMetrics(0)
+desktop_h = ctypes.windll.user32.GetSystemMetrics(1)
+def mouse_left_click(x, y):
+    context = interception.interception_create_context()
+    mouseStroke = (InterceptionMouseStroke * 3)()
+    mouseStroke[0].flags = INTERCEPTION_MOUSE_MOVE_ABSOLUTE
+    mouseStroke[0].x = int(65535 * x / desktop_w)
+    mouseStroke[0].y = int(65535 * y / desktop_h)
+    mouseStroke[1].state = INTERCEPTION_MOUSE_LEFT_BUTTON_DOWN
+    mouseStroke[2].state = INTERCEPTION_MOUSE_LEFT_BUTTON_UP
+    interception.interception_send(context, INTERCEPTION_MOUSE(0), mouseStroke, mouseStroke._length_)
+    interception.interception_destroy_context(context)
+
+def mouse_set_pos(x, y):
+    context = interception.interception_create_context()
+    mouseStroke = (InterceptionMouseStroke * 1)()
+    mouseStroke[0].flags = INTERCEPTION_MOUSE_MOVE_ABSOLUTE
+    mouseStroke[0].x = int(65535 * x / desktop_w)
+    mouseStroke[0].y = int(65535 * y / desktop_h)
+    interception.interception_send(context, INTERCEPTION_MOUSE(0), mouseStroke, mouseStroke._length_)
+    interception.interception_destroy_context(context)
 
 
 
 
-
-
-
+ 
 
 
 
@@ -288,9 +262,31 @@ def get_jwt_window_bg(name):
     return get_window_behind_by_name(name, [530, 530+65, 150, 150+750])
 
 def get_jwt_window_bar(name):
-    return get_window_behind_by_name(name)
+    return get_window_behind_by_name(name, [510, 510+23, 510, 510+175])
 
-def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.96, nms_threshold=0.5):
+
+class POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), 
+                ("y", ctypes.c_long)]
+def get_mouse_pos():
+    pos = POINT()
+    ctypes.windll.user32.GetCursorPos(ctypes.byref(pos))
+    return [pos.x, pos.y]
+def set_mouse_pos(x, y):
+    ctypes.windll.user32.SetCursorPos(x, y)
+
+class RECT(ctypes.Structure):  
+    _fields_ = [('left', ctypes.c_int),  
+                ('top', ctypes.c_int),  
+                ('right', ctypes.c_int),  
+                ('bottom', ctypes.c_int)]  
+def get_window_rect(name):
+    rect = RECT()
+    mhd = ctypes.windll.User32.FindWindowW(None, name)
+    ctypes.windll.user32.GetWindowRect(mhd, ctypes.byref(rect))
+    return [rect.left, rect.top, rect.right, rect.bottom]
+
+def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.95, nms_threshold=0.5):
     def pre_deal(v, left=180, right=240):
         # v = cv2.cvtColor(v, cv2.COLOR_BGR2GRAY)
         # v = cv2.Canny(v, left, right)
@@ -366,7 +362,15 @@ class JWT:
             ret.append([name, i])
         return ret
 
+    def focus_window(self):
+        pos = get_mouse_pos()
+        rect = get_window_rect(self.window_name)
+        mouse_left_click(rect[0]+100, rect[1]+100)
+        time.sleep(0.1)
+        mouse_set_pos(pos[0], pos[1])
+
     def get_list(self):
+        # 目前识别存在很小几率识别错误。
         np_bg = get_jwt_window_bg(self.window_name)
         v_list = []
         v_list.extend(self.get_side(self.np_up, np_bg, 'up'))
@@ -391,57 +395,38 @@ class JWT:
         v_list = [i[0] for i in v_list]
         return v_list
 
+    def get_mapkey_name(self, kname):
+        kmap = {
+            'up': 'numpad8',
+            'down': 'numpad2',
+            'left': 'numpad4',
+            'right': 'numpad6',
+            'l_up': 'numpad7',
+            'l_down': 'numpad1',
+            'r_up': 'numpad9',
+            'r_down': 'numpad3',
+            'red_up': 'numpad2',
+            'red_down': 'numpad8',
+            'red_left': 'numpad6',
+            'red_right': 'numpad4',
+            'red_l_up': 'numpad3',
+            'red_l_down': 'numpad9',
+            'red_r_up': 'numpad1',
+            'red_r_down': 'numpad7',
+        }
+        return kmap[kname]
+
     def run(self, s_list):
         print(s_list)
-        # 暂时无法实现模拟键盘操作，后面再看情况搞搞。
-
-
-        # import time
-        # time.sleep(3)
-        # from pykeyboard import PyKeyboard
-        # k = PyKeyboard()
-        # k.press_key('H')
-        # time.sleep(0.2)
-        # k.release_key('H')
-        # down_up('a')
-
-        # import pydirectinput
-        # import time; time.sleep(2)
-        # for key in s_list:
-        #     print(key)
-        #     pydirectinput.press(key)
-        #     pydirectinput.keyDown(key)
-        #     pydirectinput.keyUp(key)
-
-
-        # for key in s_list:
-        #     print(key)
-        #     key_down(self.window_name, key)
-        #     key_up(self.window_name, key)
-
-        # sider = {
-        #     "left": 0x25,
-        #     "up": 0x26,
-        #     "right": 0x27,
-        #     "down": 0x28,
-        # }
-        # import time; time.sleep(2)
-        # for key in s_list:
-        #     print(key)
-        #     PressKey(sider[key])
-        #     ReleaseKey(sider[key])
- 
+        self.focus_window()
+        for key in s_list:
+            keyboard_click(self.get_mapkey_name(key))
 
 
 
 jwt = JWT('劲舞团[^区]+区')
 jwt.run(jwt.get_list())
+# titles = get_match('劲舞团[^区]+区', enumerate_all_window_names())
+# get_jwt_window_bar(titles[0])
 
-# import time
-# jwt = JWT()
-# VK_F1 = 112
-# VK_F2 = 113
-# hotkey = HotkeyHooker()  
-# hotkey.regexit(VK_F2, 'alt')
-# hotkey.reg(VK_F1, 'alt', lambda:jwt.run(jwt.get_list()))
-# hotkey.start()
+
