@@ -199,7 +199,7 @@ def get_virtual_keycode(key: str):
 
 def keyboard_click(key):
     key = get_virtual_keycode(key)
-    time.sleep(0.001)
+    time.sleep(0.009)
     context = interception.interception_create_context()
     keyStroke = (InterceptionKeyStroke * 1)()
     keyStroke[0].code = MapVirtualKey(key, MAPVK_VK_TO_VSC)
@@ -286,7 +286,7 @@ def get_window_rect(name):
     ctypes.windll.user32.GetWindowRect(mhd, ctypes.byref(rect))
     return [rect.left, rect.top, rect.right, rect.bottom]
 
-def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.945, nms_threshold=0.5):
+def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.94, nms_threshold=0.5):
     def pre_deal(v, left=180, right=240):
         # v = cv2.cvtColor(v, cv2.COLOR_BGR2GRAY)
         # v = cv2.Canny(v, left, right)
@@ -345,7 +345,6 @@ class JWT:
         self.np_l_down = cv2.imread('./imgs/l_down.png')
         self.np_r_up = cv2.imread('./imgs/r_up.png')
         self.np_r_down = cv2.imread('./imgs/r_down.png')
-
         self.np_red_up = cv2.imread('./imgs/red_up.png')
         self.np_red_down = cv2.imread('./imgs/red_down.png')
         self.np_red_left = cv2.imread('./imgs/red_left.png')
@@ -354,6 +353,24 @@ class JWT:
         self.np_red_l_down = cv2.imread('./imgs/red_l_down.png')
         self.np_red_r_up = cv2.imread('./imgs/red_r_up.png')
         self.np_red_r_down = cv2.imread('./imgs/red_r_down.png')
+        v = 3
+        self.np_up = self.np_up[v:-v, v:-v, ]
+        self.np_down = self.np_down[v:-v, v:-v, ]
+        self.np_left = self.np_left[v:-v, v:-v, ]
+        self.np_right = self.np_right[v:-v, v:-v, ]
+        self.np_l_up = self.np_l_up[v:-v, v:-v, ]
+        self.np_l_down = self.np_l_down[v:-v, v:-v, ]
+        self.np_r_up = self.np_r_up[v:-v, v:-v, ]
+        self.np_r_down = self.np_r_down[v:-v, v:-v, ]
+        self.np_red_up = self.np_red_up[v:-v, v:-v, ]
+        self.np_red_down = self.np_red_down[v:-v, v:-v, ]
+        self.np_red_left = self.np_red_left[v:-v, v:-v, ]
+        self.np_red_right = self.np_red_right[v:-v, v:-v, ]
+        self.np_red_l_up = self.np_red_l_up[v:-v, v:-v, ]
+        self.np_red_l_down = self.np_red_l_down[v:-v, v:-v, ]
+        self.np_red_r_up = self.np_red_r_up[v:-v, v:-v, ]
+        self.np_red_r_down = self.np_red_r_down[v:-v, v:-v, ]
+
         titles = get_match(name, enumerate_all_window_names())
         if not titles:
             raise Exception('没有找到窗口')
@@ -368,10 +385,10 @@ class JWT:
     def get_process(self):
         cost = time.time()
         np_bar = get_jwt_window_bar(self.window_name)
-        sign = self.get_side(self.np_bar_sign, np_bar, 'bar')
+        sign = findmatchtemplate_np_muti(self.np_bar_sign, np_bar)
         if sign:
             bar_len = np_bar.shape[1] - 22
-            bar_sig = sign[0][1][0]
+            bar_sig = sign[0][0]
             return bar_sig / bar_len, time.time() - cost
 
     def focus_window(self):
@@ -451,8 +468,7 @@ class JWT:
         keyboard_click('space')
         time.sleep(60 / self.bpm * 4 * 1.01)
 
-
-# jwt = JWT('劲舞团[^区]+区', 152)
+# jwt = JWT('劲舞团[^区]+区', 155)
 # jwt.run(jwt.get_list())
 # jwt.run(jwt.get_list())
 # jwt.run(jwt.get_list())
@@ -464,7 +480,7 @@ class JWT:
 import threading
 toggle = {'x': True}
 def run_main():
-    jwt = JWT('劲舞团[^区]+区', 176)
+    jwt = JWT('劲舞团[^区]+区', 202)
     while toggle['x']:
         jwt.run(jwt.get_list())
 threading.Thread(target=run_main).start()
