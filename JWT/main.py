@@ -262,7 +262,7 @@ def get_jwt_window_bg(name):
     return get_window_behind_by_name(name, [530, 530+65, 150, 150+750])
 
 def get_jwt_window_bar(name):
-    return get_window_behind_by_name(name, [510, 510+23, 510, 510+175])
+    return get_window_behind_by_name(name, [510, 510+23, 505, 505+180])
 
 
 class POINT(ctypes.Structure):
@@ -286,7 +286,7 @@ def get_window_rect(name):
     ctypes.windll.user32.GetWindowRect(mhd, ctypes.byref(rect))
     return [rect.left, rect.top, rect.right, rect.bottom]
 
-def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.95, nms_threshold=0.5):
+def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.945, nms_threshold=0.5):
     def pre_deal(v, left=180, right=240):
         # v = cv2.cvtColor(v, cv2.COLOR_BGR2GRAY)
         # v = cv2.Canny(v, left, right)
@@ -333,7 +333,10 @@ def findmatchtemplate_np_muti(front_np, bg_np, match_threshold=0.95, nms_thresho
     return infos
 
 class JWT:
-    def __init__(self, name):
+    def __init__(self, name, bpm):
+        self.bpm = bpm
+        self.np_bar_sign = cv2.imread('./imgs/bar_sign.png')
+
         self.np_up = cv2.imread('./imgs/up.png')
         self.np_down = cv2.imread('./imgs/down.png')
         self.np_left = cv2.imread('./imgs/left.png')
@@ -361,6 +364,15 @@ class JWT:
         for i in findmatchtemplate_np_muti(np_side, np_bg):
             ret.append([name, i])
         return ret
+
+    def get_process(self):
+        cost = time.time()
+        np_bar = get_jwt_window_bar(self.window_name)
+        sign = self.get_side(self.np_bar_sign, np_bar, 'bar')
+        if sign:
+            bar_len = np_bar.shape[1] - 22
+            bar_sig = sign[0][1][0]
+            return bar_sig / bar_len, time.time() - cost
 
     def focus_window(self):
         pos = get_mouse_pos()
@@ -416,16 +428,53 @@ class JWT:
         }
         return kmap[kname]
 
+    def calc_time(self, process, bpm, cost):
+        proc = 0.71 - process
+        proc = 0 if proc < 0 else proc
+        proc = proc * 60 / bpm * 4 - cost
+        return 0 if proc < 0 else proc
+
     def run(self, s_list):
         print(s_list)
+        if not s_list:
+            return
         self.focus_window()
         for key in s_list:
             keyboard_click(self.get_mapkey_name(key))
+        proc_cost = self.get_process()
+        if not proc_cost:
+            return
+        process, cost = proc_cost
+        wtime = self.calc_time(process, self.bpm, cost)
+        print(wtime)
+        time.sleep(wtime)
+        keyboard_click('space')
+        time.sleep(60 / self.bpm * 4 * 1.01)
 
 
+# jwt = JWT('劲舞团[^区]+区', 152)
+# jwt.run(jwt.get_list())
+# jwt.run(jwt.get_list())
+# jwt.run(jwt.get_list())
+# jwt.run(jwt.get_list())
+# jwt.run(jwt.get_list())
 
-jwt = JWT('劲舞团[^区]+区')
-jwt.run(jwt.get_list())
+# 后面得优化一下识别率，识别率真的很低。
+
+import threading
+toggle = {'x': True}
+def run_main():
+    jwt = JWT('劲舞团[^区]+区', 176)
+    while toggle['x']:
+        jwt.run(jwt.get_list())
+threading.Thread(target=run_main).start()
+def close():
+    toggle['x'] = False
+
+hotkey = HotkeyHooker()
+hotkey.regexit(112, 'alt', close) # alt F1 关闭
+hotkey.start()
+
 # titles = get_match('劲舞团[^区]+区', enumerate_all_window_names())
 # get_jwt_window_bar(titles[0])
 
