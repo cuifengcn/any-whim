@@ -29,6 +29,10 @@ setup(
     # 注意同一 version 版本不能 upload 两次
     # 在该脚本下执行下面的命令行指令（该命令需预先安装 wheel 库，pip install wheel 即可）：
     # python setup.py bdist_wheel upload
+    # 
+    # 现在旧版的 upload 出现问题，用 twine 上传避免bug（需要 pip 下载）
+    # pip install twine
+    # twine upload dist/*
     name = "vv",
     version = "0.0.7",
     
