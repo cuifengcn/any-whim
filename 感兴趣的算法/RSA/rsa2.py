@@ -18,11 +18,9 @@ while True:
         break
 e = 0x10001
 n = p * q
-phi = (p-1)*(q-1)
 p1 = invert(p, q)
 q1 = invert(q, p)
 c = pow(m, e, n)
-print('phi =', phi)
 print('p1 =', p1)
 print('q1 =', q1)
 print('n =', n)
